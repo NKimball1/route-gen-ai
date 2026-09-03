@@ -1,0 +1,2 @@
+# HTTP client for Nominatim geocoding and the routing providers (BRouter, ORS).
+requests>=2.31
