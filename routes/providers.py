@@ -42,6 +42,9 @@ class BRouterProvider:
     # its waypoints sit on; shrink the circle by this factor to compensate.
     WINDING_FACTOR = 1.35
     VIA_POINTS = 3
+    # Real roads run longer than the straight line to an outback turnaround.
+    DETOUR_FACTOR = 1.3
+    MAX_RESCALES = 2
 
     def __init__(self, profile: str = "fastbike-lowtraffic"):
         # "fastbike-lowtraffic" is BRouter's road-bike profile that strongly
@@ -49,72 +52,71 @@ class BRouterProvider:
         # harder, "trekking" is the touring default.
         self.profile = profile
 
+    def route(self, waypoints: list[tuple[float, float]],
+              avoid: list[tuple[float, float, float]] | None = None) -> dict | None:
+        """Point-to-point request. Returns {points, distance_m, ascent_m,
+        net_gain_m} with spurs already trimmed, or None on failure."""
+        params = {
+            "lonlats": "|".join(f"{p[1]:.6f},{p[0]:.6f}" for p in waypoints),
+            "profile": self.profile,
+            "alternativeidx": 0,
+            "format": "geojson",
+        }
+        if avoid:
+            params["nogos"] = "|".join(f"{a[1]:.6f},{a[0]:.6f},{a[2]:.0f}"
+                                       for a in avoid)
+        try:
+            resp = requests.get(self.BASE_URL, params=params, timeout=120)
+            resp.raise_for_status()
+            feature = resp.json()["features"][0]
+        except (requests.RequestException, KeyError, IndexError, ValueError) as e:
+            print(f"  brouter: request failed ({e})")
+            return None
+        props = feature["properties"]
+        points = [(c[1], c[0], c[2] if len(c) > 2 else None)
+                  for c in feature["geometry"]["coordinates"]]
+        # Cut out-and-back spur artifacts BEFORE distance/climb accounting, so
+        # rescaling and ranking see the route as it would be ridden. The naive
+        # spur-ascent estimate can overshoot the provider's filtered figure,
+        # hence the clamp.
+        points, spur_dist, spur_ascent = despur(points)
+        if spur_dist > 400:
+            print(f"  brouter: trimmed {spur_dist / 1609.344:.1f} mi of "
+                  f"out-and-back spurs")
+        return {
+            "points": points,
+            "distance_m": float(props["track-length"]) - spur_dist,
+            "ascent_m": max(0.0, float(props["filtered ascend"]) - spur_ascent),
+            "net_gain_m": float(props.get("plain-ascend", 0.0)),
+        }
+
     def candidates(self, spec: RouteSpec, lat: float, lon: float,
                    n: int = 6) -> list[RouteCandidate]:
         out = []
         for i in range(n):
             bearing = 360.0 * i / n
             if spec.shape == "outback":
-                build = lambda scale=1.0: self._outback(spec, lat, lon, bearing, scale)
+                build = lambda s=1.0: self._outback(spec, lat, lon, bearing, s)
             else:
                 clockwise = i % 2 == 0
-                build = lambda scale=1.0: self._loop(spec, lat, lon, bearing, clockwise, scale)
-            cand = build()
-            if cand is None:
-                continue
-            # One adaptive retry if the routed length missed the target by
+                build = lambda s=1.0: self._loop(spec, lat, lon, bearing, clockwise, s)
+            cand, scale = build(), 1.0
+            # Adaptive rescales while the routed length misses the target by
             # more than half the acceptance tolerance.
-            error = abs(cand.distance_m - spec.distance_m) / spec.distance_m
-            if error > spec.distance_tolerance / 2:
-                retry = build(spec.distance_m / cand.distance_m)
-                if retry is not None:
-                    cand = retry
-            out.append(cand)
+            for _ in range(self.MAX_RESCALES):
+                if cand is None:
+                    break
+                error = abs(cand.distance_m - spec.distance_m) / spec.distance_m
+                if error <= spec.distance_tolerance / 2:
+                    break
+                scale *= spec.distance_m / cand.distance_m
+                retry = build(scale)
+                if retry is None:
+                    break
+                cand = retry
+            if cand is not None:
+                out.append(cand)
         return out
-
-    # Real roads run longer than the straight line to the turnaround point;
-    # shrink the crow-flies leg by this factor to land near the target.
-    DETOUR_FACTOR = 1.3
-
-    def _outback(self, spec: RouteSpec, lat: float, lon: float, bearing: float,
-                 scale: float = 1.0) -> RouteCandidate | None:
-        crow = scale * (spec.distance_m / 2) / self.DETOUR_FACTOR
-        dest = _destination(lat, lon, bearing, crow)
-        lonlats = f"{lon:.6f},{lat:.6f}|{dest[1]:.6f},{dest[0]:.6f}"
-        try:
-            resp = requests.get(
-                self.BASE_URL,
-                params={"lonlats": lonlats, "profile": self.profile,
-                        "alternativeidx": 0, "format": "geojson"},
-                timeout=120,
-            )
-            resp.raise_for_status()
-            feature = resp.json()["features"][0]
-        except (requests.RequestException, KeyError, IndexError, ValueError) as e:
-            print(f"  brouter outback bearing {bearing:.0f}: failed ({e})")
-            return None
-        props = feature["properties"]
-        points = [(c[1], c[0], c[2] if len(c) > 2 else None)
-                  for c in feature["geometry"]["coordinates"]]
-        # Despur only the one-way leg — the deliberate return leg would look
-        # like one giant spur to the mirror detector.
-        points, spur_dist, spur_ascent = despur(points)
-        if spur_dist > 400:
-            print(f"  brouter outback bearing {bearing:.0f}: trimmed "
-                  f"{spur_dist / 1609.344:.1f} mi of spurs from the outbound leg")
-        one_way_dist = float(props["track-length"]) - spur_dist
-        one_way_ascent = max(0.0, float(props["filtered ascend"]) - spur_ascent)
-        net_gain = float(props.get("plain-ascend", 0.0))
-        # Return-leg climbing is the outbound leg's descent (ascent minus net).
-        total_ascent = max(0.0, one_way_ascent + (one_way_ascent - net_gain))
-        return RouteCandidate(
-            provider=self.name,
-            seed=f"outback bearing={bearing:.0f} scale={scale:.2f}",
-            distance_m=one_way_dist * 2,
-            ascent_m=total_ascent,
-            points=points + points[-2::-1],
-            shape="outback",
-        )
 
     def _loop(self, spec: RouteSpec, lat: float, lon: float, bearing: float,
               clockwise: bool, scale: float = 1.0) -> RouteCandidate | None:
@@ -124,37 +126,33 @@ class BRouterProvider:
         step = 360.0 / (self.VIA_POINTS + 1) * (1 if clockwise else -1)
         vias = [_destination(center[0], center[1], start_angle + step * (k + 1), radius)
                 for k in range(self.VIA_POINTS)]
-        waypoints = [(lat, lon)] + vias + [(lat, lon)]
-        lonlats = "|".join(f"{p[1]:.6f},{p[0]:.6f}" for p in waypoints)
-        try:
-            resp = requests.get(
-                self.BASE_URL,
-                params={"lonlats": lonlats, "profile": self.profile,
-                        "alternativeidx": 0, "format": "geojson"},
-                timeout=120,
-            )
-            resp.raise_for_status()
-            feature = resp.json()["features"][0]
-        except (requests.RequestException, KeyError, IndexError, ValueError) as e:
-            print(f"  brouter bearing {bearing:.0f}: failed ({e})")
+        leg = self.route([(lat, lon)] + vias + [(lat, lon)], spec.avoid)
+        if leg is None:
             return None
-        props = feature["properties"]
-        points = [(c[1], c[0], c[2] if len(c) > 2 else None)
-                  for c in feature["geometry"]["coordinates"]]
-        # Cut out-and-back spur artifacts BEFORE distance/climb accounting, so
-        # the adaptive retry and ranking see the route as it would be ridden.
-        # The naive spur-ascent estimate can overshoot the provider's filtered
-        # figure, hence the clamp.
-        points, spur_dist, spur_ascent = despur(points)
-        if spur_dist > 400:
-            print(f"  brouter bearing {bearing:.0f}: trimmed "
-                  f"{spur_dist / 1609.344:.1f} mi of out-and-back spurs")
         return RouteCandidate(
             provider=self.name,
             seed=f"bearing={bearing:.0f} {'cw' if clockwise else 'ccw'} scale={scale:.2f}",
-            distance_m=float(props["track-length"]) - spur_dist,
-            ascent_m=max(0.0, float(props["filtered ascend"]) - spur_ascent),
-            points=points,
+            distance_m=leg["distance_m"],
+            ascent_m=leg["ascent_m"],
+            points=leg["points"],
+        )
+
+    def _outback(self, spec: RouteSpec, lat: float, lon: float, bearing: float,
+                 scale: float = 1.0) -> RouteCandidate | None:
+        crow = scale * (spec.distance_m / 2) / self.DETOUR_FACTOR
+        dest = _destination(lat, lon, bearing, crow)
+        leg = self.route([(lat, lon), dest], spec.avoid)
+        if leg is None:
+            return None
+        # Return-leg climbing is the outbound leg's descent (ascent minus net).
+        total_ascent = max(0.0, leg["ascent_m"] + (leg["ascent_m"] - leg["net_gain_m"]))
+        return RouteCandidate(
+            provider=self.name,
+            seed=f"outback bearing={bearing:.0f} scale={scale:.2f}",
+            distance_m=leg["distance_m"] * 2,
+            ascent_m=total_ascent,
+            points=leg["points"] + leg["points"][-2::-1],
+            shape="outback",
         )
 
 
@@ -162,7 +160,7 @@ class ORSProvider:
     name = "ors"
     BASE_URL = "https://api.openrouteservice.org/v2/directions/cycling-regular/geojson"
 
-    def __init__(self, api_key: str | None = None, profile_note: str = "cycling-regular"):
+    def __init__(self, api_key: str | None = None):
         self.api_key = api_key or os.environ.get("ORS_API_KEY", "")
 
     @property
@@ -173,6 +171,9 @@ class ORSProvider:
                    n: int = 6) -> list[RouteCandidate]:
         if spec.shape == "outback":
             print("  (ors: round_trip only generates loops; skipping outback)")
+            return []
+        if spec.avoid:
+            print("  (ors: avoid zones not wired up for round_trip; skipping)")
             return []
         out = []
         for seed in range(n):
@@ -204,7 +205,8 @@ class ORSProvider:
                 provider=self.name,
                 seed=f"seed={seed}",
                 distance_m=float(summary["distance"]) - spur_dist,
-                ascent_m=max(0.0, float(feature["properties"].get("ascent", 0.0)) - spur_ascent),
+                ascent_m=max(0.0, float(feature["properties"].get("ascent", 0.0))
+                             - spur_ascent),
                 points=points,
             ))
         return out

@@ -1,29 +1,41 @@
-"""Route composer prototype: turn a ride request into Garmin-ready GPX files.
+"""Route composer CLI: turn a ride request into Garmin-ready GPX files.
 
 Examples (the two target prompts):
 
   # ~30 mile loop, under 1000 ft of climbing
   python compose_route.py --address "123 Main St, Madison WI" --miles 30 --max-climb-ft 1000
 
-  # 50 miles, as much climbing as possible
-  python compose_route.py --address "Boulder, CO" --miles 50 --maximize-climb
+  # 50 miles, as much climbing as possible, loop or out-and-back
+  python compose_route.py --address "Boulder, CO" --miles 50 --maximize-climb --shape both
+
+  # avoid a road/area (repeatable; ":radius_m" optional, default 800)
+  python compose_route.py --address "..." --miles 30 --avoid "Verona Rd, Madison WI:1500"
 
 Providers: brouter (no key needed) always runs; ors runs if ORS_API_KEY is set
-(free key from https://openrouteservice.org). Use --provider to force one.
-GPX files land in output/routes/.
+(free key from https://openrouteservice.org). GPX files land in output/routes/.
+
+For plain-English requests, use ask.py instead.
 """
 import argparse
-import os
 import sys
 
 from routes.geocode import geocode
-from routes.gpx_out import write_gpx
-from routes.preview import build_preview
-from routes.providers import BRouterProvider, ORSProvider
-from routes.scoring import rank
+from routes.pipeline import build_providers, compose
 from routes.spec import RouteSpec
 
-OUT_DIR = os.path.join("output", "routes")
+
+def parse_avoid(items: list[str]) -> list[tuple[float, float, float]]:
+    zones = []
+    for item in items:
+        place, _, radius = item.rpartition(":")
+        if place and radius.replace(".", "").isdigit():
+            radius_m = float(radius)
+        else:
+            place, radius_m = item, 800.0
+        lat, lon, name = geocode(place)
+        print(f"Avoiding: {name} (r={radius_m:.0f} m)")
+        zones.append((lat, lon, radius_m))
+    return zones
 
 
 def main() -> int:
@@ -43,60 +55,19 @@ def main() -> int:
                          "fastbike-verylowtraffic, trekking, safety")
     ap.add_argument("--shape", choices=["loop", "outback", "both"], default="loop",
                     help="loop (default), outback, or both competing together")
+    ap.add_argument("--avoid", action="append", default=[],
+                    help='no-go area, "place name" or "place name:radius_m"')
     args = ap.parse_args()
 
+    avoid = parse_avoid(args.avoid)
     shapes = ["loop", "outback"] if args.shape == "both" else [args.shape]
     specs = [RouteSpec.from_imperial(args.address, args.miles, args.max_climb_ft,
-                                     args.maximize_climb, shape=s) for s in shapes]
-    spec = specs[0]
+                                     args.maximize_climb, shape=s, avoid=avoid)
+             for s in shapes]
 
-    lat, lon, place = geocode(args.address)
-    print(f"Start: {place} ({lat:.5f}, {lon:.5f})")
-
-    providers = []
-    if args.provider in ("brouter", "all"):
-        providers.append(BRouterProvider(profile=args.profile))
-    if args.provider in ("ors", "all"):
-        ors = ORSProvider()
-        if ors.available:
-            providers.append(ors)
-        elif args.provider == "ors":
-            print("ORS_API_KEY not set — get a free key at https://openrouteservice.org")
-            return 1
-        else:
-            print("(skipping ors: ORS_API_KEY not set)")
-
-    candidates = []
-    for p in providers:
-        for s in specs:
-            print(f"Generating {args.candidates} {s.shape} candidates via {p.name}...")
-            candidates.extend(p.candidates(s, lat, lon, n=args.candidates))
-
-    keepers, rejects = rank(spec, candidates)
-    for c, reason in rejects:
-        print(f"  reject [{c.provider} {c.seed}]: {reason}")
-    if not keepers:
-        print("No candidate met the constraints. Try more --candidates or a "
-              "looser target.")
-        return 1
-
-    os.makedirs(OUT_DIR, exist_ok=True)
-    goal = "maxclimb" if spec.maximize_ascent else "ride"
-    gpx_paths = []
-    print(f"\n{'rank':<5}{'provider':<9}{'shape':<9}{'miles':>7}{'climb ft':>10}  file")
-    for i, c in enumerate(keepers, 1):
-        fname = f"route_{args.miles:.0f}mi_{goal}_{i}_{c.shape}_{c.provider}.gpx"
-        path = os.path.join(OUT_DIR, fname)
-        write_gpx(c, f"{args.miles:.0f}mi {goal} #{i} ({c.shape}, {c.provider}, {c.seed})", path)
-        gpx_paths.append(path)
-        print(f"{i:<5}{c.provider:<9}{c.shape:<9}{c.distance_mi:>7.1f}{c.ascent_ft:>10.0f}  {path}")
-
-    build_preview(gpx_paths, os.path.join(OUT_DIR, "preview.html"))
-
-    best = keepers[0]
-    print(f"\nBest: rank 1 — {best.distance_mi:.1f} mi, "
-          f"{best.ascent_ft:.0f} ft climbing ({best.provider}, {best.seed})")
-    return 0
+    providers = build_providers(args.provider, args.profile)
+    keepers = compose(specs, providers, candidates_per=args.candidates)
+    return 0 if keepers else 1
 
 
 if __name__ == "__main__":

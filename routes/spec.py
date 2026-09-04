@@ -18,12 +18,14 @@ class RouteSpec:
     maximize_ascent: bool = False       # rank by climbing instead of distance fit
     distance_tolerance: float = 0.15    # accept candidates within ±15% of target
     shape: str = "loop"                 # "loop" or "outback"
+    avoid: list = field(default_factory=list)  # (lat, lon, radius_m) no-go circles
 
     @classmethod
     def from_imperial(cls, address: str, miles: float,
                       max_climb_ft: float | None = None,
                       maximize_climb: bool = False,
-                      shape: str = "loop") -> "RouteSpec":
+                      shape: str = "loop",
+                      avoid: list | None = None) -> "RouteSpec":
         return cls(
             address=address,
             distance_m=miles * METERS_PER_MILE,
@@ -31,6 +33,7 @@ class RouteSpec:
                           if max_climb_ft is not None else None),
             maximize_ascent=maximize_climb,
             shape=shape,
+            avoid=list(avoid or []),
         )
 
 

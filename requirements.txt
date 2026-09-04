@@ -1,2 +1,8 @@
 # HTTP client for Nominatim geocoding and the routing providers (BRouter, ORS).
 requests>=2.31
+
+# Claude API for the natural-language request parser (routes/nl.py).
+anthropic>=1.0
+
+# Loads ANTHROPIC_API_KEY (and ROUTEGEN_* settings) from a local .env file.
+python-dotenv>=1.0

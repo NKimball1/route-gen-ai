@@ -81,6 +81,11 @@ def _stats(points) -> tuple[float, float]:
     return dist, ascent
 
 
+def _parse_desc(path: str) -> str | None:
+    m = re.search(r"<desc>([^<]+)</desc>", open(path, encoding="utf-8").read())
+    return m.group(1) if m else None
+
+
 def build_preview(gpx_paths: list[str], out_path: str) -> None:
     routes = []
     for path in gpx_paths:
@@ -88,9 +93,12 @@ def build_preview(gpx_paths: list[str], out_path: str) -> None:
         if not points:
             print(f"skipping {path}: no track points found")
             continue
-        dist_m, ascent_m = _stats(points)
-        label = (f"{os.path.basename(path)} — {dist_m / METERS_PER_MILE:.1f} mi, "
-                 f"~{ascent_m / METERS_PER_FOOT:.0f} ft")
+        desc = _parse_desc(path)
+        if desc is None:  # foreign GPX without our stats block: derive roughly
+            dist_m, ascent_m = _stats(points)
+            desc = (f"{dist_m / METERS_PER_MILE:.1f} mi, "
+                    f"~{ascent_m / METERS_PER_FOOT:.0f} ft")
+        label = f"{os.path.basename(path)} — {desc}"
         routes.append({"label": label, "points": [[p[0], p[1]] for p in points]})
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(PAGE.format(routes_json=json.dumps(routes)))

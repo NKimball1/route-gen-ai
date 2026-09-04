@@ -1,53 +1,71 @@
 # Route Gen AI
 
-Turn a natural-language ride request into a Garmin-ready GPX cycling route.
-
-Target prompts:
-
-- "Give me a ~30ish mile ride from this address, less than 1000 feet of
-  climbing, full loop back to the start."
-- "Create a 50 mile ride with as much climbing as you can from this address."
-
-## How it works
-
-The composer owns loop generation and scoring; routing engines are swappable
-backends (deliberately not tied to one API):
-
-1. **Geocode** the start address (OSM Nominatim, free, no key).
-2. **Generate candidates**: place via-points on a circle through the start at
-   several compass bearings and ask a bike router for the legs
-   (`routes/providers.py`). Backends:
-   - **BRouter** — public brouter.de server, no API key, "trekking" profile
-     (favors quiet roads and bike infrastructure). Default.
-   - **OpenRouteService** — native round-trip generator; activates when
-     `ORS_API_KEY` is set (free key: https://openrouteservice.org). Hosted
-     round trips cap at 100 km.
-3. **Filter and rank deterministically** (`routes/scoring.py`): distance
-   within ±15% of target, climbing under the cap (or maximized), no LLM
-   judgment in the loop.
-4. **Output**: GPX tracks in `output/routes/` (import to Garmin Connect as a
-   course) plus `output/routes/preview.html`, a Leaflet map grid of all
-   candidates.
-
-The LLM layer (parsing the natural-language request into a `RouteSpec`) is not
-built yet — CLI flags stand in for it. Planned: Strava segment-explore scoring
-(popularity + climb category) to prefer roads cyclists actually ride.
-
-## Usage
+Describe a ride in plain English, get a Garmin-ready GPX:
 
 ```
-python compose_route.py --address "Madison, Wisconsin" --miles 30 --max-climb-ft 1000
-python compose_route.py --address "Boulder, Colorado" --miles 50 --maximize-climb
-python -m routes.preview output/routes/*.gpx   # rebuild the map preview only
+python ask.py "give me a 30ish mile loop from home, less than 1000 ft of climbing"
+python ask.py "50 miles, as much climbing as you can, out and back or loop is fine"
+python ask.py "find me a flat spot within 30 min of my house for 2x20 threshold intervals"
+python ask.py "a spot close to home for 4x5 VO2 intervals against a slight incline"
 ```
 
-`--candidates N` (default 6) controls loops per provider; `--provider
-brouter|ors|all` forces a backend. The public BRouter server takes a few
-seconds per leg, so a full run is 1–3 minutes.
+## Architecture
+
+The LLM only translates intent; it never touches geometry. Deterministic code
+owns the search and the judgment, and routing engines are swappable backends.
+
+1. **Parse** (`routes/nl.py`): one small Claude call (claude-haiku-4-5 by
+   default, ~$0.002/request — structured outputs, so responses are
+   schema-valid with no retry loop) turns the request into a typed spec:
+   either a route request or an interval-spot request.
+2. **Generate**:
+   - Routes (`routes/providers.py` + `routes/pipeline.py`): via-points on a
+     circle through the start make loops out of point-to-point routing;
+     turnaround points make out-and-backs. Candidates across many compass
+     bearings, adaptive rescaling toward the target distance, spur artifacts
+     excised by `routes/despur.py`.
+   - Interval spots (`routes/intervals.py`): spokes radiate from the start,
+     a window slides along each spoke's geometry, and windows are scored on
+     length, gradient character (flat and steady vs. a consistent ~4%
+     climb), and turn density.
+3. **Validate & rank** (`routes/scoring.py`): distance tolerance, climb caps,
+   climb maximization — all computed, never judged by the LLM.
+4. **Output**: GPX tracks (`output/routes/`, `output/spots/`) importable to
+   Garmin Connect as courses, plus a Leaflet map preview (`preview.html`).
+
+Routing backends: **BRouter** (public brouter.de, no key; profile
+`fastbike-lowtraffic` strongly avoids busy/high-speed roads) and
+**OpenRouteService** (activates when `ORS_API_KEY` is set). Geocoding is OSM
+Nominatim (free). Avoid-zones ("not Verona Rd") ride along as BRouter `nogos`.
+
+## Direct CLIs (no LLM, no API key needed)
+
+```
+python compose_route.py --address "..." --miles 30 --max-climb-ft 1000
+python compose_route.py --address "..." --miles 50 --maximize-climb --shape both
+python compose_route.py --address "..." --miles 30 --avoid "Verona Rd, Madison WI:1500"
+python find_spot.py --address "..." --reps 2 --rep-minutes 20 --kind flat --max-travel-minutes 30
+python find_spot.py --address "..." --reps 4 --rep-minutes 5 --kind incline
+python -m routes.preview output/routes/*.gpx   # rebuild a map preview
+```
+
+The public BRouter server takes a few seconds per leg; a full run is 1–3 min.
 
 ## Setup
 
 ```
 python -m venv .venv
 .venv\Scripts\pip install -r requirements.txt
+copy .env.example .env   # or edit .env: API key, home address
 ```
+
+`ask.py` needs `ANTHROPIC_API_KEY`; everything else runs keyless.
+Dev: `pip install -r requirements-dev.txt` then `python -m pytest tests/`.
+
+## Known limits / next steps
+
+- Interval "traffic interruptions" are proxied by turn density; stop signs
+  and traffic lights would need an OSM Overpass query (upgrade path).
+- Strava segment-explore integration (popularity scoring; routing to real
+  categorized climbs for max-climb requests) is designed but not built.
+- ORS provider skips out-and-backs and avoid-zones (BRouter covers both).

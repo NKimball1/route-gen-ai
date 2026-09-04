@@ -10,9 +10,11 @@ GPX_HEADER = (
 )
 
 
-def write_gpx(candidate: RouteCandidate, name: str, path: str) -> None:
-    lines = [GPX_HEADER, f"  <trk><name>{escape(name)}</name>\n    <trkseg>\n"]
-    for lat, lon, ele in candidate.points:
+def write_track(points, name: str, desc: str, path: str) -> None:
+    lines = [GPX_HEADER,
+             f"  <trk><name>{escape(name)}</name><desc>{escape(desc)}</desc>\n"
+             "    <trkseg>\n"]
+    for lat, lon, ele in points:
         if ele is not None:
             lines.append(f'      <trkpt lat="{lat:.6f}" lon="{lon:.6f}">'
                          f"<ele>{ele:.1f}</ele></trkpt>\n")
@@ -21,3 +23,11 @@ def write_gpx(candidate: RouteCandidate, name: str, path: str) -> None:
     lines.append("    </trkseg>\n  </trk>\n</gpx>\n")
     with open(path, "w", encoding="utf-8") as f:
         f.writelines(lines)
+
+
+def write_gpx(candidate: RouteCandidate, name: str, path: str) -> None:
+    # Provider-reported stats in <desc>: the preview shows these instead of
+    # re-deriving climbing from raw elevation points (which reads ~2x high).
+    desc = (f"{candidate.distance_mi:.1f} mi, {candidate.ascent_ft:.0f} ft "
+            f"({candidate.provider})")
+    write_track(candidate.points, name, desc, path)
