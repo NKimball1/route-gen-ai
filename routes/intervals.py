@@ -52,6 +52,8 @@ class IntervalSpot:
     mean_grade_pct: float = 0.0
     grade_std_pct: float = 0.0
     turns_per_km: float = 0.0
+    n_controls: int = 0                # stop signs/signals/etc. on the stretch
+    control_wt_per_km: float = 0.0     # severity-weighted interruptions per km
     dist_from_start_m: float = 0.0     # riding distance out to the stretch
     bearing: float = 0.0
     score: float = 0.0
@@ -125,7 +127,8 @@ def _window_stats(rs, i, j):
     return length, mean, math.sqrt(var), turns / max(length / 1000.0, 0.001)
 
 
-def _score(spec: IntervalSpec, length, mean_grade, grade_std, turns_per_km) -> float:
+def _score(spec: IntervalSpec, length, mean_grade, grade_std, turns_per_km,
+           control_wt: float = 0.0) -> float:
     # Longer is better up to the full rep distance (you can lap a shorter
     # stretch, but every turnaround interrupts the effort).
     len_score = min(length / spec.rep_distance_m, 1.0)
@@ -136,13 +139,30 @@ def _score(spec: IntervalSpec, length, mean_grade, grade_std, turns_per_km) -> f
         grade_score = max(0.0, 1.0 - abs(abs(mean_grade) - 4.0) / 3.0)  # peak at 4%
         steady_score = max(0.0, 1.0 - grade_std / 4.0)
     turn_score = max(0.0, 1.0 - turns_per_km / 4.0)
-    return 0.35 * len_score + 0.3 * grade_score + 0.15 * steady_score + 0.2 * turn_score
+    # What matters for an interval is interruptions PER REP: lapping a short
+    # stretch re-encounters its controls, so scale the window's weighted
+    # control count to one rep distance. This term dominates — a single
+    # signal per rep halves it, and a clean short stretch should beat a long
+    # stretch with stops (turnarounds interrupt less than traffic lights).
+    wt_per_rep = control_wt * spec.rep_distance_m / max(length, 1.0)
+    control_score = 1.0 / (1.0 + wt_per_rep)
+    return (0.25 * len_score + 0.25 * grade_score + 0.1 * steady_score
+            + 0.05 * turn_score + 0.35 * control_score)
 
 
 def find_spots(spec: IntervalSpec, lat: float, lon: float, provider,
                n_spokes: int = 12, top: int = 3) -> list[IntervalSpot]:
     """Search spokes around the start for the best interval stretches."""
+    from bisect import bisect_left, bisect_right
+
+    from routes.interruptions import controls_along, fetch_controls
     from routes.providers import _destination
+
+    controls = fetch_controls(lat, lon, spec.travel_radius_m + 2000)
+    print(f"  {len(controls)} traffic controls (stops/signals/crossings) in area"
+          if controls else
+          "  warning: no traffic-control data (Overpass down?) — scoring "
+          "without interruption counts")
 
     spots = []
     for i in range(n_spokes):
@@ -154,9 +174,15 @@ def find_spots(spec: IntervalSpec, lat: float, lon: float, provider,
         rs = _resample(leg["points"])
         if len(rs) < 5:
             continue
-        # Slide a window of up to rep_distance along the spoke; step ~250 m.
+        # Map every control onto this spoke once; windows then count hits in
+        # their distance range with two bisects.
+        hits = controls_along(rs, controls)
+        hit_pos = [h[0] for h in hits]
+        hit_wt_cum = [0.0]
+        for _, w in hits:
+            hit_wt_cum.append(hit_wt_cum[-1] + w)
+        # Slide a window of up to rep_distance along the spoke.
         best_for_spoke = None
-        i0 = 0
         for i0 in range(0, len(rs) - 3):
             j = i0
             while j + 1 < len(rs) and rs[j + 1][3] - rs[i0][3] <= spec.rep_distance_m:
@@ -164,11 +190,16 @@ def find_spots(spec: IntervalSpec, lat: float, lon: float, provider,
             length, mean, std, tpk = _window_stats(rs, i0, j)
             if length < 0.35 * spec.rep_distance_m or length < 400:
                 continue
-            score = _score(spec, length, mean, std, tpk)
+            a = bisect_left(hit_pos, rs[i0][3])
+            b = bisect_right(hit_pos, rs[j][3])
+            wt = hit_wt_cum[b] - hit_wt_cum[a]
+            wt_per_km = wt / max(length / 1000.0, 0.001)
+            score = _score(spec, length, mean, std, tpk, wt)
             spot = IntervalSpot(
                 points=[p[:3] for p in rs[i0:j + 1]],
                 length_m=length, mean_grade_pct=mean, grade_std_pct=std,
-                turns_per_km=tpk, dist_from_start_m=rs[i0][3],
+                turns_per_km=tpk, n_controls=b - a, control_wt_per_km=wt_per_km,
+                dist_from_start_m=rs[i0][3],
                 bearing=bearing, score=score,
             )
             if best_for_spoke is None or spot.score > best_for_spoke.score:

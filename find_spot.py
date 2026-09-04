@@ -41,19 +41,20 @@ def run_spot_search(spec: IntervalSpec, profile: str = "fastbike-lowtraffic",
     os.makedirs(out_dir, exist_ok=True)
     gpx_paths = []
     print(f"\n{'rank':<5}{'len mi':>7}{'grade %':>9}{'±%':>6}{'turns/km':>10}"
-          f"{'ride out mi':>13}  file")
+          f"{'stops':>7}{'ride out mi':>13}  file")
     for i, s in enumerate(spots, 1):
         fname = f"spot_{spec.kind}_{spec.reps}x{spec.rep_minutes:.0f}_{i}.gpx"
         path = os.path.join(out_dir, fname)
         desc = (f"{s.length_mi:.1f} mi @ {s.mean_grade_pct:+.1f}% "
                 f"(±{s.grade_std_pct:.1f}), {s.turns_per_km:.1f} turns/km, "
+                f"{s.n_controls} stops/signals, "
                 f"{s.dist_from_start_m / 1609.344:.1f} mi from start")
         write_track(s.points, f"{spec.kind} spot #{i} ({spec.reps}x{spec.rep_minutes:.0f})",
                     desc, path)
         gpx_paths.append(path)
         print(f"{i:<5}{s.length_mi:>7.1f}{s.mean_grade_pct:>9.1f}"
               f"{s.grade_std_pct:>6.1f}{s.turns_per_km:>10.1f}"
-              f"{s.dist_from_start_m / 1609.344:>13.1f}  {path}")
+              f"{s.n_controls:>7}{s.dist_from_start_m / 1609.344:>13.1f}  {path}")
 
     build_preview(gpx_paths, os.path.join(out_dir, "preview.html"))
 
