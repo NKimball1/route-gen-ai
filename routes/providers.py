@@ -46,7 +46,6 @@ def _destination(lat: float, lon: float, bearing_deg: float, dist_m: float) -> t
 
 class BRouterProvider:
     name = "brouter"
-    BASE_URL = "https://brouter.de/brouter"
     # Real roads wander, so a routed loop runs longer than the geometric circle
     # its waypoints sit on; shrink the circle by this factor to compensate.
     WINDING_FACTOR = 1.35
@@ -60,6 +59,11 @@ class BRouterProvider:
         # avoids busy/high-speed roads; "fastbike-verylowtraffic" avoids them
         # harder, "trekking" is the touring default.
         self.profile = profile
+        # Self-hosted instance when BROUTER_URL is set (e.g.
+        # http://localhost:17777/brouter); public server otherwise.
+        # Self-hosting removes rate limits and enables custom profiles.
+        self.base_url = os.environ.get("BROUTER_URL",
+                                       "https://brouter.de/brouter")
 
     def route(self, waypoints: list[tuple[float, float]],
               avoid: list[tuple[float, float, float]] | None = None) -> dict | None:
@@ -75,7 +79,7 @@ class BRouterProvider:
             params["nogos"] = "|".join(f"{a[1]:.6f},{a[0]:.6f},{a[2]:.0f}"
                                        for a in avoid)
         try:
-            resp = requests.get(self.BASE_URL, params=params, timeout=120)
+            resp = requests.get(self.base_url, params=params, timeout=120)
             resp.raise_for_status()
             feature = resp.json()["features"][0]
         except (requests.RequestException, KeyError, IndexError, ValueError) as e:

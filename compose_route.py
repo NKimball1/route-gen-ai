@@ -19,6 +19,10 @@ For plain-English requests, use ask.py instead.
 import argparse
 import sys
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from routes.geocode import geocode
 from routes.pipeline import build_providers, compose
 from routes.spec import RouteSpec

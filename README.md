@@ -33,10 +33,20 @@ owns the search and the judgment, and routing engines are swappable backends.
 4. **Output**: GPX tracks (`output/routes/`, `output/spots/`) importable to
    Garmin Connect as courses, plus a Leaflet map preview (`preview.html`).
 
-Routing backends: **BRouter** (public brouter.de, no key; profile
-`fastbike-lowtraffic` strongly avoids busy/high-speed roads) and
-**OpenRouteService** (activates when `ORS_API_KEY` is set). Geocoding is OSM
-Nominatim (free). Avoid-zones ("not Verona Rd") ride along as BRouter `nogos`.
+Routing backends: **BRouter** — self-hosted at `C:\Users\me\brouter`
+(start with `start_brouter.cmd`, port 17777; `BROUTER_URL` in `.env` points
+there, comment it out to fall back to the public brouter.de server, which
+rate-limits) — and **OpenRouteService** (activates when `ORS_API_KEY` is
+set). Geocoding is OSM Nominatim (free). Avoid-zones ("not Verona Rd") ride
+along as BRouter `nogos`.
+
+Profiles: `fastbike-lowtraffic` (default) avoids busy roads;
+**`fastbike-quiet`** (custom, self-hosted only) additionally penalizes
+primary/secondary/tertiary — i.e. county-highway-class — roads 2-3x, keeping
+rides on quiet rural/residential roads at the cost of longer detours. Pass
+`--profile fastbike-quiet`. Routing data covers the two 5° tiles around
+southern Wisconsin (W90_N40, W95_N40); grab more `.rd5` tiles from
+brouter.de/brouter/segments4/ into `segments4\` for other regions.
 
 ## Direct CLIs (no LLM, no API key needed)
 

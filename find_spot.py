@@ -15,6 +15,10 @@ import argparse
 import os
 import sys
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from routes.geocode import geocode
 from routes.gpx_out import write_track
 from routes.intervals import IntervalSpec, find_spots
