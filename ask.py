@@ -49,7 +49,8 @@ def main() -> int:
     avoid = parse_avoid(r["avoid_places"])
     shapes = ["loop", "outback"] if r["shape"] == "both" else [r["shape"]]
     specs = [RouteSpec.from_imperial(address, r["distance_miles"], r["max_climb_ft"],
-                                     r["maximize_climb"], shape=s, avoid=avoid)
+                                     r["maximize_climb"], shape=s, avoid=avoid,
+                                     minimize_climb=r["minimize_climb"])
              for s in shapes]
     keepers = compose(specs, build_providers())
     return 0 if keepers else 1

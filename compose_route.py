@@ -47,6 +47,8 @@ def main() -> int:
                     help="reject candidates climbing more than this")
     ap.add_argument("--maximize-climb", action="store_true",
                     help="rank candidates by most climbing")
+    ap.add_argument("--minimize-climb", action="store_true",
+                    help="rank candidates by least climbing")
     ap.add_argument("--candidates", type=int, default=6,
                     help="loop candidates per provider (default 6)")
     ap.add_argument("--provider", choices=["brouter", "ors", "all"], default="all")
@@ -62,7 +64,8 @@ def main() -> int:
     avoid = parse_avoid(args.avoid)
     shapes = ["loop", "outback"] if args.shape == "both" else [args.shape]
     specs = [RouteSpec.from_imperial(args.address, args.miles, args.max_climb_ft,
-                                     args.maximize_climb, shape=s, avoid=avoid)
+                                     args.maximize_climb, shape=s, avoid=avoid,
+                                     minimize_climb=args.minimize_climb)
              for s in shapes]
 
     providers = build_providers(args.provider, args.profile)

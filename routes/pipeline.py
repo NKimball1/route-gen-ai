@@ -54,7 +54,8 @@ def compose(specs: list[RouteSpec], providers: list, candidates_per: int = 6,
 
     os.makedirs(out_dir, exist_ok=True)
     miles = spec.distance_m / METERS_PER_MILE
-    goal = "maxclimb" if spec.maximize_ascent else "ride"
+    goal = ("maxclimb" if spec.maximize_ascent
+            else "minclimb" if spec.minimize_ascent else "ride")
     gpx_paths = []
     print(f"\n{'rank':<5}{'provider':<9}{'shape':<9}{'miles':>7}{'climb ft':>10}  file")
     for i, c in enumerate(keepers, 1):

@@ -18,6 +18,8 @@ def rank(spec: RouteSpec, candidates: list[RouteCandidate]
 
     if spec.maximize_ascent:
         keepers.sort(key=lambda c: c.ascent_m, reverse=True)
+    elif spec.minimize_ascent:
+        keepers.sort(key=lambda c: c.ascent_m)
     else:
         keepers.sort(key=lambda c: abs(c.distance_m - spec.distance_m))
     return keepers, rejects

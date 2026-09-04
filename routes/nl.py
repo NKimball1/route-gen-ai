@@ -19,7 +19,8 @@ route-generation tool. Two request types:
 
 - "route": a ride of a target distance (a loop or out-and-back from a start
   address). Map "out and back or loop is fine" to shape "both". Map "as much
-  climbing as you can" / "maximize elevation" to maximize_climb=true. Soft
+  climbing as you can" / "maximize elevation" to maximize_climb=true, and
+  "as flat as possible" / "least elevation" to minimize_climb=true. Soft
   climbing language: "not much climbing" ≈ max_climb_ft 1000 for rides up to
   35 mi, scale proportionally for longer. If the user gives a duration
   instead of distance, assume 16 mph average. Roads/areas the user wants to
@@ -47,11 +48,12 @@ SCHEMA = {
                 "distance_miles": {"type": "number"},
                 "max_climb_ft": {"type": ["number", "null"]},
                 "maximize_climb": {"type": "boolean"},
+                "minimize_climb": {"type": "boolean"},
                 "shape": {"type": "string", "enum": ["loop", "outback", "both"]},
                 "avoid_places": {"type": "array", "items": {"type": "string"}},
             },
             "required": ["distance_miles", "max_climb_ft", "maximize_climb",
-                         "shape", "avoid_places"],
+                         "minimize_climb", "shape", "avoid_places"],
             "additionalProperties": False,
         },
         "interval": {
