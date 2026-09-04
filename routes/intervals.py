@@ -190,8 +190,10 @@ def find_spots(spec: IntervalSpec, lat: float, lon: float, provider,
             length, mean, std, tpk = _window_stats(rs, i0, j)
             if length < 0.35 * spec.rep_distance_m or length < 400:
                 continue
-            a = bisect_left(hit_pos, rs[i0][3])
-            b = bisect_right(hit_pos, rs[j][3])
+            # Pad the range: a light AT the turnaround point still interrupts
+            # every lap, and mapped positions carry a little noise.
+            a = bisect_left(hit_pos, rs[i0][3] - 150.0)
+            b = bisect_right(hit_pos, rs[j][3] + 150.0)
             wt = hit_wt_cum[b] - hit_wt_cum[a]
             wt_per_km = wt / max(length / 1000.0, 0.001)
             score = _score(spec, length, mean, std, tpk, wt)

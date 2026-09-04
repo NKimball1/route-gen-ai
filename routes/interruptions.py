@@ -61,7 +61,23 @@ def fetch_controls(lat: float, lon: float, radius_m: float) -> list:
         weight = WEIGHTS.get(kind)
         if weight:
             controls.append((el["lat"], el["lon"], weight))
-    return controls
+    return _cluster(controls)
+
+
+def _cluster(controls, radius_m: float = 35.0) -> list:
+    """Merge control nodes within radius into one (a signalized intersection
+    is typically mapped as one node per corner — that's one light, not four)."""
+    merged = []
+    for lat, lon, weight in controls:
+        for i, (mlat, mlon, mweight) in enumerate(merged):
+            dy = (lat - mlat) * 110540.0
+            dx = (lon - mlon) * 111320.0 * math.cos(math.radians(lat))
+            if dx * dx + dy * dy <= radius_m * radius_m:
+                merged[i] = (mlat, mlon, max(mweight, weight))
+                break
+        else:
+            merged.append((lat, lon, weight))
+    return merged
 
 
 def _project(lat0: float, lon0: float):
@@ -75,14 +91,20 @@ def _project(lat0: float, lon0: float):
 
 def controls_along(points, controls, tolerance_m: float = 40.0) -> list:
     """Map controls onto a polyline: sorted (cum_distance_m, weight) for each
-    control within tolerance of the line. `points` are (lat, lon, ...)."""
+    control within tolerance of the line. `points` are (lat, lon, ...); when a
+    4th element is present it is taken as that point's cumulative road
+    distance, keeping positions comparable to the caller's own cum values
+    (chord sums drift hundreds of meters behind road distance over ~10 km)."""
     if not points or not controls:
         return []
     to_xy = _project(points[0][0], points[0][1])
     xy = [to_xy(p[0], p[1]) for p in points]
-    cum = [0.0]
-    for k in range(1, len(xy)):
-        cum.append(cum[-1] + math.dist(xy[k - 1], xy[k]))
+    if len(points[0]) > 3:
+        cum = [p[3] for p in points]
+    else:
+        cum = [0.0]
+        for k in range(1, len(xy)):
+            cum.append(cum[-1] + math.dist(xy[k - 1], xy[k]))
 
     hits = []
     for clat, clon, weight in controls:

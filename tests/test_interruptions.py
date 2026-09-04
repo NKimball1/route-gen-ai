@@ -18,6 +18,26 @@ def test_control_on_the_road_counts():
     assert 550 < hits[0][0] < 800
 
 
+def test_corner_nodes_cluster_to_one_intersection():
+    from routes.interruptions import _cluster
+    # four signal heads on the corners of one intersection (~20 m apart)
+    corners = [(43.0, -89.5, 1.5), (43.0002, -89.5, 1.5),
+               (43.0, -89.50025, 1.5), (43.0002, -89.50025, 1.5)]
+    merged = _cluster(corners)
+    assert len(merged) == 1
+    assert merged[0][2] == 1.5
+
+
+def test_provided_cum_is_used():
+    # 4-tuple points carry road-distance cum; hit positions must be in that
+    # basis, not a fresh chord sum starting at zero.
+    pts = [(43.0 + k * LAT_STEP, -89.5, 300.0, 5000.0 + k * 122.0)
+           for k in range(20)]
+    hits = controls_along(pts, [(43.0 + 5.5 * LAT_STEP, -89.5, 1.0)])
+    assert len(hits) == 1
+    assert 5550 < hits[0][0] < 5800
+
+
 def test_hits_sorted_by_position():
     pts = road(20)
     controls = [(43.0 + k * LAT_STEP, -89.5, 1.0) for k in (12, 3, 7)]
