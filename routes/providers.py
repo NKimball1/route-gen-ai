@@ -17,7 +17,7 @@ import os
 
 import requests
 
-from routes.despur import despur
+from routes.despur import corridor_despur, despur
 from routes.spec import RouteCandidate, RouteSpec
 
 EARTH_RADIUS_M = 6371000.0
@@ -89,6 +89,11 @@ class BRouterProvider:
         # spur-ascent estimate can overshoot the provider's filtered figure,
         # hence the clamp.
         points, spur_dist, spur_ascent = despur(points)
+        # Second pass: corridor tendrils (out and back on not-quite-identical
+        # geometry — parallel path, offset lanes) that exact matching misses.
+        points, c_dist, c_ascent = corridor_despur(points)
+        spur_dist += c_dist
+        spur_ascent += c_ascent
         if spur_dist > 400:
             print(f"  brouter: trimmed {spur_dist / 1609.344:.1f} mi of "
                   f"out-and-back spurs")

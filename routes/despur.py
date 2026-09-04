@@ -56,3 +56,48 @@ def despur(points, tolerance_m: float = 10.0, min_spur_m: float = 40.0
                 continue
         i += 1
     return pts, removed_dist, removed_ascent
+
+
+def _resample(points, step_m: float = 25.0) -> list:
+    """Uniformly spaced copy of the polyline (linear interpolation)."""
+    out = [tuple(points[0][:3])]
+    prev = points[0]
+    carry = 0.0
+    for p in points[1:]:
+        seg = _hav_m(prev, p)
+        while seg > 0 and carry + seg >= step_m:
+            t = (step_m - carry) / seg
+            lat = prev[0] + (p[0] - prev[0]) * t
+            lon = prev[1] + (p[1] - prev[1]) * t
+            ele = (prev[2] + (p[2] - prev[2]) * t
+                   if prev[2] is not None and p[2] is not None else None)
+            newp = (lat, lon, ele)
+            out.append(newp)
+            seg -= step_m - carry
+            carry = 0.0
+            prev = newp
+        carry += seg
+        prev = p
+    if out[-1][:2] != tuple(points[-1][:2]):
+        out.append(tuple(points[-1][:3]))
+    return out
+
+
+def corridor_despur(points, tolerance_m: float = 32.0, min_spur_m: float = 200.0
+                    ) -> tuple[list, float, float]:
+    """Catch tendrils the exact pass misses: the route goes out and comes
+    back within ~tolerance of the same corridor, but on not-quite-identical
+    geometry (parallel path, offset lanes). Works on a uniformly resampled
+    copy so out/back samples align; returns the resampled track when it
+    trimmed something, the original untouched otherwise.
+
+    Caution: sustained switchback legs closer than tolerance would falsely
+    match; min_spur_m and the corridor width are chosen for open-road
+    riding, not alpine hairpin stacks.
+    """
+    rs = _resample(points)
+    cleaned, removed_dist, removed_ascent = despur(
+        rs, tolerance_m=tolerance_m, min_spur_m=min_spur_m)
+    if removed_dist == 0.0:
+        return list(points), 0.0, 0.0
+    return cleaned, removed_dist, removed_ascent

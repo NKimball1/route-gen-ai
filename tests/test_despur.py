@@ -37,6 +37,32 @@ def test_short_wiggle_kept():
     assert len(clean) == len(pts)
 
 
+def test_corridor_catches_offset_return():
+    from routes.despur import corridor_despur
+    # Out east on one line, back on a parallel line ~17 m north — exact
+    # matching misses it; the corridor pass must not.
+    lon_step = 0.0007  # ~57 m of longitude
+    out_leg = [(43.0, -89.5 + k * lon_step, 300.0) for k in range(10)]
+    back_leg = [(43.00015, -89.5 + (9 - k) * lon_step, 300.0) for k in range(10)]
+    main = road(11)
+    pts = main[:6] + out_leg + back_leg + main[5:]
+    exact_clean, exact_removed, _ = despur(pts)
+    assert exact_removed == 0.0  # the offset defeats exact matching
+    clean, removed, _ = corridor_despur(pts)
+    assert removed > 700  # ~half a km each way
+    # the surviving track stays on the main road
+    lons = [p[1] for p in clean]
+    assert max(lons) < -89.49
+
+
+def test_corridor_leaves_clean_loop_alone():
+    from routes.despur import corridor_despur
+    pts = road(60)
+    clean, removed, _ = corridor_despur(pts)
+    assert removed == 0.0
+    assert clean == pts  # untouched, original geometry preserved
+
+
 def test_full_palindrome_collapses():
     # A deliberate out-and-back IS one giant spur to this detector — which is
     # why providers despur only the one-way leg before mirroring (see
