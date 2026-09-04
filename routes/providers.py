@@ -23,6 +23,15 @@ from routes.spec import RouteCandidate, RouteSpec
 EARTH_RADIUS_M = 6371000.0
 
 
+def _bearing(a: tuple[float, float], b: tuple[float, float]) -> float:
+    """Initial great-circle bearing from a to b, degrees."""
+    phi1, phi2 = math.radians(a[0]), math.radians(b[0])
+    dlam = math.radians(b[1] - a[1])
+    y = math.sin(dlam) * math.cos(phi2)
+    x = math.cos(phi1) * math.sin(phi2) - math.sin(phi1) * math.cos(phi2) * math.cos(dlam)
+    return (math.degrees(math.atan2(y, x)) + 360.0) % 360.0
+
+
 def _destination(lat: float, lon: float, bearing_deg: float, dist_m: float) -> tuple[float, float]:
     """Point reached from (lat, lon) after dist_m along bearing_deg (great circle)."""
     delta = dist_m / EARTH_RADIUS_M
@@ -92,6 +101,8 @@ class BRouterProvider:
 
     def candidates(self, spec: RouteSpec, lat: float, lon: float,
                    n: int = 6) -> list[RouteCandidate]:
+        if spec.via:
+            return self._via_candidates(spec, lat, lon, n)
         out = []
         for i in range(n):
             bearing = 360.0 * i / n
@@ -114,6 +125,56 @@ class BRouterProvider:
                 if retry is None:
                     break
                 cand = retry
+            if cand is not None:
+                out.append(cand)
+        return out
+
+    def _via_candidates(self, spec: RouteSpec, lat: float, lon: float,
+                        n: int) -> list[RouteCandidate]:
+        """Loops through user-required places. Route the mandatory cycle
+        (start -> via1 -> ... -> start); if it falls short of the target
+        distance, bow one leg outward with an extension point sized
+        adaptively — each (leg, side) combination is a candidate."""
+        anchors = [(lat, lon)] + [tuple(v) for v in spec.via]
+        base = self.route(anchors + [(lat, lon)], spec.avoid)
+        if base is None:
+            return []
+        base_dist = base["distance_m"]
+        needed = spec.distance_m - base_dist
+        print(f"  via cycle alone: {base_dist / 1609.344:.1f} mi "
+              f"(target {spec.distance_m / 1609.344:.0f})")
+        if needed <= spec.distance_m * spec.distance_tolerance:
+            return [RouteCandidate(
+                provider=self.name, seed="via direct",
+                distance_m=base_dist, ascent_m=base["ascent_m"],
+                points=base["points"])]
+
+        out = []
+        combos = [(li, side) for li in range(len(anchors)) for side in (1, -1)]
+        for li, side in combos[:n]:
+            a = anchors[li]
+            b = anchors[(li + 1) % len(anchors)]
+            mid = ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)
+            leg_bearing = _bearing(a, b)
+            r = needed / 2 / 1.2
+            cand = None
+            for _ in range(3):
+                ext = _destination(mid[0], mid[1], leg_bearing + 90 * side, r)
+                wps = anchors[:li + 1] + [ext] + anchors[li + 1:] + [(lat, lon)]
+                leg = self.route(wps, spec.avoid)
+                if leg is None:
+                    break
+                cand = RouteCandidate(
+                    provider=self.name,
+                    seed=f"via leg={li} side={'+' if side > 0 else '-'} "
+                         f"r={r / 1609.344:.1f}mi",
+                    distance_m=leg["distance_m"], ascent_m=leg["ascent_m"],
+                    points=leg["points"])
+                error = abs(cand.distance_m - spec.distance_m) / spec.distance_m
+                added = cand.distance_m - base_dist
+                if error <= spec.distance_tolerance / 2 or added <= 0:
+                    break
+                r *= max(0.25, min(4.0, needed / added))
             if cand is not None:
                 out.append(cand)
         return out
@@ -174,6 +235,9 @@ class ORSProvider:
             return []
         if spec.avoid:
             print("  (ors: avoid zones not wired up for round_trip; skipping)")
+            return []
+        if spec.via:
+            print("  (ors: round_trip cannot honor via places; skipping)")
             return []
         out = []
         for seed in range(n):

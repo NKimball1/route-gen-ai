@@ -45,12 +45,22 @@ def main() -> int:
     from compose_route import parse_avoid
     from routes.pipeline import build_providers, compose
     from routes.spec import RouteSpec
+    from routes.geocode import geocode
     r = req["route"]
     avoid = parse_avoid(r["avoid_places"])
+    via, via_names = [], []
+    for place in r["via_places"]:
+        vlat, vlon, vname = geocode(place)
+        print(f"Via: {vname}")
+        via.append((vlat, vlon))
+        via_names.append(place)
+    if via:
+        r["shape"] = "loop"
     shapes = ["loop", "outback"] if r["shape"] == "both" else [r["shape"]]
     specs = [RouteSpec.from_imperial(address, r["distance_miles"], r["max_climb_ft"],
                                      r["maximize_climb"], shape=s, avoid=avoid,
-                                     minimize_climb=r["minimize_climb"])
+                                     minimize_climb=r["minimize_climb"],
+                                     via=via, via_names=via_names)
              for s in shapes]
     keepers = compose(specs, build_providers())
     return 0 if keepers else 1

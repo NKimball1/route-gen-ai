@@ -59,13 +59,25 @@ def main() -> int:
                     help="loop (default), outback, or both competing together")
     ap.add_argument("--avoid", action="append", default=[],
                     help='no-go area, "place name" or "place name:radius_m"')
+    ap.add_argument("--via", action="append", default=[],
+                    help="place the route must pass through (repeatable, ordered)")
     args = ap.parse_args()
 
     avoid = parse_avoid(args.avoid)
+    via, via_names = [], []
+    for place in args.via:
+        vlat, vlon, vname = geocode(place)
+        print(f"Via: {vname}")
+        via.append((vlat, vlon))
+        via_names.append(place)
+    if via and args.shape != "loop":
+        print("(via places imply a loop; ignoring --shape)")
+        args.shape = "loop"
     shapes = ["loop", "outback"] if args.shape == "both" else [args.shape]
     specs = [RouteSpec.from_imperial(args.address, args.miles, args.max_climb_ft,
                                      args.maximize_climb, shape=s, avoid=avoid,
-                                     minimize_climb=args.minimize_climb)
+                                     minimize_climb=args.minimize_climb,
+                                     via=via, via_names=via_names)
              for s in shapes]
 
     providers = build_providers(args.provider, args.profile)

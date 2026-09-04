@@ -20,6 +20,8 @@ class RouteSpec:
     distance_tolerance: float = 0.15    # accept candidates within ±15% of target
     shape: str = "loop"                 # "loop" or "outback"
     avoid: list = field(default_factory=list)  # (lat, lon, radius_m) no-go circles
+    via: list = field(default_factory=list)    # (lat, lon) places to pass through
+    via_names: list = field(default_factory=list)
 
     @classmethod
     def from_imperial(cls, address: str, miles: float,
@@ -27,7 +29,9 @@ class RouteSpec:
                       maximize_climb: bool = False,
                       shape: str = "loop",
                       avoid: list | None = None,
-                      minimize_climb: bool = False) -> "RouteSpec":
+                      minimize_climb: bool = False,
+                      via: list | None = None,
+                      via_names: list | None = None) -> "RouteSpec":
         return cls(
             address=address,
             distance_m=miles * METERS_PER_MILE,
@@ -37,6 +41,8 @@ class RouteSpec:
             minimize_ascent=minimize_climb,
             shape=shape,
             avoid=list(avoid or []),
+            via=list(via or []),
+            via_names=list(via_names or []),
         )
 
 

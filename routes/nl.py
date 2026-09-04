@@ -25,7 +25,9 @@ route-generation tool. Two request types:
   35 mi, scale proportionally for longer. If the user gives a duration
   instead of distance, assume 16 mph average. Roads/areas the user wants to
   avoid go in avoid_places as geocodable place strings (append the city if
-  the user's address makes it obvious).
+  the user's address makes it obvious). Places the route should pass
+  THROUGH ("goes through X and Y") go in via_places, in the user's order,
+  as geocodable strings (append the state).
 - "interval_spot": the user wants a STRETCH OF ROAD to do structured
   intervals on, not a full route. Threshold / tempo / sweet-spot / TT work
   wants kind "flat"; VO2 / hill reps / "ride against an incline" wants
@@ -51,9 +53,10 @@ SCHEMA = {
                 "minimize_climb": {"type": "boolean"},
                 "shape": {"type": "string", "enum": ["loop", "outback", "both"]},
                 "avoid_places": {"type": "array", "items": {"type": "string"}},
+                "via_places": {"type": "array", "items": {"type": "string"}},
             },
             "required": ["distance_miles", "max_climb_ft", "maximize_climb",
-                         "minimize_climb", "shape", "avoid_places"],
+                         "minimize_climb", "shape", "avoid_places", "via_places"],
             "additionalProperties": False,
         },
         "interval": {
