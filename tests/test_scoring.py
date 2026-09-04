@@ -21,6 +21,24 @@ def test_climb_cap():
     assert "exceeds cap" in rejects[0][1]
 
 
+def test_via_prefers_natural_loops():
+    spec = RouteSpec("x", distance_m=50 * 1609.344, via=[(43.0, -89.5)])
+    anchored = cand(49.9, 1000, "anchored")          # closer to target
+    natural = cand(57.0, 950, "sweep")               # organic but longer
+    natural.natural = True
+    keepers, _ = rank(spec, [anchored, natural])
+    assert keepers[0].seed == "sweep"
+
+
+def test_overlap_rejected():
+    spec = RouteSpec("x", distance_m=50 * 1609.344)
+    lollipop = cand(50, 500, "lolly")
+    lollipop.overlap_frac = 0.4
+    keepers, rejects = rank(spec, [cand(50, 500, "clean"), lollipop])
+    assert len(keepers) == 1 and keepers[0].seed == "clean"
+    assert "same road twice" in rejects[0][1]
+
+
 def test_maximize_orders_by_climb():
     spec = RouteSpec("x", distance_m=50 * 1609.344, maximize_ascent=True)
     keepers, _ = rank(spec, [cand(50, 700, "a"), cand(50, 1400, "b")])

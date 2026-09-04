@@ -53,6 +53,8 @@ class RouteCandidate:
     distance_m: float
     ascent_m: float
     shape: str = "loop"
+    overlap_frac: float = 0.0  # fraction riding the same road twice (loops)
+    natural: bool = False      # passes through vias organically, not anchored
     points: list[tuple[float, float, float | None]] = field(repr=False, default_factory=list)
     # points are (lat, lon, elevation_m or None)
 

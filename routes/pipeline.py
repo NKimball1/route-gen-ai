@@ -57,15 +57,17 @@ def compose(specs: list[RouteSpec], providers: list, candidates_per: int = 6,
     goal = ("maxclimb" if spec.maximize_ascent
             else "minclimb" if spec.minimize_ascent else "ride")
     gpx_paths = []
-    print(f"\n{'rank':<5}{'provider':<9}{'shape':<9}{'miles':>7}{'climb ft':>10}  file")
+    print(f"\n{'rank':<5}{'provider':<9}{'shape':<9}{'miles':>7}{'climb ft':>10}"
+          f"{'repeat':>8}  file")
     for i, c in enumerate(keepers, 1):
         fname = f"route_{miles:.0f}mi_{goal}_{i}_{c.shape}_{c.provider}.gpx"
         path = os.path.join(out_dir, fname)
         write_gpx(c, f"{miles:.0f}mi {goal} #{i} ({c.shape}, {c.provider}, {c.seed})",
                   path)
         gpx_paths.append(path)
+        repeat = "n/a" if c.shape == "outback" else f"{c.overlap_frac:.0%}"
         print(f"{i:<5}{c.provider:<9}{c.shape:<9}{c.distance_mi:>7.1f}"
-              f"{c.ascent_ft:>10.0f}  {path}")
+              f"{c.ascent_ft:>10.0f}{repeat:>8}  {path}")
 
     build_preview(gpx_paths, os.path.join(out_dir, "preview.html"))
 

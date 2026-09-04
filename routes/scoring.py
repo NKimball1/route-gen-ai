@@ -13,6 +13,9 @@ def rank(spec: RouteSpec, candidates: list[RouteCandidate]
                                f"±{spec.distance_tolerance:.0%} of target"))
         elif spec.max_ascent_m is not None and c.ascent_m > spec.max_ascent_m:
             rejects.append((c, f"ascent {c.ascent_ft:.0f} ft exceeds cap"))
+        elif c.shape == "loop" and c.overlap_frac > 0.25:
+            rejects.append((c, f"{c.overlap_frac:.0%} of the route rides the "
+                               f"same road twice"))
         else:
             keepers.append(c)
 
@@ -20,6 +23,11 @@ def rank(spec: RouteSpec, candidates: list[RouteCandidate]
         keepers.sort(key=lambda c: c.ascent_m, reverse=True)
     elif spec.minimize_ascent:
         keepers.sort(key=lambda c: c.ascent_m)
+    elif spec.via:
+        # A loop that flows through the via places organically beats one that
+        # anchors to their exact coordinates, regardless of distance fit.
+        keepers.sort(key=lambda c: (not c.natural,
+                                    abs(c.distance_m - spec.distance_m)))
     else:
         keepers.sort(key=lambda c: abs(c.distance_m - spec.distance_m))
     return keepers, rejects

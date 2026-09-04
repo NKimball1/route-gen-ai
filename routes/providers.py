@@ -129,54 +129,108 @@ class BRouterProvider:
                 out.append(cand)
         return out
 
+    # A route "goes through" a via if it passes within this distance of it —
+    # towns are areas, and forcing the exact geocoded centroid creates
+    # touch-and-retreat tendrils.
+    VIA_NEAR_M = 2000.0
+
+    @staticmethod
+    def _passes_near(points, via, radius_m: float) -> bool:
+        for p in points[::4]:
+            dy = (p[0] - via[0]) * 110540.0
+            dx = (p[1] - via[1]) * 111320.0 * math.cos(math.radians(via[0]))
+            if dx * dx + dy * dy <= radius_m * radius_m:
+                return True
+        return False
+
     def _via_candidates(self, spec: RouteSpec, lat: float, lon: float,
                         n: int) -> list[RouteCandidate]:
-        """Loops through user-required places. Route the mandatory cycle
-        (start -> via1 -> ... -> start); if it falls short of the target
-        distance, bow one leg outward with an extension point sized
-        adaptively — each (leg, side) combination is a candidate."""
-        anchors = [(lat, lon)] + [tuple(v) for v in spec.via]
-        base = self.route(anchors + [(lat, lon)], spec.avoid)
-        if base is None:
-            return []
-        base_dist = base["distance_m"]
-        needed = spec.distance_m - base_dist
-        print(f"  via cycle alone: {base_dist / 1609.344:.1f} mi "
-              f"(target {spec.distance_m / 1609.344:.0f})")
-        if needed <= spec.distance_m * spec.distance_tolerance:
-            return [RouteCandidate(
-                provider=self.name, seed="via direct",
-                distance_m=base_dist, ascent_m=base["ascent_m"],
-                points=base["points"])]
+        """Loops through user-required places, two ways:
 
+        1. Plain bearing loops swept toward the vias — the most natural
+           shapes; kept only when they pass within VIA_NEAR_M of every via.
+        2. Anchored cycles (start -> vias -> start, both via orders) with one
+           leg bowed outward to reach the target distance — guaranteed to
+           hit the vias, used when the natural loops don't.
+        """
+        from routes.overlap import repeated_fraction
+
+        vias = [tuple(v) for v in spec.via]
         out = []
-        combos = [(li, side) for li in range(len(anchors)) for side in (1, -1)]
-        for li, side in combos[:n]:
-            a = anchors[li]
-            b = anchors[(li + 1) % len(anchors)]
-            mid = ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)
-            leg_bearing = _bearing(a, b)
-            r = needed / 2 / 1.2
-            cand = None
-            for _ in range(3):
-                ext = _destination(mid[0], mid[1], leg_bearing + 90 * side, r)
-                wps = anchors[:li + 1] + [ext] + anchors[li + 1:] + [(lat, lon)]
-                leg = self.route(wps, spec.avoid)
-                if leg is None:
-                    break
-                cand = RouteCandidate(
-                    provider=self.name,
-                    seed=f"via leg={li} side={'+' if side > 0 else '-'} "
-                         f"r={r / 1609.344:.1f}mi",
-                    distance_m=leg["distance_m"], ascent_m=leg["ascent_m"],
-                    points=leg["points"])
-                error = abs(cand.distance_m - spec.distance_m) / spec.distance_m
-                added = cand.distance_m - base_dist
-                if error <= spec.distance_tolerance / 2 or added <= 0:
-                    break
-                r *= max(0.25, min(4.0, needed / added))
-            if cand is not None:
+
+        # 1: bearing loops aimed at the via centroid
+        centroid = (sum(v[0] for v in vias) / len(vias),
+                    sum(v[1] for v in vias) / len(vias))
+        toward = _bearing((lat, lon), centroid)
+        for offset in (-50, -15, 15, 50):
+            cand = self._loop(spec, lat, lon, (toward + offset) % 360.0,
+                              clockwise=offset > 0)
+            if cand is None:
+                continue
+            error = abs(cand.distance_m - spec.distance_m) / spec.distance_m
+            if error > spec.distance_tolerance / 2:
+                retry = self._loop(spec, lat, lon, (toward + offset) % 360.0,
+                                   clockwise=offset > 0,
+                                   scale=spec.distance_m / cand.distance_m)
+                if retry is not None:
+                    cand = retry
+            if all(self._passes_near(cand.points, v, self.VIA_NEAR_M)
+                   for v in vias):
+                cand.seed = f"sweep {cand.seed}"
+                cand.overlap_frac = repeated_fraction(cand.points)
+                cand.natural = True
                 out.append(cand)
+        if out:
+            print(f"  {len(out)} natural loop(s) pass through all via places")
+
+        # 2: anchored cycles with an adaptive extension bow
+        orders = [vias] + ([list(reversed(vias))] if len(vias) > 1 else [])
+        budget = max(2, n - len(out))
+        for order in orders:
+            anchors = [(lat, lon)] + order
+            base = self.route(anchors + [(lat, lon)], spec.avoid)
+            if base is None:
+                continue
+            base_dist = base["distance_m"]
+            needed = spec.distance_m - base_dist
+            if needed <= spec.distance_m * spec.distance_tolerance:
+                base_cand = RouteCandidate(
+                    provider=self.name, seed="via direct",
+                    distance_m=base_dist, ascent_m=base["ascent_m"],
+                    points=base["points"],
+                    overlap_frac=repeated_fraction(base["points"]))
+                out.append(base_cand)
+                continue
+            combos = [(li, side) for li in range(len(anchors))
+                      for side in (1, -1)]
+            for li, side in combos[:budget // len(orders) + 1]:
+                a = anchors[li]
+                b = anchors[(li + 1) % len(anchors)]
+                mid = ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)
+                leg_bearing = _bearing(a, b)
+                r = needed / 2 / 1.2
+                cand = None
+                for _ in range(3):
+                    ext = _destination(mid[0], mid[1],
+                                       leg_bearing + 90 * side, r)
+                    wps = anchors[:li + 1] + [ext] + anchors[li + 1:] + [(lat, lon)]
+                    leg = self.route(wps, spec.avoid)
+                    if leg is None:
+                        break
+                    cand = RouteCandidate(
+                        provider=self.name,
+                        seed=f"via leg={li} side={'+' if side > 0 else '-'} "
+                             f"r={r / 1609.344:.1f}mi",
+                        distance_m=leg["distance_m"], ascent_m=leg["ascent_m"],
+                        points=leg["points"],
+                        overlap_frac=repeated_fraction(leg["points"]))
+                    error = abs(cand.distance_m - spec.distance_m) / spec.distance_m
+                    added = cand.distance_m - base_dist
+                    if error <= spec.distance_tolerance / 2 or added <= 0:
+                        break
+                    r *= max(0.25, min(4.0, needed / added))
+                if cand is not None:
+                    out.append(cand)
         return out
 
     def _loop(self, spec: RouteSpec, lat: float, lon: float, bearing: float,
@@ -190,12 +244,14 @@ class BRouterProvider:
         leg = self.route([(lat, lon)] + vias + [(lat, lon)], spec.avoid)
         if leg is None:
             return None
+        from routes.overlap import repeated_fraction
         return RouteCandidate(
             provider=self.name,
             seed=f"bearing={bearing:.0f} {'cw' if clockwise else 'ccw'} scale={scale:.2f}",
             distance_m=leg["distance_m"],
             ascent_m=leg["ascent_m"],
             points=leg["points"],
+            overlap_frac=repeated_fraction(leg["points"]),
         )
 
     def _outback(self, spec: RouteSpec, lat: float, lon: float, bearing: float,
