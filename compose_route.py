@@ -38,17 +38,24 @@ def main() -> int:
     ap.add_argument("--candidates", type=int, default=6,
                     help="loop candidates per provider (default 6)")
     ap.add_argument("--provider", choices=["brouter", "ors", "all"], default="all")
+    ap.add_argument("--profile", default="fastbike-lowtraffic",
+                    help="BRouter profile: fastbike-lowtraffic (default), "
+                         "fastbike-verylowtraffic, trekking, safety")
+    ap.add_argument("--shape", choices=["loop", "outback", "both"], default="loop",
+                    help="loop (default), outback, or both competing together")
     args = ap.parse_args()
 
-    spec = RouteSpec.from_imperial(args.address, args.miles,
-                                   args.max_climb_ft, args.maximize_climb)
+    shapes = ["loop", "outback"] if args.shape == "both" else [args.shape]
+    specs = [RouteSpec.from_imperial(args.address, args.miles, args.max_climb_ft,
+                                     args.maximize_climb, shape=s) for s in shapes]
+    spec = specs[0]
 
     lat, lon, place = geocode(args.address)
     print(f"Start: {place} ({lat:.5f}, {lon:.5f})")
 
     providers = []
     if args.provider in ("brouter", "all"):
-        providers.append(BRouterProvider())
+        providers.append(BRouterProvider(profile=args.profile))
     if args.provider in ("ors", "all"):
         ors = ORSProvider()
         if ors.available:
@@ -61,8 +68,9 @@ def main() -> int:
 
     candidates = []
     for p in providers:
-        print(f"Generating {args.candidates} candidates via {p.name}...")
-        candidates.extend(p.candidates(spec, lat, lon, n=args.candidates))
+        for s in specs:
+            print(f"Generating {args.candidates} {s.shape} candidates via {p.name}...")
+            candidates.extend(p.candidates(s, lat, lon, n=args.candidates))
 
     keepers, rejects = rank(spec, candidates)
     for c, reason in rejects:
@@ -73,15 +81,15 @@ def main() -> int:
         return 1
 
     os.makedirs(OUT_DIR, exist_ok=True)
-    goal = "maxclimb" if spec.maximize_ascent else "loop"
+    goal = "maxclimb" if spec.maximize_ascent else "ride"
     gpx_paths = []
-    print(f"\n{'rank':<5}{'provider':<9}{'miles':>7}{'climb ft':>10}  file")
+    print(f"\n{'rank':<5}{'provider':<9}{'shape':<9}{'miles':>7}{'climb ft':>10}  file")
     for i, c in enumerate(keepers, 1):
-        fname = f"route_{args.miles:.0f}mi_{goal}_{i}_{c.provider}.gpx"
+        fname = f"route_{args.miles:.0f}mi_{goal}_{i}_{c.shape}_{c.provider}.gpx"
         path = os.path.join(OUT_DIR, fname)
-        write_gpx(c, f"{args.miles:.0f}mi {goal} #{i} ({c.provider}, {c.seed})", path)
+        write_gpx(c, f"{args.miles:.0f}mi {goal} #{i} ({c.shape}, {c.provider}, {c.seed})", path)
         gpx_paths.append(path)
-        print(f"{i:<5}{c.provider:<9}{c.distance_mi:>7.1f}{c.ascent_ft:>10.0f}  {path}")
+        print(f"{i:<5}{c.provider:<9}{c.shape:<9}{c.distance_mi:>7.1f}{c.ascent_ft:>10.0f}  {path}")
 
     build_preview(gpx_paths, os.path.join(OUT_DIR, "preview.html"))
 
