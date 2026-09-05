@@ -211,6 +211,34 @@ rated "really good" — with two field findings:
 Also: GPX names cleaned up for route viewers (generation metadata moved to
 the description field).
 
+## Phase 10 — Peak-aware scouting: summiting Blue Mounds (2026-09-04)
+
+The climb scout's structural blind spot: it reads elevation off routed
+spokes, and routers only ride THROUGH-roads — but marquee climbs are often
+dead-end spurs (the Blue Mounds park road tops out at the park and goes
+nowhere). Three pieces closed it:
+
+1. **OSM peaks as targets** (`peaks.py`): `natural=peak` nodes carry
+   elevations; fetch them, dedupe twin summits, route toward the biggest
+   ones deliberately, and harvest the climb that tops out nearest the peak.
+2. **The averaging trap:** the first harvest returned *nothing* even though
+   the routed leg demonstrably reached the summit (ended 62 m from the
+   peak at 521 m). The climb extractor's maximal ascending run spanned
+   miles of gentle valley approach plus the steep finish — average grade
+   below threshold, whole 175 m climb rejected. Fix: take the earliest
+   suffix of the run that meets both gain and grade — the climb proper,
+   undiluted by its approach. Regression test encodes the exact shape.
+3. **Protecting deliberate spurs:** the summit road is an out-and-back, and
+   our own despurring would excise the very climb being targeted. Despur
+   passes now accept protected points — a spur whose tip is near a
+   requested via survives.
+
+Result: "55 miles, maximize climbing" now produces a 54.0 mi / 2,986 ft
+route that summits Blue Mounds (track max 525 m, 154 m from the peak node)
+— a route the system could not construct at any distance the day before.
+Runner-up context kept honest: a blind 60-mile loop out-climbs it slightly
+on rollers without the summit; both are shown, the rider chooses.
+
 ## Testing & verification practices that emerged
 
 - 24 unit tests: despurring (exact, corridor, palindrome semantics),
