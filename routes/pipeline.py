@@ -86,6 +86,10 @@ def compose(specs: list[RouteSpec], providers: list, candidates_per: int = 6,
 
     build_preview(gpx_paths, os.path.join(out_dir, "preview.html"))
 
+    # the winner becomes "the current route" that edit requests refine
+    with open(os.path.join(out_dir, "latest.txt"), "w") as f:
+        f.write(gpx_paths[0])
+
     best = keepers[0]
     print(f"\nBest: rank 1 — {best.distance_mi:.1f} mi, "
           f"{best.ascent_ft:.0f} ft climbing ({best.provider}, {best.seed})")

@@ -23,3 +23,17 @@ def geocode(address: str) -> tuple[float, float, str]:
         raise ValueError(f"Could not geocode address: {address!r}")
     hit = results[0]
     return float(hit["lat"]), float(hit["lon"]), hit["display_name"]
+
+
+def geocode_flexible(place: str) -> tuple[float, float, str]:
+    """Geocode with fallbacks: an LLM (or user) may append the wrong city
+    to a place name. Try the full string, then progressively drop trailing
+    comma-separated parts ("X, Madison, WI" -> "X, Madison" -> "X")."""
+    parts = [p.strip() for p in place.split(",")]
+    last_error = None
+    for n in range(len(parts), 0, -1):
+        try:
+            return geocode(", ".join(parts[:n]))
+        except ValueError as e:
+            last_error = e
+    raise last_error

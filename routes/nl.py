@@ -15,7 +15,15 @@ import anthropic
 DEFAULT_MODEL = "claude-haiku-4-5"
 
 SYSTEM = """You convert a cyclist's plain-English request into JSON for a \
-route-generation tool. Two request types:
+route-generation tool. Three request types:
+
+- "edit_route": the user wants to MODIFY the previous/current route —
+  reroute part of it around a named place, path, park, or road while
+  keeping the rest ("find a different way around X", "detour around Y",
+  "that route but not through Z"). Put the place in edit.avoid_place as a
+  geocodable string (append the city/state); edit.radius_m sizes the area
+  to route around (default 1000; a large park/conservancy ~1500, a single
+  intersection ~300).
 
 - "route": a ride of a target distance (a loop or out-and-back from a start
   address). Map "out and back or loop is fine" to shape "both". Map "as much
@@ -39,13 +47,14 @@ route-generation tool. Two request types:
 Set address to the start address as given. If the user says "home" / "my
 house" or gives no address, set address to null (the tool knows the home
 address).
-Exactly one of "route"/"interval" is non-null, matching request_type.
+Exactly one of "route"/"interval"/"edit" is non-null, matching request_type.
 Anything you could not represent goes in notes (else empty string)."""
 
 SCHEMA = {
     "type": "object",
     "properties": {
-        "request_type": {"type": "string", "enum": ["route", "interval_spot"]},
+        "request_type": {"type": "string",
+                         "enum": ["route", "interval_spot", "edit_route"]},
         "address": {"type": ["string", "null"]},
         "route": {
             "type": ["object", "null"],
@@ -73,9 +82,19 @@ SCHEMA = {
             "required": ["reps", "rep_minutes", "kind", "max_travel_minutes"],
             "additionalProperties": False,
         },
+        "edit": {
+            "type": ["object", "null"],
+            "properties": {
+                "avoid_place": {"type": "string"},
+                "radius_m": {"type": "number"},
+            },
+            "required": ["avoid_place", "radius_m"],
+            "additionalProperties": False,
+        },
         "notes": {"type": "string"},
     },
-    "required": ["request_type", "address", "route", "interval", "notes"],
+    "required": ["request_type", "address", "route", "interval", "edit",
+                 "notes"],
     "additionalProperties": False,
 }
 

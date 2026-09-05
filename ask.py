@@ -37,6 +37,16 @@ def main() -> int:
     if req.get("notes"):
         print(f"Note: couldn't map: {req['notes']}")
 
+    if req["request_type"] == "edit_route":
+        from edit_route import current_route, run_edit
+        route_path = current_route()
+        if route_path is None:
+            print("No current route to edit — compose one first.")
+            return 1
+        print(f"Editing: {route_path}")
+        e = req["edit"]
+        return 0 if run_edit(route_path, e["avoid_place"], e["radius_m"]) else 1
+
     if req["request_type"] == "interval_spot":
         from find_spot import run_spot_search
         from routes.intervals import IntervalSpec
