@@ -257,6 +257,30 @@ Error: +4.4% hilly, −6.3% flat. A regression test now encodes the roller
 lesson directly. Every future device-measured ride is a free calibration
 point.
 
+## Phase 12 — The century ride: barometric ground truth (2026-09-05)
+
+The rider took the flat 48-miler out — followed it ~46 miles, then peeled
+off to complete a 100-mile century — and handed back the .fit file. That
+file became infrastructure:
+
+- **`compare_ride.py`**: parse the ridden .fit (barometric altitude),
+  match it against the generated GPX, and compare device climbing vs the
+  model over exactly the matched geometry. First version matched only
+  4.3 mi because it treated the first sustained deviation as the end —
+  real rides deviate and rejoin (7 separate on-route stretches here), so
+  matching had to become chunk-based coverage.
+- **The instruments disagree with each other.** Over the same matched
+  roads: Garmin barometric 1,721 ft; RideWithGPS DEM ~1,600 route-wide;
+  the model 1,263. Garmin runs 8–16% above RWGPS on identical ground —
+  meaning ±10% is the attainable accuracy for ANY prediction, because
+  "the right answer" depends on which instrument checks it.
+- Refit centers the model in the instrument spread (125 m smooth, 1 m
+  threshold): flat route 1,689 ft (RWGPS 1,600 / Garmin-derived 1,870),
+  hilly 2,927 (RWGPS 2,483).
+
+The pattern is now a loop: every device-measured ride is a free
+calibration point, and the comparator turns a .fit file into one command.
+
 ## Testing & verification practices that emerged
 
 - 24 unit tests: despurring (exact, corridor, palindrome semantics),
