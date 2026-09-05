@@ -1,18 +1,20 @@
 """Climbing figures that match what the rider's devices will say.
 
-Calibrated against RideWithGPS on two measured routes of opposite
-character (hilly 45 mi: 2,483 ft; flat 48 mi: 1,600 ft). A single
-hysteresis threshold can't fit both — on flat routes much of the real gain
-is many sub-10 m rollers that a big threshold discards (first model read
-33% low on the flat route). The fitted model: resample to 25 m, smooth
-elevation with a ~225 m rolling mean (kills DEM noise), then sum climbs
-with a 0.5 m threshold (keeps rollers). Max error across both calibration
-routes: ~6%.
+Calibration history (each field measurement improved the model):
+1. Single 10 m hysteresis, fit on one hilly route vs RideWithGPS — read
+   33% low on a flat route (sub-10 m rollers all discarded).
+2. Two-point RWGPS fit -> 225 m smooth + 0.5 m threshold.
+3. A ridden barometric .fit file (compare_ride.py) showed the rider's
+   Garmin reads ~8-16% ABOVE RideWithGPS on identical ground — the
+   instruments themselves disagree, so ±10% is the attainable accuracy.
+   Current fit centers the model in the instrument spread: 25 m resample,
+   ~125 m rolling-mean smooth, 1 m threshold. Flat route: 1,689 ft
+   (RWGPS 1,600 / Garmin-derived 1,870); hilly: 2,927 (RWGPS 2,483).
 """
 from routes.despur import _resample
 
-SMOOTH_WINDOW_SAMPLES = 9   # x 25 m resample step ~= 225 m
-HYSTERESIS_M = 0.5
+SMOOTH_WINDOW_SAMPLES = 5   # x 25 m resample step ~= 125 m
+HYSTERESIS_M = 1.0
 
 
 def _smooth(eles, w: int = SMOOTH_WINDOW_SAMPLES):

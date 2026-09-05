@@ -6,3 +6,4 @@ anthropic>=1.0
 
 # Loads ANTHROPIC_API_KEY (and ROUTEGEN_* settings) from a local .env file.
 python-dotenv>=1.0
+fitparse>=1.2  # parse ridden .fit files for ride-vs-route calibration (compare_ride.py)
