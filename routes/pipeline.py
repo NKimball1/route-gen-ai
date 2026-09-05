@@ -77,8 +77,7 @@ def compose(specs: list[RouteSpec], providers: list, candidates_per: int = 6,
     for i, c in enumerate(keepers, 1):
         fname = f"route_{miles:.0f}mi_{goal}_{i}_{c.shape}_{c.provider}.gpx"
         path = os.path.join(out_dir, fname)
-        write_gpx(c, f"{miles:.0f}mi {goal} #{i} ({c.shape}, {c.provider}, {c.seed})",
-                  path)
+        write_gpx(c, f"{miles:.0f}mi {goal} #{i}", path)
         gpx_paths.append(path)
         repeat = "n/a" if c.shape == "outback" else f"{c.overlap_frac:.0%}"
         major = "0" if c.major_m < 50 else f"{c.major_m / 1609.344:.1f}mi"

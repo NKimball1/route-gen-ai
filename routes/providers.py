@@ -18,6 +18,7 @@ import os
 import requests
 
 from routes.despur import corridor_despur, despur
+from routes.elevation import track_ascent
 from routes.spec import RouteCandidate, RouteSpec
 
 EARTH_RADIUS_M = 6371000.0
@@ -116,8 +117,10 @@ class BRouterProvider:
         return {
             "points": points,
             "distance_m": float(props["track-length"]) - spur_dist,
-            "ascent_m": max(0.0, float(props["filtered ascend"]) - spur_ascent),
-            "net_gain_m": float(props.get("plain-ascend", 0.0)),
+            # Ascent from the final trimmed geometry, device-calibrated —
+            # not BRouter's smoothed figure (reads ~40% low vs. RideWithGPS)
+            # and immune to spur-subtraction artifacts.
+            "ascent_m": track_ascent(points),
             "major_m": major_m,
         }
 
@@ -286,14 +289,13 @@ class BRouterProvider:
         leg = self.route([(lat, lon), dest], spec.avoid)
         if leg is None:
             return None
-        # Return-leg climbing is the outbound leg's descent (ascent minus net).
-        total_ascent = max(0.0, leg["ascent_m"] + (leg["ascent_m"] - leg["net_gain_m"]))
+        full_track = leg["points"] + leg["points"][-2::-1]
         return RouteCandidate(
             provider=self.name,
             seed=f"outback bearing={bearing:.0f} scale={scale:.2f}",
             distance_m=leg["distance_m"] * 2,
-            ascent_m=total_ascent,
-            points=leg["points"] + leg["points"][-2::-1],
+            ascent_m=track_ascent(full_track),
+            points=full_track,
             shape="outback",
             major_m=leg["major_m"] * 2,
         )
@@ -351,8 +353,7 @@ class ORSProvider:
                 provider=self.name,
                 seed=f"seed={seed}",
                 distance_m=float(summary["distance"]) - spur_dist,
-                ascent_m=max(0.0, float(feature["properties"].get("ascent", 0.0))
-                             - spur_ascent),
+                ascent_m=track_ascent(points),
                 points=points,
             ))
         return out

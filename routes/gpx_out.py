@@ -26,8 +26,8 @@ def write_track(points, name: str, desc: str, path: str) -> None:
 
 
 def write_gpx(candidate: RouteCandidate, name: str, path: str) -> None:
-    # Provider-reported stats in <desc>: the preview shows these instead of
-    # re-deriving climbing from raw elevation points (which reads ~2x high).
+    # Stats in <desc> (the preview reads them); generation details go here
+    # too so the GPX <name> stays clean in route viewers.
     desc = (f"{candidate.distance_mi:.1f} mi, {candidate.ascent_ft:.0f} ft "
-            f"({candidate.provider})")
+            f"({candidate.shape}, {candidate.provider}, {candidate.seed})")
     write_track(candidate.points, name, desc, path)
