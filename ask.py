@@ -2,12 +2,12 @@
 
   python ask.py "give me a 30ish mile loop from 123 Main St, Madison WI, under 1000 ft of climbing"
   python ask.py "find me a flat spot within 30 min of home for 2x20 threshold intervals"
-  python ask.py "50 miles, as much climbing as you can, out and back or loop is fine"
+  python ask.py "detour around Pheasant Branch Conservancy, use roads"
 
 Needs ANTHROPIC_API_KEY (env or .env). Set ROUTEGEN_HOME_ADDRESS to make
 "from home" / address-less requests work. Routing itself uses no LLM.
+The web UI (api.py) is the same brain with a map.
 """
-import os
 import sys
 
 from dotenv import load_dotenv
@@ -20,63 +20,9 @@ def main() -> int:
         return 1
     text = " ".join(sys.argv[1:])
 
-    from routes.nl import parse_request
-    req = parse_request(text)
-    usage = req.pop("_usage")
-    print(f"Parsed ({usage['model']}, {usage['input_tokens']}in/"
-          f"{usage['output_tokens']}out tokens): {req}")
-
-    address = req.get("address")
-    if not address or address.strip().lower() in (
-            "home", "my house", "my home", "house"):
-        address = os.environ.get("ROUTEGEN_HOME_ADDRESS")
-    if not address:
-        print("No start address in the request and ROUTEGEN_HOME_ADDRESS is "
-              "not set — add the address to your request.")
-        return 1
-    if req.get("notes"):
-        print(f"Note: couldn't map: {req['notes']}")
-
-    if req["request_type"] == "edit_route":
-        from edit_route import current_route, run_edit
-        route_path = current_route()
-        if route_path is None:
-            print("No current route to edit — compose one first.")
-            return 1
-        print(f"Editing: {route_path}")
-        e = req["edit"]
-        return 0 if run_edit(route_path, e["avoid_place"], e["radius_m"]) else 1
-
-    if req["request_type"] == "interval_spot":
-        from find_spot import run_spot_search
-        from routes.intervals import IntervalSpec
-        iv = req["interval"]
-        spec = IntervalSpec(address, iv["reps"], iv["rep_minutes"], iv["kind"],
-                            iv["max_travel_minutes"])
-        return 0 if run_spot_search(spec) else 1
-
-    from compose_route import parse_avoid
-    from routes.pipeline import build_providers, compose
-    from routes.spec import RouteSpec
-    from routes.geocode import geocode
-    r = req["route"]
-    avoid = parse_avoid(r["avoid_places"])
-    via, via_names = [], []
-    for place in r["via_places"]:
-        vlat, vlon, vname = geocode(place)
-        print(f"Via: {vname}")
-        via.append((vlat, vlon))
-        via_names.append(place)
-    if via:
-        r["shape"] = "loop"
-    shapes = ["loop", "outback"] if r["shape"] == "both" else [r["shape"]]
-    specs = [RouteSpec.from_imperial(address, r["distance_miles"], r["max_climb_ft"],
-                                     r["maximize_climb"], shape=s, avoid=avoid,
-                                     minimize_climb=r["minimize_climb"],
-                                     via=via, via_names=via_names)
-             for s in shapes]
-    keepers = compose(specs, build_providers())
-    return 0 if keepers else 1
+    from routes.service import handle_request
+    result = handle_request(text, log_sink=sys.stdout)
+    return 0 if result["candidates"] else 1
 
 
 if __name__ == "__main__":

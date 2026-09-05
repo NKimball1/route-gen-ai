@@ -303,6 +303,26 @@ have it keep the rest." Built the same day as a third request type:
 This is the interaction model the future web frontend wraps: every
 capability is already conversational at the CLI.
 
+## Phase 14 — The web frontend (2026-09-05)
+
+By the time the frontend was built, it was almost an anticlimax — the hard
+part was thirteen phases of making the engine conversational. Two design
+calls:
+
+- **Zero build toolchain.** FastAPI + one vanilla HTML/JS page with
+  Leaflet. No npm, no bundler; deploys anywhere Python runs with
+  `git pull`. (Also pragmatic: this machine's npm is broken.)
+- **One brain, two mouths.** `routes/service.py` extracts the CLI's
+  dispatch into a shared handler returning structured candidates;
+  `ask.py` and the API both call it. Requests run as background jobs with
+  the pipeline's progress prints streamed live to the browser.
+
+The page: one text box for everything (routes, interval spots, edits),
+color-coded candidates drawn on the map, per-candidate GPX download and
+"use" (which sets the current route that edits chain against). Verified
+end-to-end in the browser: sentence in, three loops on the map, current
+route auto-updated.
+
 ## Testing & verification practices that emerged
 
 - 24 unit tests: despurring (exact, corridor, palindrome semantics),

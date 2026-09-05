@@ -1,6 +1,13 @@
 # Route Gen AI
 
-Describe a ride in plain English, get a Garmin-ready GPX:
+Describe a ride in plain English, get a Garmin-ready GPX.
+
+**Web app:** run `start_app.cmd` (with `start_brouter.cmd` running) and open
+http://localhost:8903 — one text box for routes, interval spots, and edits;
+candidates draw on a map with GPX downloads; edits chain against the
+current route. Same brain as the CLI below (routes/service.py).
+
+CLI:
 
 ```
 python ask.py "give me a 30ish mile loop from home, less than 1000 ft of climbing"
