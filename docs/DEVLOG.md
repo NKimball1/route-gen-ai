@@ -331,6 +331,33 @@ with a visible ✓ on the current route and hint text explaining that the
 selected route is what edits modify; and every candidate line gained a
 dark casing + stronger colors so non-winners stay visible on the map.
 
+## Phase 15 — "instead" is not "avoid" (2026-09-05)
+
+A user asked to *use* a specific path ("can we go down the southwest
+commuter path instead?") and got the opposite: the edit vocabulary only
+had "avoid", so the parser shoehorned the request into it — while writing
+its own doubts into the notes field ("if they actually want TO USE the
+path, please clarify") and proceeding anyway. The mis-aimed edit then
+no-oped, and the empty result cleared the map entirely. Three lessons,
+three fixes:
+
+1. **Vocabulary gaps become misinterpretations.** When the schema can only
+   express "avoid", every request becomes avoidance. Edits now carry a
+   mode — `avoid` routes around a place, `via` reroutes the nearest
+   section THROUGH it (with the target protected from despurring, since
+   riding out-and-back onto a path can be the point).
+2. **A model that hedges in prose still acts.** The parser's uncertainty
+   note was correct and useless — it doesn't gate anything. The durable
+   fix was closing the vocabulary gap; a future one is treating
+   low-confidence parses as questions back to the user.
+3. **Failed operations must not destroy state.** A no-op edit now returns
+   the unchanged route so the map keeps showing it, and the frontend
+   ignores empty results outright.
+
+Verified with the original sentence verbatim: parses as via, splices
+5.0 mi through the path. Known limit: a long linear feature anchors at its
+geocoded point — splicing along its full OSM geometry is future work.
+
 ## Testing & verification practices that emerged
 
 - 24 unit tests: despurring (exact, corridor, palindrome semantics),
