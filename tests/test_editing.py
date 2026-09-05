@@ -11,9 +11,12 @@ class FakeProvider:
 
     def route(self, waypoints, avoid=None, protect=None):
         self.calls.append(avoid)
-        a, b = waypoints[0], waypoints[-1]
-        pts = [(a[0], a[1], 300.0), ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, 300.0),
-               (b[0], b[1], 300.0)]
+        pts = []
+        for a, b in zip(waypoints, waypoints[1:]):
+            pts += [(a[0], a[1], 300.0),
+                    ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, 300.0)]
+        last = waypoints[-1]
+        pts.append((last[0], last[1], 300.0))
         return {"points": pts, "distance_m": 1000.0, "ascent_m": 0.0,
                 "major_m": 0.0}
 

@@ -17,13 +17,17 @@ DEFAULT_MODEL = "claude-haiku-4-5"
 SYSTEM = """You convert a cyclist's plain-English request into JSON for a \
 route-generation tool. Three request types:
 
-- "edit_route": the user wants to MODIFY the previous/current route —
-  reroute part of it around a named place, path, park, or road while
-  keeping the rest ("find a different way around X", "detour around Y",
-  "that route but not through Z"). Put the place in edit.avoid_place as a
-  geocodable string (append the city/state); edit.radius_m sizes the area
-  to route around (default 1000; a large park/conservancy ~1500, a single
-  intersection ~300).
+- "edit_route": the user wants to MODIFY the previous/current route while
+  keeping most of it. Two modes:
+  - mode "avoid": route AROUND a place ("find a different way around X",
+    "not through Z"). radius_m sizes the area (default 1000; a large
+    park ~1500, one intersection ~300).
+  - mode "via": route THROUGH/ALONG something instead ("can we go down
+    the commuter path instead?", "use Old Sauk Rd", "take X on the way
+    out"). radius_m ~1500.
+  Put the place in edit.place as a geocodable string (append city/state).
+  "instead" about a road/path the user WANTS means mode "via", not
+  "avoid".
 
 - "route": a ride of a target distance (a loop or out-and-back from a start
   address). Map "out and back or loop is fine" to shape "both". Map "as much
@@ -85,10 +89,11 @@ SCHEMA = {
         "edit": {
             "type": ["object", "null"],
             "properties": {
-                "avoid_place": {"type": "string"},
+                "mode": {"type": "string", "enum": ["avoid", "via"]},
+                "place": {"type": "string"},
                 "radius_m": {"type": "number"},
             },
-            "required": ["avoid_place", "radius_m"],
+            "required": ["mode", "place", "radius_m"],
             "additionalProperties": False,
         },
         "notes": {"type": "string"},

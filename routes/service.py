@@ -48,21 +48,28 @@ def _dispatch(text: str, default_address: str | None = None) -> dict:
 
     if req["request_type"] == "edit_route":
         from edit_route import current_route, run_edit
+        from routes.preview import _parse_desc, _parse_gpx
         route_path = current_route()
         if route_path is None:
             print("No current route to edit — compose one first.")
             return {"kind": "error", "candidates": []}
         print(f"Editing: {route_path}")
         e = req["edit"]
-        out = run_edit(route_path, e["avoid_place"], e["radius_m"])
+        out = run_edit(route_path, e["place"], e["radius_m"],
+                       mode=e.get("mode", "avoid"))
         if out is None:
-            return {"kind": "error", "candidates": []}
-        from routes.preview import _parse_desc, _parse_gpx
-        pts = _parse_gpx(out)
+            # keep the unchanged route on screen — a failed edit must never
+            # leave the user staring at an empty map
+            return {"kind": "edit", "candidates": [{
+                "label": f"unchanged: {os.path.basename(route_path)} — "
+                         f"{_parse_desc(route_path)}",
+                "gpx": route_path,
+                "latlngs": _downsample(_parse_gpx(route_path)),
+            }]}
         return {"kind": "edit", "candidates": [{
             "label": f"{os.path.basename(out)} — {_parse_desc(out)}",
-            "gpx": out, "latlngs": _downsample(pts),
-        }] + [{
+            "gpx": out, "latlngs": _downsample(_parse_gpx(out)),
+        }, {
             "label": f"original: {os.path.basename(route_path)}",
             "gpx": route_path,
             "latlngs": _downsample(_parse_gpx(route_path)),

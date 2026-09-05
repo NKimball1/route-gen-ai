@@ -40,6 +40,44 @@ def _cum(points) -> list[float]:
     return out
 
 
+def route_via(points, target, provider,
+              buffer_m: float = 1500.0) -> EditResult | None:
+    """Reroute the section of `points` nearest to `target` (lat, lon) so it
+    passes THROUGH the target — 'go down the commuter path instead'. The
+    fresh leg runs A -> target -> B where A/B sit buffer_m up- and
+    down-route of the closest approach; the target is protected from
+    despurring (riding out-and-back onto a path tip can be the point)."""
+    tlat, tlon = target
+    cum = _cum(points)
+    dists = [_dist_m(p, (tlat, tlon)) for p in points]
+    i = min(range(len(points)), key=lambda k: dists[k])
+    if dists[i] > 8000:
+        print(f"  that place is {dists[i] / 1000:.1f} km from the route — "
+              "too far to splice through; generate a fresh route instead")
+        return None
+    a = i
+    while a > 0 and cum[i] - cum[a] < buffer_m:
+        a -= 1
+    b = i
+    while b < len(points) - 1 and cum[b] - cum[i] < buffer_m:
+        b += 1
+    leg = provider.route([points[a][:2], (tlat, tlon), points[b][:2]],
+                         protect=[(tlat, tlon)])
+    if leg is None:
+        print("  could not route through that place — leaving the route as is")
+        return None
+    new_points = points[:a + 1] + leg["points"] + points[b:]
+    return EditResult(
+        points=new_points,
+        distance_m=_cum(new_points)[-1],
+        ascent_m=track_ascent(new_points),
+        overlap_frac=repeated_fraction(new_points),
+        detours=1,
+        removed_m=cum[b] - cum[a],
+        added_m=leg["distance_m"],
+    )
+
+
 def detour_around(points, zone, provider,
                   buffer_m: float = 700.0) -> EditResult | None:
     """Reroute every part of `points` that enters `zone` (lat, lon, radius_m).

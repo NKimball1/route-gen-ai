@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from routes.editing import detour_around
+from routes.editing import detour_around, route_via
 from routes.geocode import geocode_flexible
 from routes.gpx_out import write_track
 from routes.preview import _parse_gpx, build_preview
@@ -35,21 +35,30 @@ def current_route() -> str | None:
     return None
 
 
-def run_edit(route_path: str, avoid_place: str, radius_m: float = 1000.0,
-             profile: str | None = None) -> str | None:
-    """Detour route_path around avoid_place; returns the new GPX path."""
+def run_edit(route_path: str, place: str, radius_m: float = 1000.0,
+             mode: str = "avoid", profile: str | None = None) -> str | None:
+    """Edit route_path: mode 'avoid' detours around the place, mode 'via'
+    reroutes the nearest section through it. Returns the new GPX path."""
     points = _parse_gpx(route_path)
     if not points:
         print(f"could not read route: {route_path}")
         return None
-    zlat, zlon, zname = geocode_flexible(avoid_place)
-    print(f"Detouring around: {zname} (r={radius_m:.0f} m)")
+    zlat, zlon, zname = geocode_flexible(place)
+    provider = BRouterProvider(profile=profile)
 
-    result = detour_around(points, (zlat, zlon, radius_m),
-                           BRouterProvider(profile=profile))
-    if result is None:
-        print("The route never passes through that area — nothing to change.")
-        return None
+    if mode == "via":
+        print(f"Routing through: {zname}")
+        result = route_via(points, (zlat, zlon),
+                           provider, buffer_m=max(radius_m, 1200.0))
+        if result is None:
+            return None
+    else:
+        print(f"Detouring around: {zname} (r={radius_m:.0f} m)")
+        result = detour_around(points, (zlat, zlon, radius_m), provider)
+        if result is None:
+            print("The route never passes through that area — nothing to "
+                  "change.")
+            return None
 
     base = os.path.basename(route_path).rsplit(".", 1)[0]
     base = base.split("_edit")[0]
@@ -58,9 +67,10 @@ def run_edit(route_path: str, avoid_place: str, radius_m: float = 1000.0,
         n += 1
     out_path = os.path.join(OUT_DIR, f"{base}_edit{n}.gpx")
 
+    verb = "via" if mode == "via" else "around"
     desc = (f"{result.distance_m / METERS_PER_MILE:.1f} mi, "
             f"{result.ascent_m / METERS_PER_FOOT:.0f} ft "
-            f"(edit: around {avoid_place})")
+            f"(edit: {verb} {place})")
     write_track(result.points, f"{base} edit{n}", desc, out_path)
     build_preview([out_path, route_path], os.path.join(OUT_DIR, "preview.html"))
     with open(LATEST, "w") as f:
@@ -81,10 +91,15 @@ def main() -> int:
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--route", default=None,
                     help="GPX to edit (default: the current route)")
-    ap.add_argument("--avoid", required=True,
+    ap.add_argument("--avoid", default=None,
                     help='place to route around, "name" or "name:radius_m"')
+    ap.add_argument("--via", default=None,
+                    help="place to route through instead")
     ap.add_argument("--profile", default=None)
     args = ap.parse_args()
+    if bool(args.avoid) == bool(args.via):
+        print("Pass exactly one of --avoid or --via.")
+        return 1
 
     route_path = args.route or current_route()
     if route_path is None:
@@ -92,13 +107,16 @@ def main() -> int:
         return 1
     print(f"Editing: {route_path}")
 
-    place, _, radius = args.avoid.rpartition(":")
+    raw = args.avoid or args.via
+    place, _, radius = raw.rpartition(":")
     if place and radius.replace(".", "").isdigit():
         radius_m = float(radius)
     else:
-        place, radius_m = args.avoid, 1000.0
+        place, radius_m = raw, 1000.0
 
-    return 0 if run_edit(route_path, place, radius_m, args.profile) else 1
+    mode = "via" if args.via else "avoid"
+    return 0 if run_edit(route_path, place, radius_m, mode,
+                         args.profile) else 1
 
 
 if __name__ == "__main__":

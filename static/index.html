@@ -137,6 +137,10 @@ if (savedStart) { applyStart(savedStart, true); }
 else { startInput.classList.add('unset'); startInput.focus(); }
 
 function showResult(result) {
+  if (!result.candidates || !result.candidates.length) {
+    // nothing came back — keep whatever is on screen, the log says why
+    return;
+  }
   candLayers.forEach(c => { map.removeLayer(c.casing); map.removeLayer(c.line); });
   candLayers = [];
   const box = document.getElementById('results');
