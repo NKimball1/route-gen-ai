@@ -88,6 +88,15 @@ class BRouterProvider:
         props = feature["properties"]
         points = [(c[1], c[0], c[2] if len(c) > 2 else None)
                   for c in feature["geometry"]["coordinates"]]
+        # Road-class accounting from BRouter's per-segment messages: distance
+        # ridden on major highways (motorway/trunk/primary, links included).
+        # Counted pre-trim, so a trimmed spur on a highway still counts —
+        # conservative in the right direction.
+        major_m = 0.0
+        for row in props.get("messages", [])[1:]:
+            if len(row) > 9 and any(f"highway={h}" in row[9]
+                                    for h in ("motorway", "trunk", "primary")):
+                major_m += float(row[3])
         # Cut out-and-back spur artifacts BEFORE distance/climb accounting, so
         # rescaling and ranking see the route as it would be ridden. The naive
         # spur-ascent estimate can overshoot the provider's filtered figure,
@@ -106,6 +115,7 @@ class BRouterProvider:
             "distance_m": float(props["track-length"]) - spur_dist,
             "ascent_m": max(0.0, float(props["filtered ascend"]) - spur_ascent),
             "net_gain_m": float(props.get("plain-ascend", 0.0)),
+            "major_m": major_m,
         }
 
     def candidates(self, spec: RouteSpec, lat: float, lon: float,
@@ -207,7 +217,8 @@ class BRouterProvider:
                     provider=self.name, seed="via direct",
                     distance_m=base_dist, ascent_m=base["ascent_m"],
                     points=base["points"],
-                    overlap_frac=repeated_fraction(base["points"]))
+                    overlap_frac=repeated_fraction(base["points"]),
+                    major_m=base["major_m"])
                 out.append(base_cand)
                 continue
             combos = [(li, side) for li in range(len(anchors))
@@ -232,7 +243,8 @@ class BRouterProvider:
                              f"r={r / 1609.344:.1f}mi",
                         distance_m=leg["distance_m"], ascent_m=leg["ascent_m"],
                         points=leg["points"],
-                        overlap_frac=repeated_fraction(leg["points"]))
+                        overlap_frac=repeated_fraction(leg["points"]),
+                        major_m=leg["major_m"])
                     error = abs(cand.distance_m - spec.distance_m) / spec.distance_m
                     added = cand.distance_m - base_dist
                     if error <= spec.distance_tolerance / 2 or added <= 0:
@@ -261,6 +273,7 @@ class BRouterProvider:
             ascent_m=leg["ascent_m"],
             points=leg["points"],
             overlap_frac=repeated_fraction(leg["points"]),
+            major_m=leg["major_m"],
         )
 
     def _outback(self, spec: RouteSpec, lat: float, lon: float, bearing: float,
@@ -279,6 +292,7 @@ class BRouterProvider:
             ascent_m=total_ascent,
             points=leg["points"] + leg["points"][-2::-1],
             shape="outback",
+            major_m=leg["major_m"] * 2,
         )
 
 

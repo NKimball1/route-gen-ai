@@ -16,6 +16,9 @@ def rank(spec: RouteSpec, candidates: list[RouteCandidate]
         elif c.shape == "loop" and c.overlap_frac > 0.25:
             rejects.append((c, f"{c.overlap_frac:.0%} of the route rides the "
                                f"same road twice"))
+        elif c.major_m > 800:
+            rejects.append((c, f"{c.major_m / 1609.344:.1f} mi on major "
+                               f"highways (trunk/primary)"))
         else:
             keepers.append(c)
 
