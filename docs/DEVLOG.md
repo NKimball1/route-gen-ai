@@ -281,6 +281,28 @@ file became infrastructure:
 The pattern is now a loop: every device-measured ride is a free
 calibration point, and the comparator turns a .fit file into one command.
 
+## Phase 13 — Conversational editing (2026-09-05)
+
+The idea arrived mid-century-ride: "I'd want to say *find a different
+route around Pheasant Branch — those paths are gravel and walkers* and
+have it keep the rest." Built the same day as a third request type:
+
+- **Splice engine** (`editing.py`): find every contiguous stretch where
+  the route enters the avoid zone, back off a 700 m buffer on each side,
+  reroute each gap with a no-go circle over the zone, splice, recompute
+  stats. The winner of any compose or edit becomes "the current route",
+  so edits chain: generate → "around X" → "also avoid Y" → ride.
+- Live demo on the actual example: replaced 2.9 mi of conservancy path
+  with 7.7 mi of road; 95% of the route untouched.
+- Two robustness lessons from one demo run: PowerShell writes a UTF-8 BOM
+  that poisoned a path file (reader is now BOM-tolerant), and the parser
+  appended the wrong city to the place name — the conservancy is in
+  Middleton, not Madison — so geocoding now retries with progressively
+  fewer comma-parts before failing.
+
+This is the interaction model the future web frontend wraps: every
+capability is already conversational at the CLI.
+
 ## Testing & verification practices that emerged
 
 - 24 unit tests: despurring (exact, corridor, palindrome semantics),
