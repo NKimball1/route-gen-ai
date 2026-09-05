@@ -34,6 +34,19 @@ def test_dip_tolerated_but_descent_ends_climb():
     assert climbs[0]["gain_m"] >= 55
 
 
+def test_shallow_approach_does_not_dilute_summit_climb():
+    # Blue Mounds pattern: miles of ~0.8% approach, then a steep 1.2 km
+    # summit road at ~7%. The average over the whole run fails the grade
+    # threshold; the extractor must still return the steep finish.
+    eles = [300 + 1.0 * k for k in range(40)]          # 4.9 km at 0.8%
+    eles += [340 + 8.5 * k for k in range(11)]         # 1.2 km at ~7%
+    climbs = extract_climbs(profile(eles))
+    assert len(climbs) == 1
+    c = climbs[0]
+    assert c["gain_m"] >= 85          # the summit road, plus qualifying lead-in
+    assert c["avg_grade_pct"] >= 2.5
+
+
 def test_polyline_decode_known_vector():
     pts = decode_polyline("_p~iF~ps|U_ulLnnqC_mqNvxq`@")
     assert [(round(a, 3), round(b, 3)) for a, b in pts] == [

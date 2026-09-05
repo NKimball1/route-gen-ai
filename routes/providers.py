@@ -70,7 +70,8 @@ class BRouterProvider:
         self.profile = profile
 
     def route(self, waypoints: list[tuple[float, float]],
-              avoid: list[tuple[float, float, float]] | None = None) -> dict | None:
+              avoid: list[tuple[float, float, float]] | None = None,
+              protect=None) -> dict | None:
         """Point-to-point request. Returns {points, distance_m, ascent_m,
         net_gain_m} with spurs already trimmed, or None on failure."""
         params = {
@@ -105,10 +106,10 @@ class BRouterProvider:
         # rescaling and ranking see the route as it would be ridden. The naive
         # spur-ascent estimate can overshoot the provider's filtered figure,
         # hence the clamp.
-        points, spur_dist, spur_ascent = despur(points)
+        points, spur_dist, spur_ascent = despur(points, protect=protect)
         # Second pass: corridor tendrils (out and back on not-quite-identical
         # geometry — parallel path, offset lanes) that exact matching misses.
-        points, c_dist, c_ascent = corridor_despur(points)
+        points, c_dist, c_ascent = corridor_despur(points, protect=protect)
         spur_dist += c_dist
         spur_ascent += c_ascent
         if spur_dist > 400:
@@ -213,7 +214,7 @@ class BRouterProvider:
         budget = max(2, n - len(out))
         for order in orders:
             anchors = [(lat, lon)] + order
-            base = self.route(anchors + [(lat, lon)], spec.avoid)
+            base = self.route(anchors + [(lat, lon)], spec.avoid, protect=vias)
             if base is None:
                 continue
             base_dist = base["distance_m"]
@@ -240,7 +241,7 @@ class BRouterProvider:
                     ext = _destination(mid[0], mid[1],
                                        leg_bearing + 90 * side, r)
                     wps = anchors[:li + 1] + [ext] + anchors[li + 1:] + [(lat, lon)]
-                    leg = self.route(wps, spec.avoid)
+                    leg = self.route(wps, spec.avoid, protect=vias)
                     if leg is None:
                         break
                     cand = RouteCandidate(

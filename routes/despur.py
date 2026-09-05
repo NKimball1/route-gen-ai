@@ -34,9 +34,13 @@ def _naive_ascent(points) -> float:
     return ascent
 
 
-def despur(points, tolerance_m: float = 10.0, min_spur_m: float = 40.0
-           ) -> tuple[list, float, float]:
-    """Return (cleaned points, removed distance m, removed ascent m)."""
+def despur(points, tolerance_m: float = 10.0, min_spur_m: float = 40.0,
+           protect=None) -> tuple[list, float, float]:
+    """Return (cleaned points, removed distance m, removed ascent m).
+
+    `protect`: (lat, lon) points whose out-and-backs are DELIBERATE — a spur
+    whose tip lies near one is kept (e.g. a requested summit reached by a
+    dead-end road; riding up and back down is the point of the route)."""
     pts = list(points)
     removed_dist = removed_ascent = 0.0
     i = 1
@@ -46,6 +50,9 @@ def despur(points, tolerance_m: float = 10.0, min_spur_m: float = 40.0
                and _hav_m(pts[i - 1 - depth], pts[i + 1 + depth]) < tolerance_m):
             depth += 1
         if depth:
+            if protect and any(_hav_m(pts[i], p) < 400.0 for p in protect):
+                i += depth + 1
+                continue
             spur = pts[i - depth:i + depth + 1]
             if _leg_len(spur[:depth + 1]) >= min_spur_m:
                 removed_dist += _leg_len(spur)
@@ -83,8 +90,8 @@ def _resample(points, step_m: float = 25.0) -> list:
     return out
 
 
-def corridor_despur(points, tolerance_m: float = 32.0, min_spur_m: float = 200.0
-                    ) -> tuple[list, float, float]:
+def corridor_despur(points, tolerance_m: float = 32.0, min_spur_m: float = 200.0,
+                    protect=None) -> tuple[list, float, float]:
     """Catch tendrils the exact pass misses: the route goes out and comes
     back within ~tolerance of the same corridor, but on not-quite-identical
     geometry (parallel path, offset lanes). Works on a uniformly resampled
@@ -97,7 +104,7 @@ def corridor_despur(points, tolerance_m: float = 32.0, min_spur_m: float = 200.0
     """
     rs = _resample(points)
     cleaned, removed_dist, removed_ascent = despur(
-        rs, tolerance_m=tolerance_m, min_spur_m=min_spur_m)
+        rs, tolerance_m=tolerance_m, min_spur_m=min_spur_m, protect=protect)
     if removed_dist == 0.0:
         return list(points), 0.0, 0.0
     return cleaned, removed_dist, removed_ascent

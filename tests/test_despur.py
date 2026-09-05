@@ -63,6 +63,21 @@ def test_corridor_leaves_clean_loop_alone():
     assert clean == pts  # untouched, original geometry preserved
 
 
+def test_protected_spur_kept():
+    # A deliberate out-and-back to a requested point (a summit on a dead-end
+    # road) must survive despurring when its tip is protected.
+    main = road(11)
+    b = [(main[5][0], main[5][1] + k * LAT_STEP, 310.0) for k in (1, 2, 3)]
+    pts = main[:6] + b + list(reversed(b[:-1])) + main[5:]
+    summit = (b[-1][0], b[-1][1])
+    clean, removed, _ = despur(pts, protect=[summit])
+    assert removed == 0.0
+    assert len(clean) == len(pts)
+    # and without protection it is excised (control)
+    clean2, removed2, _ = despur(pts)
+    assert removed2 > 0
+
+
 def test_full_palindrome_collapses():
     # A deliberate out-and-back IS one giant spur to this detector — which is
     # why providers despur only the one-way leg before mirroring (see

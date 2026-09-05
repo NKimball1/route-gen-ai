@@ -33,23 +33,30 @@ QUERY = """[out:json][timeout:60];
 out;"""
 
 
-def fetch_controls(lat: float, lon: float, radius_m: float) -> list:
-    """All traffic controls within radius of (lat, lon): (lat, lon, weight)."""
+def bbox_around(lat: float, lon: float, radius_m: float) -> str:
     dlat = radius_m / 110540.0
     dlon = radius_m / (111320.0 * math.cos(math.radians(lat)))
-    bbox = f"{lat - dlat},{lon - dlon},{lat + dlat},{lon + dlon}"
-    data = None
+    return f"{lat - dlat},{lon - dlon},{lat + dlat},{lon + dlon}"
+
+
+def query_overpass(query: str) -> dict | None:
+    """POST an Overpass QL query, trying mirrors. None if all fail."""
     for url in OVERPASS_URLS:
         try:
             resp = requests.post(
-                url, data={"data": QUERY.format(bbox=bbox)},
-                headers={"User-Agent": "route-gen-ai-interval-finder/0.1"},
+                url, data={"data": query},
+                headers={"User-Agent": "route-gen-ai/0.1"},
                 timeout=90)
             resp.raise_for_status()
-            data = resp.json()
-            break
+            return resp.json()
         except (requests.RequestException, ValueError) as e:
             print(f"  overpass {url.split('/')[2]}: failed ({e})")
+    return None
+
+
+def fetch_controls(lat: float, lon: float, radius_m: float) -> list:
+    """All traffic controls within radius of (lat, lon): (lat, lon, weight)."""
+    data = query_overpass(QUERY.format(bbox=bbox_around(lat, lon, radius_m)))
     if data is None:
         return []
     controls = []

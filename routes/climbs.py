@@ -49,14 +49,23 @@ def extract_climbs(rs, min_gain_m: float = 25.0, min_grade_pct: float = 2.5,
                 peak_ele, peak_j = rs[j][2], j
             if peak_ele - rs[j][2] > max_dip_m:
                 break
-        gain = peak_ele - rs[i][2]
-        length = rs[peak_j][3] - rs[i][3]
-        if gain >= min_gain_m and length > 0 and gain / length * 100 >= min_grade_pct:
-            climbs.append({
-                "start": (rs[i][0], rs[i][1]), "end": (rs[peak_j][0], rs[peak_j][1]),
-                "gain_m": gain, "length_m": length,
-                "avg_grade_pct": gain / length * 100,
-            })
+        # A maximal ascending run can be a shallow miles-long approach with
+        # a steep summit finish — its AVERAGE grade fails the threshold and
+        # a 175 m climb gets discarded (found the hard way on Blue Mounds).
+        # Take the earliest start whose suffix-to-peak meets both gain and
+        # grade: the climb proper, maximal gain, undiluted by the approach.
+        for k in range(i, peak_j):
+            gain = rs[peak_j][2] - rs[k][2]
+            length = rs[peak_j][3] - rs[k][3]
+            if (length > 0 and gain >= min_gain_m
+                    and gain / length * 100 >= min_grade_pct):
+                climbs.append({
+                    "start": (rs[k][0], rs[k][1]),
+                    "end": (rs[peak_j][0], rs[peak_j][1]),
+                    "gain_m": gain, "length_m": length,
+                    "avg_grade_pct": gain / length * 100,
+                })
+                break
         i = max(peak_j, i + 1)
     return climbs
 
@@ -88,6 +97,18 @@ def find_climbs(lat: float, lon: float, radius_m: float, provider,
     except Exception as e:  # Strava is an enhancement; never fatal
         print(f"  strava starred segments unavailable ({e})")
 
+    # OSM peaks: route toward the biggest summits deliberately — the spoke
+    # search below only sees through-roads, and marquee climbs are often
+    # dead-end spurs (a park road up a mound is on no route to anywhere).
+    from routes.peaks import climb_to_peak, fetch_peaks
+    for peak in fetch_peaks(lat, lon, radius_m):
+        c = climb_to_peak(lat, lon, peak, provider)
+        if c is not None:
+            found.append(Climb(
+                name=c["name"], start=c["start"], end=c["end"],
+                gain_m=c["gain_m"], length_m=c["length_m"],
+                avg_grade_pct=c["avg_grade_pct"], source="peak"))
+
     for i in range(n_spokes):
         bearing = 360.0 * i / n_spokes
         dest = _destination(lat, lon, bearing, radius_m)
@@ -101,14 +122,15 @@ def find_climbs(lat: float, lon: float, radius_m: float, provider,
                 length_m=c["length_m"], avg_grade_pct=c["avg_grade_pct"],
                 source="elevation"))
 
-    # Dedupe by start location (~600 m cells); starred outrank elevation
-    # finds of the same hill, then bigger gain wins.
+    # Dedupe by start location (~600 m cells): starred > peak > elevation
+    # for the same hill, then bigger gain wins.
+    priority = {"starred": 2, "peak": 1, "elevation": 0}
     best: dict = {}
     for c in found:
         key = (round(c.start[0] * 180), round(c.start[1] * 180))
         cur = best.get(key)
-        if (cur is None or (c.source == "starred") > (cur.source == "starred")
-                or (c.source == cur.source and c.gain_m > cur.gain_m)):
+        if cur is None or ((priority[c.source], c.gain_m)
+                           > (priority[cur.source], cur.gain_m)):
             best[key] = c
     # Rank by gain — the objective is climbing; starring only wins dedupes.
     ranked = sorted(best.values(), key=lambda c: -c.gain_m)

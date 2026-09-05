@@ -188,6 +188,29 @@ climb near the search radius edge (spoke reach + sampling), and badly-placed
 extension bows still waste candidates (they self-reject; a placement
 heuristic would save requests).
 
+## Phase 9 — Riding-partner review round (2026-09-04)
+
+The max-climb route got loaded into RideWithGPS, sent to a Garmin, and
+rated "really good" — with two field findings:
+
+1. **A grocery-store parking lot on the route.** OSM tags parking aisles as
+   `highway=service` + `service=parking_aisle`, which the profile costed at
+   1.2 — nearly free. BRouter's lookup table discriminates service types,
+   so the quiet profile now costs parking aisles/driveways at 20x and
+   general service roads at 2x. Reroute verified 134 m clear of the lot.
+2. **Elevation figures read consistently short vs. RideWithGPS** (1,490 ft
+   claimed, 2,483 on RWGPS). Root cause: BRouter's "filtered ascend"
+   smooths aggressively; riders' devices don't. Fix: compute ascent from
+   the final track's own elevation profile with a hysteresis threshold,
+   **calibrated against RWGPS on the actual route** — 10 m hysteresis lands
+   within ~2.5%. Bonus: computing on final geometry killed the
+   ascent-arithmetic artifacts on heavily-despurred candidates ("92 ft over
+   47 miles"). Reported numbers now speak the same language as the rider's
+   head unit.
+
+Also: GPX names cleaned up for route viewers (generation metadata moved to
+the description field).
+
 ## Testing & verification practices that emerged
 
 - 24 unit tests: despurring (exact, corridor, palindrome semantics),
