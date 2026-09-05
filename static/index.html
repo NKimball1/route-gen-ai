@@ -81,10 +81,20 @@ const COLORS = ['#ff6b35','#22b8cf','#94d82d','#fcc419','#e599f7','#ff8787',
 const map = L.map('map').setView([39.5, -95.0], 4);  // neutral until a start is set
 L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',
             {attribution:'&copy; OpenStreetMap'}).addTo(map);
-let layers = [];
+let candLayers = [];   // [{gpx, casing, line}]
 let currentPath = null;
 
 const norm = p => (p || '').replaceAll('\\\\', '/').replaceAll('\\', '/');
+
+function restyleLines() {
+  candLayers.forEach(c => {
+    const sel = norm(c.gpx) === norm(currentPath);
+    // selected stays fully visible; the rest fade back out of the way
+    c.line.setStyle({opacity: sel ? 0.95 : 0.28, weight: sel ? 6 : 4});
+    c.casing.setStyle({opacity: sel ? 0.55 : 0.08});
+    if (sel) { c.casing.bringToFront(); c.line.bringToFront(); }
+  });
+}
 
 async function refreshCurrent() {
   const r = await fetch('/api/current').then(r => r.json());
@@ -95,6 +105,7 @@ async function refreshCurrent() {
     row.classList.toggle('selected',
         norm(row.dataset.gpx) === norm(currentPath));
   });
+  restyleLines();
 }
 refreshCurrent();
 
@@ -126,20 +137,19 @@ if (savedStart) { applyStart(savedStart, true); }
 else { startInput.classList.add('unset'); startInput.focus(); }
 
 function showResult(result) {
-  layers.forEach(l => map.removeLayer(l));
-  layers = [];
+  candLayers.forEach(c => { map.removeLayer(c.casing); map.removeLayer(c.line); });
+  candLayers = [];
   const box = document.getElementById('results');
   box.innerHTML = '';
   let bounds = null;
   result.candidates.forEach((c, i) => {
     const color = COLORS[i % COLORS.length];
-    // dark casing under each line keeps every candidate visible on the map
-    const casing = L.polyline(c.latlngs, {color:'#10151b',
-        weight: (i === 0 ? 6 : 5) + 2, opacity: 0.55});
-    const line = L.polyline(c.latlngs, {color, weight: i === 0 ? 6 : 5,
-                                        opacity: i === 0 ? 0.95 : 0.85});
+    // dark casing under each line; restyleLines() dims non-selected ones
+    const casing = L.polyline(c.latlngs, {color:'#10151b', weight: 8,
+                                          opacity: 0.55});
+    const line = L.polyline(c.latlngs, {color, weight: 5, opacity: 0.85});
     casing.addTo(map); line.addTo(map);
-    layers.push(casing, line);
+    candLayers.push({gpx: c.gpx, casing, line});
     bounds = bounds ? bounds.extend(line.getBounds()) : line.getBounds();
     const row = document.createElement('div');
     row.className = 'cand';
@@ -149,8 +159,14 @@ function showResult(result) {
       <a href="/api/gpx?path=${encodeURIComponent(c.gpx)}"
          title="download for your Garmin">gpx</a>
       <button class="selbtn" title="ride/edit this one instead">select</button>`;
-    row.onclick = () => { map.fitBounds(line.getBounds(), {padding:[30,30]});
-                          casing.bringToFront(); line.bringToFront(); };
+    row.onclick = () => {
+      map.fitBounds(line.getBounds(), {padding:[30,30]});
+      // peek at a non-selected candidate without changing the selection
+      line.setStyle({opacity: 0.95, weight: 6});
+      casing.setStyle({opacity: 0.55});
+      casing.bringToFront(); line.bringToFront();
+      setTimeout(restyleLines, 2500);
+    };
     row.querySelector('button').onclick = async (ev) => {
       ev.stopPropagation();
       await fetch('/api/current', {method:'POST',
