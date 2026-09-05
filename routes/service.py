@@ -21,19 +21,22 @@ def _downsample(points, max_pts: int = 800):
     return out
 
 
-def handle_request(text: str, log_sink=None) -> dict:
+def handle_request(text: str, log_sink=None,
+                   default_address: str | None = None) -> dict:
     """Run a plain-English request end to end. Returns
     {kind, log, candidates: [{label, gpx, latlngs, stats...}]}.
-    `log_sink`: optional file-like that receives progress lines live."""
+    `log_sink`: optional file-like that receives progress lines live.
+    `default_address`: used when the request names no start (a web user's
+    configured starting point); falls back to ROUTEGEN_HOME_ADDRESS."""
     buf = log_sink if log_sink is not None else io.StringIO()
 
     with contextlib.redirect_stdout(buf):
-        result = _dispatch(text)
+        result = _dispatch(text, default_address)
     result["log"] = buf.getvalue() if hasattr(buf, "getvalue") else ""
     return result
 
 
-def _dispatch(text: str) -> dict:
+def _dispatch(text: str, default_address: str | None = None) -> dict:
     from routes.nl import parse_request
     req = parse_request(text)
     usage = req.pop("_usage")
@@ -67,9 +70,10 @@ def _dispatch(text: str) -> dict:
 
     address = req.get("address")
     if not address or address.strip().lower() in HOME_WORDS:
-        address = os.environ.get("ROUTEGEN_HOME_ADDRESS")
+        address = default_address or os.environ.get("ROUTEGEN_HOME_ADDRESS")
     if not address:
-        print("No start address given and ROUTEGEN_HOME_ADDRESS is not set.")
+        print("No start address — set your starting point (or include an "
+              "address in the request).")
         return {"kind": "error", "candidates": []}
 
     if req["request_type"] == "interval_spot":

@@ -17,7 +17,14 @@
   #side header { padding:14px 16px 10px; border-bottom:1px solid var(--line); }
   #side h1 { margin:0; font-size:17px; }
   #side h1 span { color:var(--accent); }
-  #current { font-size:12px; color:var(--dim); margin-top:4px; word-break:break-all; }
+  #startrow { display:flex; gap:6px; margin-top:9px; }
+  #start { flex:1; background:var(--bg); color:var(--ink);
+           border:1px solid var(--line); border-radius:7px; padding:6px 9px;
+           font:13px system-ui; }
+  #start.unset { border-color:var(--accent); }
+  #setstart { border:0; border-radius:7px; background:#2a323c; color:var(--ink);
+              padding:6px 11px; cursor:pointer; }
+  #current { font-size:12px; color:var(--dim); margin-top:6px; word-break:break-all; }
   #askbox { padding:12px 16px; border-bottom:1px solid var(--line); }
   #ask { width:100%; min-height:64px; resize:vertical; background:var(--bg);
          color:var(--ink); border:1px solid var(--line); border-radius:8px;
@@ -29,8 +36,13 @@
   #hints code { color:var(--ink); }
   #results { overflow-y:auto; flex:0 0 auto; max-height:38%; }
   .cand { padding:9px 16px; border-bottom:1px solid var(--line); cursor:pointer;
-          display:flex; align-items:center; gap:9px; }
+          display:flex; align-items:center; gap:9px;
+          border-left:3px solid transparent; }
   .cand:hover { background:#20272f; }
+  .cand.selected { border-left-color:var(--accent); background:#20272f; }
+  .cand .sel { display:none; color:var(--accent); font-weight:700; }
+  .cand.selected .sel { display:inline; }
+  .cand.selected button.selbtn { display:none; }
   .dot { width:11px; height:11px; border-radius:50%; flex:none; }
   .cand .label { flex:1; font-size:12.5px; }
   .cand a, .cand button { font-size:11px; color:var(--accent); background:none;
@@ -45,14 +57,18 @@
 <div id="side">
   <header>
     <h1>Route <span>Gen</span> AI</h1>
+    <div id="startrow">
+      <input id="start" placeholder="Where do your rides start? (address or town)"/>
+      <button id="setstart">Set</button>
+    </div>
     <div id="current">no current route</div>
   </header>
   <div id="askbox">
     <textarea id="ask" placeholder="give me a 40 mile loop from home, not much climbing&#10;&#10;find a flat spot for 2x20 within 30 min&#10;&#10;detour around Pheasant Branch, use roads"></textarea>
     <button id="go">Send</button>
-    <div id="hints">Routes, interval spots, and edits to the current route all
-      go in the same box. Edits chain — the last winner (or whatever you
-      <code>use</code>) is what gets edited.</div>
+    <div id="hints">Routes, interval spots, and edits all go in the same box.
+      The <b>selected</b> route (✓) is what "detour around X" requests
+      modify and what you'd ride — the top result is selected automatically.</div>
   </div>
   <div id="results"></div>
   <div id="log">Ready. The self-hosted router must be running
@@ -60,19 +76,54 @@
 </div>
 <div id="map"></div>
 <script>
-const COLORS = ['#ff6b35','#4dabf7','#69db7c','#ffd43b','#da77f2','#ff8787',
-                '#3bc9db','#a9e34b'];
-const map = L.map('map').setView([43.05, -89.48], 11);
+const COLORS = ['#ff6b35','#22b8cf','#94d82d','#fcc419','#e599f7','#ff8787',
+                '#74c0fc','#63e6be'];
+const map = L.map('map').setView([39.5, -95.0], 4);  // neutral until a start is set
 L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',
             {attribution:'&copy; OpenStreetMap'}).addTo(map);
 let layers = [];
+let currentPath = null;
+
+const norm = p => (p || '').replaceAll('\\\\', '/').replaceAll('\\', '/');
 
 async function refreshCurrent() {
   const r = await fetch('/api/current').then(r => r.json());
+  currentPath = r.current || null;
   document.getElementById('current').textContent =
-      r.current ? 'current route: ' + r.current : 'no current route';
+      currentPath ? 'selected route: ' + currentPath : 'no route selected yet';
+  document.querySelectorAll('.cand').forEach(row => {
+    row.classList.toggle('selected',
+        norm(row.dataset.gpx) === norm(currentPath));
+  });
 }
 refreshCurrent();
+
+// ---- starting point (persisted per browser) ----
+const startInput = document.getElementById('start');
+async function applyStart(place, firstLoad) {
+  const r = await fetch('/api/geocode?q=' + encodeURIComponent(place));
+  if (!r.ok) {
+    if (!firstLoad) alert('Could not find that place — try adding a city/state.');
+    return false;
+  }
+  const g = await r.json();
+  localStorage.setItem('rg_start', place);
+  startInput.value = place;
+  startInput.classList.remove('unset');
+  map.setView([g.lat, g.lon], 11);
+  return true;
+}
+document.getElementById('setstart').onclick = () => applyStart(startInput.value.trim());
+startInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') applyStart(startInput.value.trim());
+});
+startInput.addEventListener('change', () => {
+  const v = startInput.value.trim();
+  if (v && v !== localStorage.getItem('rg_start')) applyStart(v);
+});
+const savedStart = localStorage.getItem('rg_start');
+if (savedStart) { applyStart(savedStart, true); }
+else { startInput.classList.add('unset'); startInput.focus(); }
 
 function showResult(result) {
   layers.forEach(l => map.removeLayer(l));
@@ -82,19 +133,24 @@ function showResult(result) {
   let bounds = null;
   result.candidates.forEach((c, i) => {
     const color = COLORS[i % COLORS.length];
-    const line = L.polyline(c.latlngs, {color, weight: i === 0 ? 5 : 3,
-                                        opacity: i === 0 ? 0.95 : 0.6});
-    line.addTo(map);
-    layers.push(line);
+    // dark casing under each line keeps every candidate visible on the map
+    const casing = L.polyline(c.latlngs, {color:'#10151b',
+        weight: (i === 0 ? 6 : 5) + 2, opacity: 0.55});
+    const line = L.polyline(c.latlngs, {color, weight: i === 0 ? 6 : 5,
+                                        opacity: i === 0 ? 0.95 : 0.85});
+    casing.addTo(map); line.addTo(map);
+    layers.push(casing, line);
     bounds = bounds ? bounds.extend(line.getBounds()) : line.getBounds();
     const row = document.createElement('div');
     row.className = 'cand';
+    row.dataset.gpx = c.gpx;
     row.innerHTML = `<span class="dot" style="background:${color}"></span>
-      <span class="label">${c.label}</span>
-      <a href="/api/gpx?path=${encodeURIComponent(c.gpx)}">gpx</a>
-      <button data-p="${c.gpx}">use</button>`;
+      <span class="label">${c.label} <span class="sel">✓ selected</span></span>
+      <a href="/api/gpx?path=${encodeURIComponent(c.gpx)}"
+         title="download for your Garmin">gpx</a>
+      <button class="selbtn" title="ride/edit this one instead">select</button>`;
     row.onclick = () => { map.fitBounds(line.getBounds(), {padding:[30,30]});
-                          line.bringToFront(); };
+                          casing.bringToFront(); line.bringToFront(); };
     row.querySelector('button').onclick = async (ev) => {
       ev.stopPropagation();
       await fetch('/api/current', {method:'POST',
@@ -105,6 +161,7 @@ function showResult(result) {
     box.appendChild(row);
   });
   if (bounds) map.fitBounds(bounds, {padding:[30,30]});
+  refreshCurrent();
 }
 
 async function send() {
@@ -114,10 +171,17 @@ async function send() {
   const log = document.getElementById('log');
   go.disabled = true;
   log.textContent = '...\n';
+  const start = localStorage.getItem('rg_start');
+  if (!start) {
+    log.textContent = 'Set your starting point first (top of the sidebar).';
+    startInput.focus();
+    go.disabled = false;
+    return;
+  }
   try {
     const {job} = await fetch('/api/ask', {method:'POST',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({text})}).then(r => r.json());
+      body: JSON.stringify({text, start})}).then(r => r.json());
     while (true) {
       await new Promise(r => setTimeout(r, 1200));
       const j = await fetch('/api/job/' + job).then(r => r.json());

@@ -29,13 +29,15 @@ JOBS: dict = {}  # id -> {"status", "buf", "result"}
 
 class Ask(BaseModel):
     text: str
+    start: str | None = None  # the user's starting point (address string)
 
 
-def _run(job_id: str, text: str) -> None:
+def _run(job_id: str, text: str, start: str | None) -> None:
     from routes.service import handle_request
     job = JOBS[job_id]
     try:
-        result = handle_request(text, log_sink=job["buf"])
+        result = handle_request(text, log_sink=job["buf"],
+                                default_address=start)
         job["result"] = result
         job["status"] = "done"
     except Exception as e:  # surfaced to the UI, not swallowed
@@ -47,8 +49,19 @@ def _run(job_id: str, text: str) -> None:
 def ask(body: Ask):
     job_id = uuid.uuid4().hex[:12]
     JOBS[job_id] = {"status": "running", "buf": StringIO(), "result": None}
-    threading.Thread(target=_run, args=(job_id, body.text), daemon=True).start()
+    threading.Thread(target=_run, args=(job_id, body.text, body.start),
+                     daemon=True).start()
     return {"job": job_id}
+
+
+@app.get("/api/geocode")
+def api_geocode(q: str):
+    from routes.geocode import geocode_flexible
+    try:
+        lat, lon, name = geocode_flexible(q)
+        return {"lat": lat, "lon": lon, "name": name}
+    except ValueError:
+        return JSONResponse({"error": f"could not find {q!r}"}, status_code=404)
 
 
 @app.get("/api/job/{job_id}")

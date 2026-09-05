@@ -323,6 +323,14 @@ color-coded candidates drawn on the map, per-candidate GPX download and
 end-to-end in the browser: sentence in, three loops on the map, current
 route auto-updated.
 
+First UX review (same day) fixed three things: no more hardcoded Madison —
+a first-run "where do your rides start?" field geocodes, centers the map,
+persists per browser, and rides along with every request as the default
+start (the server env address is only a fallback); "use" became "select"
+with a visible ✓ on the current route and hint text explaining that the
+selected route is what edits modify; and every candidate line gained a
+dark casing + stronger colors so non-winners stay visible on the map.
+
 ## Testing & verification practices that emerged
 
 - 24 unit tests: despurring (exact, corridor, palindrome semantics),
