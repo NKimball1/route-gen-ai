@@ -26,7 +26,10 @@ def main() -> int:
     print(f"Parsed ({usage['model']}, {usage['input_tokens']}in/"
           f"{usage['output_tokens']}out tokens): {req}")
 
-    address = req.get("address") or os.environ.get("ROUTEGEN_HOME_ADDRESS")
+    address = req.get("address")
+    if not address or address.strip().lower() in (
+            "home", "my house", "my home", "house"):
+        address = os.environ.get("ROUTEGEN_HOME_ADDRESS")
     if not address:
         print("No start address in the request and ROUTEGEN_HOME_ADDRESS is "
               "not set — add the address to your request.")

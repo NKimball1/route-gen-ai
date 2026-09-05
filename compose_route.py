@@ -56,9 +56,9 @@ def main() -> int:
     ap.add_argument("--candidates", type=int, default=6,
                     help="loop candidates per provider (default 6)")
     ap.add_argument("--provider", choices=["brouter", "ors", "all"], default="all")
-    ap.add_argument("--profile", default="fastbike-lowtraffic",
-                    help="BRouter profile: fastbike-lowtraffic (default), "
-                         "fastbike-verylowtraffic, trekking, safety")
+    ap.add_argument("--profile", default=None,
+                    help="BRouter profile (default: fastbike-quiet on the "
+                         "self-hosted server, fastbike-lowtraffic on public)")
     ap.add_argument("--shape", choices=["loop", "outback", "both"], default="loop",
                     help="loop (default), outback, or both competing together")
     ap.add_argument("--avoid", action="append", default=[],

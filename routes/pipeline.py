@@ -15,7 +15,7 @@ from routes.spec import METERS_PER_MILE, RouteSpec
 OUT_DIR = os.path.join("output", "routes")
 
 
-def build_providers(which: str = "all", profile: str = "fastbike-lowtraffic") -> list:
+def build_providers(which: str = "all", profile: str | None = None) -> list:
     providers = []
     if which in ("brouter", "all"):
         providers.append(BRouterProvider(profile=profile))

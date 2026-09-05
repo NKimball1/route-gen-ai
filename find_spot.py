@@ -28,7 +28,7 @@ from routes.providers import BRouterProvider
 OUT_DIR = os.path.join("output", "spots")
 
 
-def run_spot_search(spec: IntervalSpec, profile: str = "fastbike-lowtraffic",
+def run_spot_search(spec: IntervalSpec, profile: str | None = None,
                     out_dir: str = OUT_DIR) -> list:
     lat, lon, place = geocode(spec.address)
     print(f"Start: {place} ({lat:.5f}, {lon:.5f})")
@@ -78,7 +78,7 @@ def main() -> int:
     ap.add_argument("--rep-minutes", type=float, required=True)
     ap.add_argument("--kind", choices=["flat", "incline"], required=True)
     ap.add_argument("--max-travel-minutes", type=float, default=30.0)
-    ap.add_argument("--profile", default="fastbike-lowtraffic")
+    ap.add_argument("--profile", default=None)
     args = ap.parse_args()
 
     spec = IntervalSpec(args.address, args.reps, args.rep_minutes, args.kind,

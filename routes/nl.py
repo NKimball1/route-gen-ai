@@ -31,11 +31,14 @@ route-generation tool. Two request types:
 - "interval_spot": the user wants a STRETCH OF ROAD to do structured
   intervals on, not a full route. Threshold / tempo / sweet-spot / TT work
   wants kind "flat"; VO2 / hill reps / "ride against an incline" wants
-  "incline". "2x20" means reps=2, rep_minutes=20. Travel budget: use the
+  "incline". The tool already minimizes traffic interruptions (stop signs,
+  signals) and prefers steady grades — don't put those in notes. "2x20" means reps=2, rep_minutes=20. Travel budget: use the
   user's stated limit ("within 30 minutes"), else default 30. "Close to my
   house" ≈ 15.
 
-Set address to the start address as given, or null if none was given.
+Set address to the start address as given. If the user says "home" / "my
+house" or gives no address, set address to null (the tool knows the home
+address).
 Exactly one of "route"/"interval" is non-null, matching request_type.
 Anything you could not represent goes in notes (else empty string)."""
 

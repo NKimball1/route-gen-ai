@@ -54,16 +54,19 @@ class BRouterProvider:
     DETOUR_FACTOR = 1.3
     MAX_RESCALES = 2
 
-    def __init__(self, profile: str = "fastbike-lowtraffic"):
-        # "fastbike-lowtraffic" is BRouter's road-bike profile that strongly
-        # avoids busy/high-speed roads; "fastbike-verylowtraffic" avoids them
-        # harder, "trekking" is the touring default.
-        self.profile = profile
+    def __init__(self, profile: str | None = None):
         # Self-hosted instance when BROUTER_URL is set (e.g.
         # http://localhost:17777/brouter); public server otherwise.
         # Self-hosting removes rate limits and enables custom profiles.
         self.base_url = os.environ.get("BROUTER_URL",
                                        "https://brouter.de/brouter")
+        # Default profile: our custom "fastbike-quiet" (county-highway-class
+        # roads heavily penalized) on the self-hosted server; the stock
+        # "fastbike-lowtraffic" on the public server, which lacks it.
+        if profile is None:
+            profile = ("fastbike-quiet" if "localhost" in self.base_url
+                       else "fastbike-lowtraffic")
+        self.profile = profile
 
     def route(self, waypoints: list[tuple[float, float]],
               avoid: list[tuple[float, float, float]] | None = None) -> dict | None:
