@@ -239,6 +239,24 @@ route that summits Blue Mounds (track max 525 m, 154 m from the peak node)
 Runner-up context kept honest: a blind 60-mile loop out-climbs it slightly
 on rollers without the summit; both are shown, the rider chooses.
 
+## Phase 11 — The flat-route calibration miss (2026-09-05)
+
+First real-world ride of an NL-generated route ("50 miles, flat as
+possible") shipped promising 1,066 ft; RideWithGPS said 1,600. Yet the
+hilly calibration route had matched within 3% the day before. The lesson:
+**a single hysteresis threshold cannot represent both route types.** On a
+hilly route the gain lives in big climbs and a 10 m threshold loses almost
+nothing; on a flat route much of the gain is dozens of sub-10 m rollers —
+all discarded. One calibration point hid the model's structural error;
+the second exposed it.
+
+Fix: two-point fit (hilly 2,483 / flat 1,600 ground truth) across a
+smoothing×threshold grid selects a ~225 m rolling-mean smooth with a 0.5 m
+threshold — smoothing absorbs DEM noise, the low threshold keeps rollers.
+Error: +4.4% hilly, −6.3% flat. A regression test now encodes the roller
+lesson directly. Every future device-measured ride is a free calibration
+point.
+
 ## Testing & verification practices that emerged
 
 - 24 unit tests: despurring (exact, corridor, palindrome semantics),
