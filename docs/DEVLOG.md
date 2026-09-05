@@ -158,6 +158,36 @@ County, Washington* — and the Wisconsin-only tiles correctly refused to
 route a loop 1,400 miles away. Prompt fixed + defensive handling. Both
 original target prompts now run end-to-end, sentence → GPX, in ~15 s.
 
+## Phase 8 — Strava, the rug-pull, and open-data climb targeting (2026-09-04)
+
+Credentials arrived; token refresh worked on the first try (reusing the
+coaching project's refresh token, no browser re-auth). Then the planned
+centerpiece — the segment-explore endpoint — returned a bare 401 with valid
+credentials and correct scopes. Diagnosis by elimination: `/athlete` worked,
+`/segments/starred` worked, only explore failed. The answer was in Strava's
+changelog: **explore was gated behind an "Extended Access Tier" on
+2026-09-01 — three days before this integration.**
+
+Lesson worth the tuition: don't build core features on a third party's
+restricted endpoints. The redesign is better than the original plan:
+
+- **Climb targeting from open data** (`climbs.py`): route spokes outward,
+  extract sustained ascents from the elevation profiles (≥2.5% avg,
+  ≥25 m gain, dips ≤12 m tolerated), dedupe by location, and add route
+  candidates that pass THROUGH the top climbs via the existing soft-via
+  machinery. Works for any user, no API dependency.
+- **Starred Strava segments as the personal layer**: still served on the
+  standard tier — starring a climb in the Strava app makes it a routing
+  target, competing on gain with the elevation finds.
+
+First live max-climb run with targeting: best 50-mi result yet
+(45.4 mi / 1,490 ft, zero major-road miles, 1% repeat) — every top-4
+candidate came through a targeted climb. Honest limits, logged: the
+elevation search found 40–48 m ridge climbs but not the region's marquee
+climb near the search radius edge (spoke reach + sampling), and badly-placed
+extension bows still waste candidates (they self-reject; a placement
+heuristic would save requests).
+
 ## Testing & verification practices that emerged
 
 - 24 unit tests: despurring (exact, corridor, palindrome semantics),

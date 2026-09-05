@@ -4,6 +4,7 @@ Both the CLI (compose_route.py) and the natural-language entry point (ask.py)
 call this; a web backend would too.
 """
 import os
+from dataclasses import replace
 
 from routes.geocode import geocode
 from routes.gpx_out import write_gpx
@@ -38,10 +39,24 @@ def compose(specs: list[RouteSpec], providers: list, candidates_per: int = 6,
     lat, lon, place = geocode(spec.address)
     print(f"Start: {place} ({lat:.5f}, {lon:.5f})")
 
+    # For max-climb requests, scout real climbs (starred Strava segments +
+    # our own elevation search) and add candidates routed THROUGH them —
+    # blind bearing search finds hilly directions but stops short of summits.
+    if spec.maximize_ascent and not spec.via:
+        brouter = next((p for p in providers if p.name == "brouter"), None)
+        if brouter is not None:
+            from routes.climbs import find_climbs
+            print("Scouting climbs to target...")
+            for c in find_climbs(lat, lon, spec.distance_m / 2 / 1.3, brouter):
+                specs = specs + [replace(spec, shape="loop",
+                                         via=[c.start, c.end],
+                                         via_names=[c.name])]
+
     candidates = []
     for p in providers:
         for s in specs:
-            print(f"Generating {candidates_per} {s.shape} candidates via {p.name}...")
+            label = s.shape + (f" via '{s.via_names[0]}'" if s.via_names else "")
+            print(f"Generating {candidates_per} {label} candidates via {p.name}...")
             candidates.extend(p.candidates(s, lat, lon, n=candidates_per))
 
     keepers, rejects = rank(spec, candidates)
