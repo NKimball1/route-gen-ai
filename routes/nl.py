@@ -43,6 +43,14 @@ route-generation tool. Three request types:
     from ADDR to the start of this ride"). connect_return=true when they
     also want the leg home at the end ("...and back to ADDR after").
   Put places in edit.place as geocodable strings (append city/state).
+  CORRECTIONS: when the user says the LAST change was wrong and describes
+  what they meant ("that wasn't as intended, I meant...", "no — instead
+  use X"), set edit.revert_first=true so the fix applies to the version
+  BEFORE the bad change, not on top of it.
+
+- "undo": the user just wants the last change undone ("undo", "undo
+  that", "go back to the previous version") with no replacement. All
+  other fields null.
 
 - "route": a ride of a target distance (a loop or out-and-back from a start
   address). Map "out and back or loop is fine" to shape "both". Map "as much
@@ -73,7 +81,8 @@ SCHEMA = {
     "type": "object",
     "properties": {
         "request_type": {"type": "string",
-                         "enum": ["route", "interval_spot", "edit_route"]},
+                         "enum": ["route", "interval_spot", "edit_route",
+                                  "undo"]},
         "address": {"type": ["string", "null"]},
         "route": {
             "type": ["object", "null"],
@@ -115,9 +124,11 @@ SCHEMA = {
                 "miles_delta": {"type": ["number", "null"]},
                 "target_miles": {"type": ["number", "null"]},
                 "connect_return": {"type": "boolean"},
+                "revert_first": {"type": "boolean"},
             },
             "required": ["mode", "place", "places", "radius_m",
-                         "miles_delta", "target_miles", "connect_return"],
+                         "miles_delta", "target_miles", "connect_return",
+                         "revert_first"],
             "additionalProperties": False,
         },
         "notes": {"type": "string"},

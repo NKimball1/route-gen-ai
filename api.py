@@ -251,6 +251,32 @@ def set_current(body: Ask, x_session_id: str | None = Header(default=None)):
     return {"current": norm}
 
 
+@app.post("/api/undo")
+def undo(x_session_id: str | None = Header(default=None)):
+    """Step the session's current route back one version (no LLM call)."""
+    workdir = session_dir(x_session_id)
+    if workdir is None:
+        return JSONResponse({"error": "missing or invalid session id"},
+                            status_code=400)
+    from edit_route import current_route, predecessor
+    from routes.preview import _parse_desc, _parse_gpx
+    from routes.service import _downsample
+    cur = current_route(workdir)
+    prev = cur and predecessor(cur)
+    if not prev:
+        return JSONResponse(
+            {"ok": False, "summary": "Nothing to undo — this is the "
+                                     "earliest version.", "candidates": []})
+    with open(os.path.join(workdir, "latest.txt"), "w") as f:
+        f.write(prev)
+    limits.log_event("undo", sid=x_session_id, to=os.path.basename(prev))
+    return {"ok": True, "summary": f"Undone — back to {os.path.basename(prev)}.",
+            "candidates": [{
+                "label": f"{os.path.basename(prev)} — {_parse_desc(prev)}",
+                "gpx": prev, "latlngs": _downsample(_parse_gpx(prev)),
+            }]}
+
+
 @app.get("/api/current")
 def get_current(x_session_id: str | None = Header(default=None)):
     workdir = session_dir(x_session_id)

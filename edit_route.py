@@ -40,6 +40,20 @@ def current_route(workdir: str = OUT_DIR) -> str | None:
     return None
 
 
+def predecessor(route_path: str) -> str | None:
+    """The version this edit was built on: editN -> editN-1 -> the base
+    file. Edit files persist in the workdir, so undo is just a pointer
+    move."""
+    base, ext = os.path.splitext(route_path)
+    if "_edit" not in base:
+        return None
+    stem, n = base.rsplit("_edit", 1)
+    if not n.isdigit():
+        return None
+    prev = stem + ext if int(n) <= 1 else f"{stem}_edit{int(n) - 1}{ext}"
+    return prev if os.path.exists(prev) else None
+
+
 def run_edit(route_path: str, place: str | None = None,
              radius_m: float = 1000.0, mode: str = "avoid",
              profile: str | None = None, out_dir: str = OUT_DIR,

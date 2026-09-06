@@ -67,7 +67,13 @@
       <input id="start" placeholder="Where do your rides start? (address or town)"/>
       <button id="setstart">Set</button>
     </div>
-    <div id="current">no current route</div>
+    <div style="display:flex; gap:8px; align-items:center;">
+      <div id="current" style="flex:1;">no current route</div>
+      <button id="undobtn" title="step back to the previous version"
+        style="font-size:11px; background:none; color:var(--dim);
+               border:1px solid var(--line); border-radius:6px;
+               padding:3px 8px; cursor:pointer;">↩ undo</button>
+    </div>
   </header>
   <div id="askbox">
     <textarea id="ask" placeholder="give me a 40 mile loop from home, not much climbing&#10;&#10;find a flat spot for 2x20 within 30 min&#10;&#10;detour around Pheasant Branch, use roads"></textarea>
@@ -262,6 +268,14 @@ async function send() {
   } finally { go.disabled = false; }
 }
 document.getElementById('go').onclick = send;
+
+document.getElementById('undobtn').onclick = async () => {
+  const r = await fetch('/api/undo', {method:'POST', headers: hdrs()})
+    .then(r => r.json());
+  banner(r.summary, r.ok);
+  if (r.candidates && r.candidates.length) showResult(r);
+  refreshCurrent();
+};
 
 // ---- upload an existing route ----
 const gpxInput = document.getElementById('gpxfile');

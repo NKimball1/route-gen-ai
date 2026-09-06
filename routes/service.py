@@ -96,8 +96,27 @@ def _dispatch(text: str, default_address: str | None, workdir: str) -> dict:
     if req.get("notes"):
         print(f"Note: couldn't map: {req['notes']}")
 
+    if req["request_type"] == "undo":
+        from edit_route import current_route, predecessor
+        from routes.preview import _parse_desc, _parse_gpx
+        cur = current_route(workdir)
+        prev = cur and predecessor(cur)
+        if not prev:
+            msg = "Nothing to undo — this is the earliest version."
+            print(msg)
+            return {"kind": "error", "candidates": [], "ok": False,
+                    "summary": msg}
+        with open(os.path.join(workdir, "latest.txt"), "w") as f:
+            f.write(prev)
+        msg = f"Undone — back to {os.path.basename(prev)}."
+        print(msg)
+        return {"kind": "edit", "ok": True, "summary": msg, "candidates": [{
+            "label": f"{os.path.basename(prev)} — {_parse_desc(prev)}",
+            "gpx": prev, "latlngs": _downsample(_parse_gpx(prev)),
+        }]}
+
     if req["request_type"] == "edit_route":
-        from edit_route import current_route, run_edit
+        from edit_route import current_route, predecessor, run_edit
         from routes.preview import _parse_desc, _parse_gpx
         route_path = current_route(workdir)
         if route_path is None:
@@ -105,8 +124,15 @@ def _dispatch(text: str, default_address: str | None, workdir: str) -> dict:
             print(msg)
             return {"kind": "error", "candidates": [], "ok": False,
                     "summary": msg}
-        print(f"Editing: {route_path}")
         e = req["edit"]
+        if e.get("revert_first"):
+            prev = predecessor(route_path)
+            if prev:
+                print(f"Reverting the last change first "
+                      f"({os.path.basename(route_path)} -> "
+                      f"{os.path.basename(prev)})")
+                route_path = prev
+        print(f"Editing: {route_path}")
         mode = e.get("mode", "avoid")
         delta = e.get("miles_delta")
         if mode in ("extend", "shorten") and not delta and e.get("target_miles"):
