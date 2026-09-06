@@ -520,6 +520,29 @@ wasn't as intended, I meant…") now sets `revert_first`, applying the fix
 to the version *before* the bad change — matching what a human editor
 would obviously do.
 
+## Phase 23 — No more false "Done" (2026-09-06)
+
+An avoid edit reported success while doing nothing. The mechanics: the
+1 km no-go circle around the road being avoided also enclosed the
+route's own endpoint (the rider's home is that close to the road), the
+router returned 400, the section was silently kept — and the summary
+proudly said "Done — around Whitney Way (+0.0 mi)."
+
+Two fixes, one principle. The mechanics: per-section no-go radii now
+shrink so they never swallow a leg's endpoints, and failed sections are
+counted with reasons instead of skipped. The principle: **verify the
+outcome, don't narrate the process.** Avoid edits now measure the final
+route against the zone and say what's true — "Verified clear of the
+area", or amber "Partly done — still passes within N m" — the same
+validator philosophy the route generator has used since phase 6, finally
+applied to edits.
+
+Also made honest: avoiding a point-with-radius only approximates
+avoiding a LINEAR road; when home is 1 km from the road, "avoid it by
+1 km" is geometrically impossible and the banner now says so instead of
+pretending. True road-shape avoidance (the way's geometry as a chain of
+no-gos) is logged as the upgrade.
+
 ## Testing & verification practices that emerged
 
 - 24 unit tests: despurring (exact, corridor, palindrome semantics),
