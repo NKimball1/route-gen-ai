@@ -4,13 +4,49 @@ Both the CLI (ask.py) and the web API (api.py) call this — one brain, two
 mouths. Captures the pipeline's progress prints as a log and returns the
 result candidates with map-drawable geometry.
 """
-import contextlib
 import io
 import os
+import sys
+import threading
 
 from routes.spec import METERS_PER_FOOT, METERS_PER_MILE
 
 HOME_WORDS = ("home", "my house", "my home", "house")
+
+
+class _StdoutRouter(io.TextIOBase):
+    """Routes print() by THREAD to each job's own log buffer.
+
+    contextlib.redirect_stdout swaps sys.stdout globally — with concurrent
+    web jobs, one job's context exit steals or drops another job's output
+    (found via a two-user test: user B's log came back empty). This router
+    is installed once; each job thread points its writes at its own buffer,
+    everything else falls through to the real stdout."""
+
+    def __init__(self, fallback):
+        self.fallback = fallback
+        self._local = threading.local()
+
+    def set_target(self, target):
+        self._local.target = target
+
+    def clear_target(self):
+        self._local.target = None
+
+    def _t(self):
+        return getattr(self._local, "target", None) or self.fallback
+
+    def write(self, s):
+        return self._t().write(s)
+
+    def flush(self):
+        f = getattr(self._t(), "flush", None)
+        if f:
+            f()
+
+
+if not isinstance(sys.stdout, _StdoutRouter):
+    sys.stdout = _StdoutRouter(sys.stdout)
 
 
 def _downsample(points, max_pts: int = 800):
@@ -22,21 +58,35 @@ def _downsample(points, max_pts: int = 800):
 
 
 def handle_request(text: str, log_sink=None,
-                   default_address: str | None = None) -> dict:
+                   default_address: str | None = None,
+                   workdir: str | None = None) -> dict:
     """Run a plain-English request end to end. Returns
     {kind, log, candidates: [{label, gpx, latlngs, stats...}]}.
     `log_sink`: optional file-like that receives progress lines live.
     `default_address`: used when the request names no start (a web user's
-    configured starting point); falls back to ROUTEGEN_HOME_ADDRESS."""
+    configured starting point); falls back to ROUTEGEN_HOME_ADDRESS.
+    `workdir`: this session's workspace — GPX output and the current-route
+    pointer live here, so concurrent web sessions never share state.
+    Defaults to the CLI's shared output/routes."""
     buf = log_sink if log_sink is not None else io.StringIO()
+    if workdir is None:
+        workdir = os.path.join("output", "routes")
+    os.makedirs(workdir, exist_ok=True)
 
-    with contextlib.redirect_stdout(buf):
-        result = _dispatch(text, default_address)
+    router = sys.stdout if isinstance(sys.stdout, _StdoutRouter) else None
+    route_here = router is not None and buf is not router
+    if route_here:
+        router.set_target(buf)
+    try:
+        result = _dispatch(text, default_address, workdir)
+    finally:
+        if route_here:
+            router.clear_target()
     result["log"] = buf.getvalue() if hasattr(buf, "getvalue") else ""
     return result
 
 
-def _dispatch(text: str, default_address: str | None = None) -> dict:
+def _dispatch(text: str, default_address: str | None, workdir: str) -> dict:
     from routes.nl import parse_request
     req = parse_request(text)
     usage = req.pop("_usage")
@@ -49,14 +99,14 @@ def _dispatch(text: str, default_address: str | None = None) -> dict:
     if req["request_type"] == "edit_route":
         from edit_route import current_route, run_edit
         from routes.preview import _parse_desc, _parse_gpx
-        route_path = current_route()
+        route_path = current_route(workdir)
         if route_path is None:
             print("No current route to edit — compose one first.")
             return {"kind": "error", "candidates": []}
         print(f"Editing: {route_path}")
         e = req["edit"]
         out = run_edit(route_path, e["place"], e["radius_m"],
-                       mode=e.get("mode", "avoid"))
+                       mode=e.get("mode", "avoid"), out_dir=workdir)
         if out is None:
             # keep the unchanged route on screen — a failed edit must never
             # leave the user staring at an empty map
@@ -89,11 +139,11 @@ def _dispatch(text: str, default_address: str | None = None) -> dict:
         iv = req["interval"]
         spec = IntervalSpec(address, iv["reps"], iv["rep_minutes"], iv["kind"],
                             iv["max_travel_minutes"])
-        spots = run_spot_search(spec)
+        spots = run_spot_search(spec, out_dir=workdir)
         cands = []
         for i, s in enumerate(spots, 1):
             path = os.path.join(
-                "output", "spots",
+                workdir,
                 f"spot_{spec.kind}_{spec.reps}x{spec.rep_minutes:.0f}_{i}.gpx")
             cands.append({
                 "label": (f"#{i}: {s.length_mi:.1f} mi @ {s.mean_grade_pct:+.1f}%"
@@ -124,13 +174,13 @@ def _dispatch(text: str, default_address: str | None = None) -> dict:
                                      minimize_climb=r["minimize_climb"],
                                      via=via, via_names=via_names)
              for s in shapes]
-    keepers = compose(specs, build_providers())
+    keepers = compose(specs, build_providers(), out_dir=workdir)
     miles = specs[0].distance_m / METERS_PER_MILE
     goal = ("maxclimb" if specs[0].maximize_ascent
             else "minclimb" if specs[0].minimize_ascent else "ride")
     cands = []
     for i, c in enumerate(keepers, 1):
-        path = os.path.join("output", "routes",
+        path = os.path.join(workdir,
                             f"route_{miles:.0f}mi_{goal}_{i}_{c.shape}_{c.provider}.gpx")
         major = "" if c.major_m < 50 else f", {c.major_m / 1609.344:.1f} mi major"
         cands.append({

@@ -24,19 +24,22 @@ from routes.providers import BRouterProvider
 from routes.spec import METERS_PER_FOOT, METERS_PER_MILE
 
 OUT_DIR = os.path.join("output", "routes")
-LATEST = os.path.join(OUT_DIR, "latest.txt")
 
 
-def current_route() -> str | None:
-    if os.path.exists(LATEST):
-        path = open(LATEST, encoding="utf-8-sig").read().strip()
+def current_route(workdir: str = OUT_DIR) -> str | None:
+    """The session's current route (per-workdir, so web sessions don't
+    share state — see routes/service.py)."""
+    latest = os.path.join(workdir, "latest.txt")
+    if os.path.exists(latest):
+        path = open(latest, encoding="utf-8-sig").read().strip()
         if os.path.exists(path):
             return path
     return None
 
 
 def run_edit(route_path: str, place: str, radius_m: float = 1000.0,
-             mode: str = "avoid", profile: str | None = None) -> str | None:
+             mode: str = "avoid", profile: str | None = None,
+             out_dir: str = OUT_DIR) -> str | None:
     """Edit route_path: mode 'avoid' detours around the place, mode 'via'
     reroutes the nearest section through it. Returns the new GPX path."""
     points = _parse_gpx(route_path)
@@ -60,20 +63,21 @@ def run_edit(route_path: str, place: str, radius_m: float = 1000.0,
                   "change.")
             return None
 
+    os.makedirs(out_dir, exist_ok=True)
     base = os.path.basename(route_path).rsplit(".", 1)[0]
     base = base.split("_edit")[0]
     n = 1
-    while os.path.exists(os.path.join(OUT_DIR, f"{base}_edit{n}.gpx")):
+    while os.path.exists(os.path.join(out_dir, f"{base}_edit{n}.gpx")):
         n += 1
-    out_path = os.path.join(OUT_DIR, f"{base}_edit{n}.gpx")
+    out_path = os.path.join(out_dir, f"{base}_edit{n}.gpx")
 
     verb = "via" if mode == "via" else "around"
     desc = (f"{result.distance_m / METERS_PER_MILE:.1f} mi, "
             f"{result.ascent_m / METERS_PER_FOOT:.0f} ft "
             f"(edit: {verb} {place})")
     write_track(result.points, f"{base} edit{n}", desc, out_path)
-    build_preview([out_path, route_path], os.path.join(OUT_DIR, "preview.html"))
-    with open(LATEST, "w") as f:
+    build_preview([out_path, route_path], os.path.join(out_dir, "preview.html"))
+    with open(os.path.join(out_dir, "latest.txt"), "w") as f:
         f.write(out_path)
 
     delta = result.added_m - result.removed_m

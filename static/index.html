@@ -84,6 +84,12 @@ L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',
 let candLayers = [];   // [{gpx, casing, line}]
 let currentPath = null;
 
+// per-browser session id: isolates this user's routes and current-route
+// state from everyone else's on a shared server
+let SID = localStorage.getItem('rg_sid');
+if (!SID) { SID = crypto.randomUUID(); localStorage.setItem('rg_sid', SID); }
+const HDRS = {'Content-Type': 'application/json', 'X-Session-Id': SID};
+
 const norm = p => (p || '').replaceAll('\\\\', '/').replaceAll('\\', '/');
 
 function restyleLines() {
@@ -97,7 +103,7 @@ function restyleLines() {
 }
 
 async function refreshCurrent() {
-  const r = await fetch('/api/current').then(r => r.json());
+  const r = await fetch('/api/current', {headers: HDRS}).then(r => r.json());
   currentPath = r.current || null;
   document.getElementById('current').textContent =
       currentPath ? 'selected route: ' + currentPath : 'no route selected yet';
@@ -173,8 +179,7 @@ function showResult(result) {
     };
     row.querySelector('button').onclick = async (ev) => {
       ev.stopPropagation();
-      await fetch('/api/current', {method:'POST',
-        headers:{'Content-Type':'application/json'},
+      await fetch('/api/current', {method:'POST', headers: HDRS,
         body: JSON.stringify({text: c.gpx})});
       refreshCurrent();
     };
@@ -199,9 +204,14 @@ async function send() {
     return;
   }
   try {
-    const {job} = await fetch('/api/ask', {method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({text, start})}).then(r => r.json());
+    const resp = await fetch('/api/ask', {method:'POST', headers: HDRS,
+      body: JSON.stringify({text, start})});
+    if (resp.status === 429) {
+      log.textContent = 'A request is already running for this session — wait for it to finish.';
+      go.disabled = false;
+      return;
+    }
+    const {job} = await resp.json();
     while (true) {
       await new Promise(r => setTimeout(r, 1200));
       const j = await fetch('/api/job/' + job).then(r => r.json());
