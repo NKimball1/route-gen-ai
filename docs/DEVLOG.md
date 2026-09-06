@@ -502,6 +502,24 @@ one-line outcome shown as a green/red banner — including partial truth:
 Failures are loud, successes are specific, and nobody reads JSON to
 learn what happened.
 
+## Phase 22 — Undo (2026-09-06)
+
+Session-file forensics on two consecutive requests told the story: the
+rider's first corridor attempt landed wrong; their correction — "last
+change was not as intended, I meant use Struck Street and go under the
+beltline, then Grand Canyon Drive" — was *perfect* (the resulting route
+runs 0 m from both named roads)… but it stacked ON TOP of the mistake,
+because edits chain and there was no way back. The missing capability
+was version control, not vocabulary.
+
+Undo turned out nearly free: every edit already persists as a numbered
+file, so stepping back is a pointer move. Shipped three ways — an undo
+button by the current-route header (no LLM round-trip), typed "undo"
+as a request type, and the subtle one: **corrective phrasing** ("that
+wasn't as intended, I meant…") now sets `revert_first`, applying the fix
+to the version *before* the bad change — matching what a human editor
+would obviously do.
+
 ## Testing & verification practices that emerged
 
 - 24 unit tests: despurring (exact, corridor, palindrome semantics),
