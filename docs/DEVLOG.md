@@ -385,6 +385,24 @@ concurrent jobs with fully separate logs, zero cross-leak. Still open for
 public deployment: rate limiting / auth (state isolation was this phase;
 abuse control is its own).
 
+## Phase 17 — Rate limits, usage log, invite gate (2026-09-06)
+
+Abuse control, sized for a friendly beta. Session ids are client-generated
+and trivially forgeable, so limits stack: per-session (12 asks/hour),
+per-IP (20/hour), a global daily cap (400 — the LLM cost backstop at
+~$0.002/request that keeps a hostile day under a dollar), a geocode
+limit, and a global concurrent-jobs cap protecting the router. All
+env-tunable. Live-verified: exactly 12 requests through, then 429s with
+human-readable refusals.
+
+Usage tracking without accounts: every ask / completion / error / refusal
+appends a JSON line (session, IP, duration, result kind, and — unless
+disabled — the request text, which is the product-improvement gold: what
+do people actually ask a route tool for?). Auth stays deliberately light:
+an optional shared invite code gates the expensive endpoint when set;
+identity waits for "Sign in with Strava", which the roadmap wants anyway
+for per-user segments.
+
 ## Testing & verification practices that emerged
 
 - 24 unit tests: despurring (exact, corridor, palindrome semantics),
