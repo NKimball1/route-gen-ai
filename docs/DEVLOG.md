@@ -25,7 +25,7 @@ Strava heatmap data, bike-safety road data, GPX output.
   (Mirrors ADR 0004 from the companion coaching-agent project:
   computable criteria get computed, not judged by a model.)
 
-## Phase 1 — Prototype (2026-09-03, `0817608`)
+## Phase 1 — Prototype (2026-09-03)
 
 Loop synthesis trick: routers only answer point-to-point, so place
 via-points on a circle through the start and route around them. The circle
@@ -38,7 +38,7 @@ under a climb cap; a 49 mi / 5,112 ft max-climb loop that found Boulder's
 canyons by blind bearing search. Distance error tuned from +14% to ±5% by
 measuring actual road-winding vs. the geometric circle.
 
-## Phase 2 — Field test round 1: spurs and fast roads (2026-09-04, `f8775ff`)
+## Phase 2 — Field test round 1: spurs and fast roads (2026-09-04)
 
 First rides reviewed by an actual cyclist produced two complaints:
 
@@ -58,14 +58,14 @@ Also added `--shape outback|both`: out-and-backs mirror a one-way leg
 (despurring applies to the one-way leg only — a finished out-and-back IS one
 giant palindrome), and return-leg climbing = outbound descent.
 
-## Phase 3 — Interval-spot finder (2026-09-04, `67929e0` → `032b1d2`)
+## Phase 3 — Interval-spot finder (2026-09-04 →)
 
 New request type: "find me a spot for 2x20 threshold intervals — flat, few
 interruptions." Search: route spokes outward, slide a window along each
 spoke's geometry, score on length / gradient character / turn density.
 
 **Field test round 2:** the top VO2 spot had a stop sign and a busy light.
-Turn density can't see a stop sign on a straight road. Fix (`437ea79`): one
+Turn density can't see a stop sign on a straight road. Fix: one
 OSM Overpass query fetches every tagged traffic control in the search area
 (~3,200 around Madison); windows are scored against real stop signs and
 signals.
@@ -76,7 +76,7 @@ per rep**: lapping a short stretch re-encounters its controls, and a
 20-minute effort broken every 2.5 minutes is worthless. Made that term
 dominant; a unit test pins the exact complaint case.
 
-**Field test round 3** caught the counting itself lying (`032b1d2`): a major
+**Field test round 3** caught the counting itself lying: a major
 signalized intersection counted as zero because (a) OSM maps one
 intersection as four corner signal-nodes → clustering added, (b) control
 positions used chord distances while window bounds used road distances —
@@ -90,7 +90,7 @@ rep at 300 W. Physics model says no — ~3:10 (17 mph at that grade). Exposed
 that rep sizing should be power-based, not a flat speed assumption. Logged
 as future work.
 
-## Phase 4 — Via places and route-shape honesty (2026-09-04, `544721f` → `fa5e9fa`)
+## Phase 4 — Via places and route-shape honesty (2026-09-04 →)
 
 "50 miles through Fitchburg and Verona" added `--via`. First implementation
 anchored routes to each town's **exact geocoded center point** — field
@@ -98,7 +98,7 @@ screenshots showed routes "jutting out to touch" the towns and one route
 riding the same road for miles with a loop in between.
 
 Three fixes from one screenshot review:
-- **Soft vias** (`2565e10`): "through a town" = within 2 km. Natural
+- **Soft vias**: "through a town" = within 2 km. Natural
   sweeping loops that happen to pass through both towns are generated first
   and **ranked above** anchored ones. The winning route went from
   touch-and-retreat tendrils to an organic town-to-town loop.
@@ -106,7 +106,7 @@ Three fixes from one screenshot review:
   big loop in between is invisible to palindrome despurring. Grid-hash
   repeated-road fraction; loops >25% repeated are rejected; every result
   reports a "repeat %".
-- **Corridor despurring** (`fa5e9fa`): a tendril whose return leg uses
+- **Corridor despurring**: a tendril whose return leg uses
   slightly different geometry (parallel path, offset lanes) defeats exact
   10 m matching. Resample to uniform 25 m spacing and mirror-match within a
   32 m corridor. Removed the last observed jut.
@@ -118,7 +118,7 @@ synthesis — too-strict profiles make the router reach waypoints by massive
 detour-retraces (up to 65 mi trimmed). Penalty tuning is a Goldilocks
 problem, verified empirically.
 
-## Phase 5 — Self-hosting (2026-09-04, `35b27ec`)
+## Phase 5 — Self-hosting (2026-09-04)
 
 The public brouter.de server returned **403 rate limits** after a day of
 iteration — and a future public website could never lean on it anyway.
@@ -129,7 +129,7 @@ old; portable = zero system changes), Wisconsin tiles, ~200 MB total.
 became interactive. And self-hosting unlocked custom cost profiles — the
 lever the county-highway complaint needed.
 
-## Phase 6 — The quiet profile and the highway auditor (2026-09-04, `78760a6`)
+## Phase 6 — The quiet profile and the highway auditor (2026-09-04)
 
 Custom `fastbike-quiet` profile: primary/secondary/tertiary (Wisconsin
 county-highway classes) cost 3–5x, quiet rural roads stay cheap. Field test
@@ -145,7 +145,7 @@ After the fix, the route the rider had independently rated "actually pretty
 good" ranked #1 — with a verified 0 major-road miles. The U-turn route
 self-eliminated.
 
-## Phase 7 — LLM layer live (2026-09-04, `79cbaea`)
+## Phase 7 — LLM layer live (2026-09-04)
 
 One structured-output call on claude-haiku-4-5 parses plain English into a
 typed spec (route or interval-spot). ~1,200 in / 70 out tokens ≈

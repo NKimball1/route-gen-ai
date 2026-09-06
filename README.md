@@ -40,7 +40,7 @@ owns the search and the judgment, and routing engines are swappable backends.
 4. **Output**: GPX tracks (`output/routes/`, `output/spots/`) importable to
    Garmin Connect as courses, plus a Leaflet map preview (`preview.html`).
 
-Routing backends: **BRouter** — self-hosted at `C:\Users\me\brouter`
+Routing backends: **BRouter** — self-hosted (see docs/DEVLOG.md phase 5 for setup)
 (start with `start_brouter.cmd`, port 17777; `BROUTER_URL` in `.env` points
 there, comment it out to fall back to the public brouter.de server, which
 rate-limits) — and **OpenRouteService** (activates when `ORS_API_KEY` is
