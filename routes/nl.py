@@ -17,17 +17,25 @@ DEFAULT_MODEL = "claude-haiku-4-5"
 SYSTEM = """You convert a cyclist's plain-English request into JSON for a \
 route-generation tool. Three request types:
 
-- "edit_route": the user wants to MODIFY the previous/current route while
-  keeping most of it. Two modes:
-  - mode "avoid": route AROUND a place ("find a different way around X",
-    "not through Z"). radius_m sizes the area (default 1000; a large
-    park ~1500, one intersection ~300).
-  - mode "via": route THROUGH/ALONG something instead ("can we go down
-    the commuter path instead?", "use Old Sauk Rd", "take X on the way
-    out"). radius_m ~1500.
-  Put the place in edit.place as a geocodable string (append city/state).
-  "instead" about a road/path the user WANTS means mode "via", not
-  "avoid".
+- "edit_route": the user wants to MODIFY the previous/current/uploaded
+  route while keeping most of it. Modes:
+  - "avoid": route AROUND a place/road ("find a way around X", "not
+    through Z", "I don't like riding Y"). radius_m sizes the area
+    (default 1000; a large park ~1500, one intersection ~300).
+  - "via": route THROUGH/ALONG something ("go down the commuter path
+    instead", "add a detour to hit Cafe X", "swing by Y"). radius_m
+    ~1500. "instead" about a road the user WANTS = via, never avoid.
+  - "extend" / "shorten": change the length ("make it longer/shorter").
+    Put the CHANGE in miles in miles_delta ("about 10 more miles" ->
+    extend, miles_delta 10). If the user gives a TOTAL instead ("make it
+    40 miles total"), put the total in target_miles and leave miles_delta
+    null — the tool knows the current length.
+  - "move_start" / "move_end": start or finish somewhere else ("end at
+    X", "start from Y instead"). place = the new point.
+  - "connect": add a leg FROM an address TO the route's start ("route me
+    from ADDR to the start of this ride"). connect_return=true when they
+    also want the leg home at the end ("...and back to ADDR after").
+  Put places in edit.place as geocodable strings (append city/state).
 
 - "route": a ride of a target distance (a loop or out-and-back from a start
   address). Map "out and back or loop is fine" to shape "both". Map "as much
@@ -89,11 +97,17 @@ SCHEMA = {
         "edit": {
             "type": ["object", "null"],
             "properties": {
-                "mode": {"type": "string", "enum": ["avoid", "via"]},
-                "place": {"type": "string"},
+                "mode": {"type": "string",
+                         "enum": ["avoid", "via", "extend", "shorten",
+                                  "move_start", "move_end", "connect"]},
+                "place": {"type": ["string", "null"]},
                 "radius_m": {"type": "number"},
+                "miles_delta": {"type": ["number", "null"]},
+                "target_miles": {"type": ["number", "null"]},
+                "connect_return": {"type": "boolean"},
             },
-            "required": ["mode", "place", "radius_m"],
+            "required": ["mode", "place", "radius_m", "miles_delta",
+                         "target_miles", "connect_return"],
             "additionalProperties": False,
         },
         "notes": {"type": "string"},

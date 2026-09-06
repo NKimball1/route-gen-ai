@@ -70,6 +70,12 @@
       The <b>selected</b> route (✓) is what "detour around X" requests
       modify and what you'd ride — the top result is selected automatically.</div>
   </div>
+  <div id="uploadrow" style="padding:8px 16px; border-bottom:1px solid var(--line);">
+    <input type="file" id="gpxfile" accept=".gpx" hidden>
+    <button id="uploadbtn" style="width:100%; padding:7px; background:#2a323c;
+        color:var(--ink); border:0; border-radius:8px; cursor:pointer;">
+      Upload a GPX to edit…</button>
+  </div>
   <div id="results"></div>
   <div id="log">Ready. The self-hosted router must be running
 (start_brouter.cmd).</div>
@@ -236,6 +242,26 @@ async function send() {
   } finally { go.disabled = false; }
 }
 document.getElementById('go').onclick = send;
+
+// ---- upload an existing route ----
+const gpxInput = document.getElementById('gpxfile');
+document.getElementById('uploadbtn').onclick = () => gpxInput.click();
+gpxInput.onchange = async () => {
+  const f = gpxInput.files[0];
+  if (!f) return;
+  const log = document.getElementById('log');
+  log.textContent = 'Uploading ' + f.name + '…';
+  const fd = new FormData();
+  fd.append('file', f);
+  const h = hdrs(); delete h['Content-Type'];  // browser sets multipart
+  const resp = await fetch('/api/upload', {method:'POST', headers: h, body: fd});
+  const data = await resp.json();
+  if (!resp.ok) { log.textContent = data.error || 'Upload failed.'; return; }
+  log.textContent = 'Uploaded. It is now the selected route — ask for changes: '
+    + '"avoid <road>", "make it 10 miles longer", "add a stop at <cafe>"…';
+  showResult(data);
+  gpxInput.value = '';
+};
 document.getElementById('ask').addEventListener('keydown', e => {
   if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) send();
 });

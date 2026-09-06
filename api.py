@@ -21,7 +21,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from fastapi import FastAPI, Header, Request
+from fastapi import FastAPI, File, Header, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 
@@ -141,6 +141,57 @@ def ask(body: Ask, request: Request,
                      args=(job_id, body.text, body.start, workdir),
                      daemon=True).start()
     return {"job": job_id}
+
+
+@app.post("/api/upload")
+async def upload(request: Request, file: UploadFile = File(...),
+                 x_session_id: str | None = Header(default=None),
+                 x_invite_code: str | None = Header(default=None)):
+    """Upload an existing GPX; it becomes the session's current route, so
+    every edit ('avoid that road', 'make it longer', ...) works on it."""
+    workdir = session_dir(x_session_id)
+    if workdir is None:
+        return JSONResponse({"error": "missing or invalid session id"},
+                            status_code=400)
+    if INVITE_CODE and x_invite_code != INVITE_CODE:
+        return JSONResponse({"error": "invite code required"}, status_code=401)
+    if not limits.allow(("upload", client_ip(request)), 20, 3600):
+        return JSONResponse({"error": "too many uploads — slow down"},
+                            status_code=429)
+    data = await file.read()
+    if len(data) > 8 * 1024 * 1024:
+        return JSONResponse({"error": "file too large (8 MB max)"},
+                            status_code=413)
+    from routes.elevation import track_ascent
+    from routes.preview import parse_gpx_text
+    from routes.editing import _cum
+    from routes.gpx_out import write_track
+    from routes.service import _downsample
+    points = parse_gpx_text(data.decode("utf-8", errors="ignore"))
+    if len(points) < 2:
+        return JSONResponse(
+            {"error": "no track/route points found in that file"},
+            status_code=400)
+    safe = re.sub(r"[^A-Za-z0-9_-]+", "_",
+                  os.path.splitext(file.filename or "route")[0])[:40] or "route"
+    out = os.path.join(workdir, f"upload_{safe}.gpx")
+    dist_mi = _cum(points)[-1] / 1609.344
+    ascent_ft = track_ascent(points) / 0.3048
+    ele_note = "" if any(p[2] is not None for p in points) else \
+        " — no elevation data in this file; climbing will read low until an edit adds routed legs"
+    # rewriting through write_track normalizes the format and drops
+    # timestamps/HR/extensions the original may carry (privacy win)
+    write_track(points, safe, f"{dist_mi:.1f} mi, {ascent_ft:.0f} ft (uploaded)",
+                out)
+    with open(os.path.join(workdir, "latest.txt"), "w") as f:
+        f.write(out)
+    limits.log_event("upload", sid=x_session_id, ip=client_ip(request),
+                     name=safe, points=len(points), miles=round(dist_mi, 1))
+    return {"kind": "upload", "candidates": [{
+        "label": f"uploaded: {safe} — {dist_mi:.1f} mi, {ascent_ft:.0f} ft"
+                 + ele_note,
+        "gpx": out, "latlngs": _downsample(points),
+    }]}
 
 
 @app.get("/api/geocode")

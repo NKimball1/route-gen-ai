@@ -40,6 +40,151 @@ def _cum(points) -> list[float]:
     return out
 
 
+def _result(points, removed_m, added_m, detours=1) -> EditResult:
+    return EditResult(
+        points=points, distance_m=_cum(points)[-1],
+        ascent_m=track_ascent(points),
+        overlap_frac=repeated_fraction(points),
+        detours=detours, removed_m=removed_m, added_m=added_m)
+
+
+def extend_route(points, add_m: float, provider,
+                 anchor_span_m: float = 1500.0) -> EditResult | None:
+    """Make the route ~add_m longer by bowing one section outward — the
+    same trick loop synthesis uses, applied to an existing route. Tries a
+    few spots/sides and keeps the best distance fit."""
+    from routes.providers import _bearing, _destination
+
+    cum = _cum(points)
+    total = cum[-1]
+    best = None
+    for frac, side in ((0.5, 1), (0.5, -1), (0.32, 1), (0.68, -1)):
+        i = next(k for k in range(len(points)) if cum[k] >= frac * total)
+        a = next(k for k in range(i, -1, -1)
+                 if cum[i] - cum[k] >= anchor_span_m or k == 0)
+        b = next(k for k in range(i, len(points))
+                 if cum[k] - cum[i] >= anchor_span_m or k == len(points) - 1)
+        if b - a < 2:
+            continue
+        bearing = _bearing(points[a][:2], points[b][:2])
+        mid = ((points[a][0] + points[b][0]) / 2,
+               (points[a][1] + points[b][1]) / 2)
+        r = add_m / 2 / 1.2
+        for _ in range(3):
+            ext = _destination(mid[0], mid[1], bearing + 90 * side, r)
+            leg = provider.route([points[a][:2], ext, points[b][:2]])
+            if leg is None:
+                break
+            new_pts = points[:a + 1] + leg["points"] + points[b:]
+            gained = _cum(new_pts)[-1] - total
+            if gained <= 0:
+                break
+            cand = (abs(gained - add_m),
+                    _result(new_pts, cum[b] - cum[a], leg["distance_m"]))
+            if best is None or cand[0] < best[0]:
+                best = cand
+            if abs(gained - add_m) <= 0.15 * add_m:
+                break
+            r *= max(0.3, min(3.0, add_m / gained))
+    return best[1] if best else None
+
+
+def shorten_route(points, cut_m: float, provider) -> EditResult | None:
+    """Make the route ~cut_m shorter by bridging one section directly.
+    Samples cut positions along the middle of the route, keeps the bridge
+    whose result lands nearest the target length."""
+    cum = _cum(points)
+    total = cum[-1]
+    target = total - cut_m
+    if target < 3000:
+        print("  that would leave almost no ride — not shortening")
+        return None
+    best = None
+    n = len(points)
+    starts = [next(k for k in range(n) if cum[k] >= f * total)
+              for f in (0.1, 0.22, 0.34, 0.46, 0.58, 0.7)]
+    for i in starts:
+        # walk forward looking for the cut that saves ~cut_m; if the route
+        # can't give that much from this anchor, keep the best partial —
+        # "10 miles shorter" on a route that can only lose 6 should yield
+        # the 6 with a note, not a refusal
+        j = i
+        best_j, best_saved = None, 0.0
+        while j < n - 1 and cum[j] < 0.9 * total:
+            j += 1
+            saved = (cum[j] - cum[i]) - 1.25 * _dist_m(points[i], points[j])
+            if saved > best_saved:
+                best_j, best_saved = j, saved
+            if saved >= cut_m:
+                break
+        if best_j is None or best_saved < max(0.3 * cut_m, 400.0):
+            continue
+        j = best_j
+        leg = provider.route([points[i][:2], points[j][:2]])
+        if leg is None:
+            continue
+        new_pts = points[:i + 1] + leg["points"] + points[j:]
+        new_total = _cum(new_pts)[-1]
+        if new_total >= total:
+            continue
+        cand = (abs(new_total - target),
+                _result(new_pts, cum[j] - cum[i], leg["distance_m"]))
+        if best is None or cand[0] < best[0]:
+            best = cand
+    if best is None:
+        return None
+    achieved = total - best[1].distance_m
+    if achieved < 0.85 * cut_m:
+        print(f"  could only shorten by ~{achieved / 1609.344:.1f} mi "
+              f"(asked ~{cut_m / 1609.344:.1f}) — the route has no bigger "
+              "cuttable detour")
+    return best[1]
+
+
+def move_endpoint(points, target, provider, at: str = "end",
+                  buffer_m: float = 2000.0) -> EditResult | None:
+    """Reroute the first/last stretch so the ride starts or ends at target."""
+    cum = _cum(points)
+    total = cum[-1]
+    span = min(buffer_m, 0.3 * total)
+    if at == "end":
+        a = next(k for k in range(len(points) - 1, -1, -1)
+                 if total - cum[k] >= span or k == 0)
+        leg = provider.route([points[a][:2], target])
+        if leg is None:
+            return None
+        new_pts = points[:a + 1] + leg["points"]
+        removed = total - cum[a]
+    else:
+        b = next(k for k in range(len(points))
+                 if cum[k] >= span or k == len(points) - 1)
+        leg = provider.route([target, points[b][:2]])
+        if leg is None:
+            return None
+        new_pts = leg["points"] + points[b:]
+        removed = cum[b]
+    return _result(new_pts, removed, leg["distance_m"])
+
+
+def connect_from(points, addr, provider,
+                 with_return: bool = False) -> EditResult | None:
+    """Prepend a leg from addr to the route's start ('ride there from my
+    place'); optionally also append the leg home from the route's end."""
+    leg_out = provider.route([addr, points[0][:2]])
+    if leg_out is None:
+        return None
+    new_pts = leg_out["points"] + points
+    added = leg_out["distance_m"]
+    if with_return:
+        leg_back = provider.route([points[-1][:2], addr])
+        if leg_back is None:
+            print("  could not route the return leg — added the outbound only")
+        else:
+            new_pts = new_pts + leg_back["points"]
+            added += leg_back["distance_m"]
+    return _result(new_pts, 0.0, added, detours=2 if with_return else 1)
+
+
 def route_via(points, target, provider,
               buffer_m: float = 1500.0) -> EditResult | None:
     """Reroute the section of `points` nearest to `target` (lat, lon) so it

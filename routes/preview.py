@@ -55,15 +55,20 @@ def _haversine_m(a: tuple[float, float], b: tuple[float, float]) -> float:
     return 2 * EARTH_RADIUS_M * math.asin(math.sqrt(h))
 
 
-def _parse_gpx(path: str) -> list[tuple[float, float, float | None]]:
-    text = open(path, encoding="utf-8").read()
+def parse_gpx_text(text: str) -> list[tuple[float, float, float | None]]:
+    """Track or route points from GPX text. Tolerant of uploads: accepts
+    <trkpt> and <rtept>, missing <ele>, self-closing tags."""
     pts = []
     for m in re.finditer(
-            r'<trkpt lat="([\-0-9.]+)" lon="([\-0-9.]+)"'
-            r'(?:\s*/>|>\s*<ele>([\-0-9.]+)</ele>)', text):
+            r'<(?:trkpt|rtept)\s+lat="([\-0-9.]+)"\s+lon="([\-0-9.]+)"\s*'
+            r'(?:/>|>(?:\s*<ele>([\-0-9.]+)</ele>)?)', text):
         lat, lon, ele = float(m.group(1)), float(m.group(2)), m.group(3)
         pts.append((lat, lon, float(ele) if ele else None))
     return pts
+
+
+def _parse_gpx(path: str) -> list[tuple[float, float, float | None]]:
+    return parse_gpx_text(open(path, encoding="utf-8").read())
 
 
 def _stats(points) -> tuple[float, float]:

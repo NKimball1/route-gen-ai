@@ -11,3 +11,4 @@ fitparse>=1.2  # parse ridden .fit files for ride-vs-route calibration (compare_
 # Web frontend (api.py + static/index.html).
 fastapi>=0.100
 uvicorn>=0.23
+python-multipart>=0.0.9  # GPX upload endpoint (api.py)

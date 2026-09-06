@@ -16,7 +16,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from routes.editing import detour_around, route_via
+from routes.editing import (connect_from, detour_around, extend_route,
+                            move_endpoint, route_via, shorten_route)
 from routes.geocode import geocode_flexible
 from routes.gpx_out import write_track
 from routes.preview import _parse_gpx, build_preview
@@ -37,30 +38,64 @@ def current_route(workdir: str = OUT_DIR) -> str | None:
     return None
 
 
-def run_edit(route_path: str, place: str, radius_m: float = 1000.0,
-             mode: str = "avoid", profile: str | None = None,
-             out_dir: str = OUT_DIR) -> str | None:
-    """Edit route_path: mode 'avoid' detours around the place, mode 'via'
-    reroutes the nearest section through it. Returns the new GPX path."""
+def run_edit(route_path: str, place: str | None = None,
+             radius_m: float = 1000.0, mode: str = "avoid",
+             profile: str | None = None, out_dir: str = OUT_DIR,
+             miles_delta: float | None = None,
+             connect_return: bool = False) -> str | None:
+    """Edit route_path. Modes: avoid, via, extend, shorten, move_start,
+    move_end, connect. Returns the new GPX path (None = unchanged)."""
     points = _parse_gpx(route_path)
     if not points:
         print(f"could not read route: {route_path}")
         return None
-    zlat, zlon, zname = geocode_flexible(place)
     provider = BRouterProvider(profile=profile)
 
-    if mode == "via":
-        print(f"Routing through: {zname}")
-        result = route_via(points, (zlat, zlon),
-                           provider, buffer_m=max(radius_m, 1200.0))
-        if result is None:
+    if mode in ("extend", "shorten"):
+        if not miles_delta or miles_delta <= 0:
+            print("How much longer/shorter? Give a number of miles.")
             return None
-    else:
-        print(f"Detouring around: {zname} (r={radius_m:.0f} m)")
-        result = detour_around(points, (zlat, zlon, radius_m), provider)
+        meters = miles_delta * METERS_PER_MILE
+        if mode == "extend":
+            print(f"Extending by ~{miles_delta:.0f} mi")
+            result = extend_route(points, meters, provider)
+        else:
+            print(f"Shortening by ~{miles_delta:.0f} mi")
+            result = shorten_route(points, meters, provider)
         if result is None:
-            print("The route never passes through that area — nothing to "
-                  "change.")
+            print("Couldn't find a good way to do that — route unchanged.")
+            return None
+        place = f"{mode} {miles_delta:.0f}mi"
+    else:
+        if not place:
+            print("That edit needs a place/address.")
+            return None
+        # bias place lookup to the route's own neighborhood (~15 km margin)
+        lats = [p[0] for p in points]
+        lons = [p[1] for p in points]
+        near = (min(lats) - 0.15, min(lons) - 0.2,
+                max(lats) + 0.15, max(lons) + 0.2)
+        zlat, zlon, zname = geocode_flexible(place, near=near)
+        if mode == "via":
+            print(f"Routing through: {zname}")
+            result = route_via(points, (zlat, zlon),
+                               provider, buffer_m=max(radius_m, 1200.0))
+        elif mode in ("move_start", "move_end"):
+            where = "start" if mode == "move_start" else "end"
+            print(f"Moving the {where} to: {zname}")
+            result = move_endpoint(points, (zlat, zlon), provider, at=where)
+        elif mode == "connect":
+            print(f"Connecting from: {zname}"
+                  + (" (and back at the end)" if connect_return else ""))
+            result = connect_from(points, (zlat, zlon), provider,
+                                  with_return=connect_return)
+        else:
+            print(f"Detouring around: {zname} (r={radius_m:.0f} m)")
+            result = detour_around(points, (zlat, zlon, radius_m), provider)
+            if result is None:
+                print("The route never passes through that area — nothing "
+                      "to change.")
+        if result is None:
             return None
 
     os.makedirs(out_dir, exist_ok=True)
@@ -71,10 +106,12 @@ def run_edit(route_path: str, place: str, radius_m: float = 1000.0,
         n += 1
     out_path = os.path.join(out_dir, f"{base}_edit{n}.gpx")
 
-    verb = "via" if mode == "via" else "around"
+    verbs = {"via": "via", "avoid": "around", "extend": "",
+             "shorten": "", "move_start": "start at",
+             "move_end": "end at", "connect": "connect"}
     desc = (f"{result.distance_m / METERS_PER_MILE:.1f} mi, "
             f"{result.ascent_m / METERS_PER_FOOT:.0f} ft "
-            f"(edit: {verb} {place})")
+            f"(edit: {verbs.get(mode, mode)} {place})".replace(":  ", ": "))
     write_track(result.points, f"{base} edit{n}", desc, out_path)
     build_preview([out_path, route_path], os.path.join(out_dir, "preview.html"))
     with open(os.path.join(out_dir, "latest.txt"), "w") as f:

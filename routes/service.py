@@ -105,8 +105,19 @@ def _dispatch(text: str, default_address: str | None, workdir: str) -> dict:
             return {"kind": "error", "candidates": []}
         print(f"Editing: {route_path}")
         e = req["edit"]
-        out = run_edit(route_path, e["place"], e["radius_m"],
-                       mode=e.get("mode", "avoid"), out_dir=workdir)
+        mode = e.get("mode", "avoid")
+        delta = e.get("miles_delta")
+        if mode in ("extend", "shorten") and not delta and e.get("target_miles"):
+            from routes.editing import _cum
+            cur_mi = _cum(_parse_gpx(route_path))[-1] / 1609.344
+            diff = e["target_miles"] - cur_mi
+            mode = "extend" if diff > 0 else "shorten"
+            delta = abs(diff)
+            print(f"Current route is {cur_mi:.1f} mi; "
+                  f"{mode}ing by {delta:.1f} mi")
+        out = run_edit(route_path, e.get("place"), e["radius_m"], mode=mode,
+                       out_dir=workdir, miles_delta=delta,
+                       connect_return=e.get("connect_return", False))
         if out is None:
             # keep the unchanged route on screen — a failed edit must never
             # leave the user staring at an empty map
