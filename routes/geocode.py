@@ -45,15 +45,30 @@ def _geocode_bounded(query: str, near) -> tuple[float, float, str]:
     return float(hit["lat"]), float(hit["lon"]), hit["display_name"]
 
 
+def _query_variants(place: str) -> list[str]:
+    """Progressively simpler queries: drop trailing comma-parts, and also
+    try without generic suffixes ('greentree neighborhood' -> 'greentree' —
+    OSM names the neighborhood, not the word 'neighborhood')."""
+    parts = [p.strip() for p in place.split(",")]
+    queries = []
+    for n in range(len(parts), 0, -1):
+        q = ", ".join(parts[:n])
+        queries.append(q)
+        for suffix in (" neighborhood", " area", " district"):
+            if q.lower().endswith(suffix):
+                queries.append(q[: -len(suffix)])
+    return queries
+
+
 def geocode_flexible(place: str,
                      near=None) -> tuple[float, float, str]:
     """Geocode with fallbacks: an LLM (or user) may append the wrong city
-    to a place name. Try the full string, then progressively drop trailing
-    comma-separated parts ("X, Madison, WI" -> "X, Madison" -> "X").
-    With `near` (minlat, minlon, maxlat, maxlon), bounded lookups run
-    first, unbounded only as a last resort."""
-    parts = [p.strip() for p in place.split(",")]
-    queries = [", ".join(parts[:n]) for n in range(len(parts), 0, -1)]
+    to a place name. With `near` (minlat, minlon, maxlat, maxlon), bounded
+    lookups run first — and an unbounded hit far outside that box is
+    REJECTED rather than returned (a Madison request once matched an
+    Applebee's in Pittsburgh; a confidently wrong place is worse than a
+    clear 'not found')."""
+    queries = _query_variants(place)
     last_error = None
     if near is not None:
         for q in queries:
@@ -63,7 +78,17 @@ def geocode_flexible(place: str,
                 last_error = e
     for q in queries:
         try:
-            return geocode(q)
+            lat, lon, name = geocode(q)
+            if near is not None:
+                minlat, minlon, maxlat, maxlon = near
+                pad_lat = (maxlat - minlat)
+                pad_lon = (maxlon - minlon)
+                if not (minlat - pad_lat <= lat <= maxlat + pad_lat
+                        and minlon - pad_lon <= lon <= maxlon + pad_lon):
+                    raise ValueError(
+                        f"only found {name.split(',')[0]!r} far from the "
+                        f"route — try a road name plus city, or a landmark")
+            return lat, lon, name
         except ValueError as e:
             last_error = e
     raise last_error

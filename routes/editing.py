@@ -194,6 +194,82 @@ def move_endpoint(points, target, provider,
                    leg["distance_m"])
 
 
+def route_via_chain(points, targets, provider,
+                    buffer_m: float = 1500.0) -> EditResult | None:
+    """Reroute one section through SEVERAL waypoints ('through Greentree,
+    past Exact Sciences, take the tunnel'): find where each target sits
+    along the route, span them all with a buffer, and route the whole gap
+    as one leg threading the targets in ride order."""
+    if len(targets) == 1:
+        return route_via(points, targets[0], provider, buffer_m)
+    cum = _cum(points)
+    total = cum[-1]
+
+    def passes(t):
+        """Every place the route comes near t (a ride can pass a spot
+        twice — out and back): (cum_position, distance) per pass."""
+        d = [_dist_m(p, t) for p in points]
+        mind = min(d)
+        if mind > 8000:
+            return []
+        thresh = max(mind * 1.5, mind + 400.0)
+        out, run = [], []
+        for k in range(len(points)):
+            if d[k] <= thresh:
+                run.append(k)
+            elif run:
+                best = min(run, key=lambda k: d[k])
+                out.append(cum[best])
+                run = []
+        if run:
+            out.append(cum[min(run, key=lambda k: d[k])])
+        return out
+
+    per_target = []
+    for t in targets:
+        p = passes(t)
+        if not p:
+            print(f"  a waypoint is too far from the route — skipping it")
+            continue
+        per_target.append((t, p))
+    if not per_target:
+        print("  none of those places are near the route")
+        return None
+
+    # choose ONE pass per waypoint minimizing the edited span — matching
+    # waypoints to opposite passes of an out-and-back once replaced 49 mi
+    # of a ride with a 5 mi shortcut
+    from itertools import product
+    best_combo, best_span = None, None
+    for combo in product(*(p for _, p in per_target)):
+        span = max(combo) - min(combo)
+        if best_span is None or span < best_span:
+            best_combo, best_span = combo, span
+    if best_span > 0.45 * total:
+        print(f"  those places span {best_span / total:.0%} of the ride — "
+              "that edit would replace most of the route. Ask for them one "
+              "at a time instead.")
+        return None
+    idx = sorted(zip(best_combo, (t for t, _ in per_target)))
+    lo_cum, hi_cum = idx[0][0], idx[-1][0]
+    a = max(0, next(k for k in range(len(points)) if cum[k] >= lo_cum) - 1)
+    while a > 0 and lo_cum - cum[a] < buffer_m:
+        a -= 1
+    b = min(len(points) - 1,
+            next(k for k in range(len(points)) if cum[k] >= hi_cum))
+    while b < len(points) - 1 and cum[b] - hi_cum < buffer_m:
+        b += 1
+    ordered = [t for _, t in idx]
+    leg = provider.route([points[a][:2]] + ordered + [points[b][:2]],
+                         protect=ordered)
+    if leg is None:
+        print("  could not route through those places — route unchanged")
+        return None
+    new_pts = points[:a + 1] + leg["points"] + points[b:]
+    return _result(new_pts, cum[b] - cum[a], leg["distance_m"],
+                   detours=len(ordered))
+
+
 def anchor_at(points, target, provider) -> EditResult | None:
     """Make the ride a round trip from target: start AND end there.
 

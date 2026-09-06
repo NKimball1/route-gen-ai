@@ -101,8 +101,10 @@ def _dispatch(text: str, default_address: str | None, workdir: str) -> dict:
         from routes.preview import _parse_desc, _parse_gpx
         route_path = current_route(workdir)
         if route_path is None:
-            print("No current route to edit — compose one first.")
-            return {"kind": "error", "candidates": []}
+            msg = "No current route to edit — compose or upload one first."
+            print(msg)
+            return {"kind": "error", "candidates": [], "ok": False,
+                    "summary": msg}
         print(f"Editing: {route_path}")
         e = req["edit"]
         mode = e.get("mode", "avoid")
@@ -115,34 +117,40 @@ def _dispatch(text: str, default_address: str | None, workdir: str) -> dict:
             delta = abs(diff)
             print(f"Current route is {cur_mi:.1f} mi; "
                   f"{mode}ing by {delta:.1f} mi")
-        out = run_edit(route_path, e.get("place"), e["radius_m"], mode=mode,
-                       out_dir=workdir, miles_delta=delta,
-                       connect_return=e.get("connect_return", False))
+        out, message = run_edit(route_path, e.get("place"), e["radius_m"],
+                                mode=mode, out_dir=workdir, miles_delta=delta,
+                                connect_return=e.get("connect_return", False),
+                                places=e.get("places"))
+        print(message)
         if out is None:
             # keep the unchanged route on screen — a failed edit must never
             # leave the user staring at an empty map
-            return {"kind": "edit", "candidates": [{
-                "label": f"unchanged: {os.path.basename(route_path)} — "
-                         f"{_parse_desc(route_path)}",
-                "gpx": route_path,
-                "latlngs": _downsample(_parse_gpx(route_path)),
-            }]}
-        return {"kind": "edit", "candidates": [{
-            "label": f"{os.path.basename(out)} — {_parse_desc(out)}",
-            "gpx": out, "latlngs": _downsample(_parse_gpx(out)),
-        }, {
-            "label": f"original: {os.path.basename(route_path)}",
-            "gpx": route_path,
-            "latlngs": _downsample(_parse_gpx(route_path)),
-        }]}
+            return {"kind": "edit", "ok": False, "summary": message,
+                    "candidates": [{
+                        "label": f"unchanged: {os.path.basename(route_path)} — "
+                                 f"{_parse_desc(route_path)}",
+                        "gpx": route_path,
+                        "latlngs": _downsample(_parse_gpx(route_path)),
+                    }]}
+        return {"kind": "edit", "ok": True, "summary": message,
+                "candidates": [{
+                    "label": f"{os.path.basename(out)} — {_parse_desc(out)}",
+                    "gpx": out, "latlngs": _downsample(_parse_gpx(out)),
+                }, {
+                    "label": f"original: {os.path.basename(route_path)}",
+                    "gpx": route_path,
+                    "latlngs": _downsample(_parse_gpx(route_path)),
+                }]}
 
     address = req.get("address")
     if not address or address.strip().lower() in HOME_WORDS:
         address = default_address or os.environ.get("ROUTEGEN_HOME_ADDRESS")
     if not address:
-        print("No start address — set your starting point (or include an "
-              "address in the request).")
-        return {"kind": "error", "candidates": []}
+        msg = ("No start address — set your starting point (or include an "
+               "address in the request).")
+        print(msg)
+        return {"kind": "error", "candidates": [], "ok": False,
+                "summary": msg}
 
     if req["request_type"] == "interval_spot":
         from find_spot import run_spot_search
@@ -162,7 +170,11 @@ def _dispatch(text: str, default_address: str | None, workdir: str) -> dict:
                           f"{s.dist_from_start_m / METERS_PER_MILE:.1f} mi out"),
                 "gpx": path, "latlngs": _downsample(s.points),
             })
-        return {"kind": "interval_spot", "candidates": cands}
+        summary = (f"Found {len(cands)} interval spot(s) — best: "
+                   f"{cands[0]['label']}" if cands else
+                   "No suitable stretch found — try a larger travel radius.")
+        return {"kind": "interval_spot", "ok": bool(cands),
+                "summary": summary, "candidates": cands}
 
     from compose_route import parse_avoid
     from routes.geocode import geocode
@@ -200,4 +212,9 @@ def _dispatch(text: str, default_address: str | None, workdir: str) -> dict:
                       f", {c.overlap_frac:.0%} repeat{major}"),
             "gpx": path, "latlngs": _downsample(c.points),
         })
-    return {"kind": "route", "candidates": cands}
+    summary = (f"{len(cands)} route(s) — best: {cands[0]['label']}"
+               if cands else
+               "No route met the constraints — try a looser target or "
+               "different distance.")
+    return {"kind": "route", "ok": bool(cands), "summary": summary,
+            "candidates": cands}

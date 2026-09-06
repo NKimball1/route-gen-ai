@@ -25,6 +25,10 @@ route-generation tool. Three request types:
   - "via": route THROUGH/ALONG something ("go down the commuter path
     instead", "add a detour to hit Cafe X", "swing by Y"). radius_m
     ~1500. "instead" about a road the user WANTS = via, never avoid.
+    SEVERAL waypoints in one request ("through X, past Y, then take Z")
+    -> put each as its own geocodable string in "places", in ride order,
+    and leave "place" null. Never join multiple places with commas into
+    one string.
   - "extend" / "shorten": change the length ("make it longer/shorter").
     Put the CHANGE in miles in miles_delta ("about 10 more miles" ->
     extend, miles_delta 10). If the user gives a TOTAL instead ("make it
@@ -105,13 +109,15 @@ SCHEMA = {
                                   "move_start", "move_end", "anchor",
                                   "connect"]},
                 "place": {"type": ["string", "null"]},
+                "places": {"type": ["array", "null"],
+                           "items": {"type": "string"}},
                 "radius_m": {"type": "number"},
                 "miles_delta": {"type": ["number", "null"]},
                 "target_miles": {"type": ["number", "null"]},
                 "connect_return": {"type": "boolean"},
             },
-            "required": ["mode", "place", "radius_m", "miles_delta",
-                         "target_miles", "connect_return"],
+            "required": ["mode", "place", "places", "radius_m",
+                         "miles_delta", "target_miles", "connect_return"],
             "additionalProperties": False,
         },
         "notes": {"type": "string"},

@@ -133,6 +133,38 @@ def test_anchor_already_anchored_is_noop():
     assert anchor_at(pts, at_start, FakeProvider()) is None
 
 
+def test_via_chain_picks_same_pass_on_out_and_back():
+    # an out-and-back corridor passes both waypoints TWICE; matching them
+    # to opposite passes once replaced nearly the whole ride with a
+    # shortcut. The chain must pick passes minimizing the edited span.
+    from routes.editing import route_via_chain
+    import tests.test_editing as te
+    step = te.LAT_STEP
+    out_leg = [(43.0 + k * step, -89.5, 300.0) for k in range(200)]
+    turn = [(out_leg[-1][0], out_leg[-1][1] + k * step, 300.0)
+            for k in range(1, 40)]
+    back_leg = [(43.0 + (199 - k) * step, turn[-1][1], 300.0)
+                for k in range(200)]
+    pts = out_leg + turn + back_leg
+    base = sum(1 for _ in pts)
+    t1 = (pts[40][0], pts[40][1] + 0.001)    # near mile ~0.7 outbound
+    t2 = (pts[80][0], pts[80][1] + 0.001)    # near mile ~1.4 outbound
+    result = route_via_chain(pts, [t1, t2], FakeProvider())
+    assert result is not None
+    # only the small outbound stretch between them is replaced
+    assert result.removed_m < 4000
+    from routes.editing import _cum
+    assert abs(result.distance_m - _cum(pts)[-1]) < 5000
+
+
+def test_via_chain_refuses_route_gutting_span():
+    from routes.editing import route_via_chain
+    pts = road(400)
+    t1 = (pts[20][0], pts[20][1] + 0.001)
+    t2 = (pts[380][0], pts[380][1] + 0.001)  # spans ~90% of the route
+    assert route_via_chain(pts, [t1, t2], FakeProvider()) is None
+
+
 def test_connect_one_way_and_round_trip():
     pts = road(100)
     home = (pts[0][0] - 0.02, pts[0][1])
