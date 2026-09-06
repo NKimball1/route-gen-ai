@@ -23,8 +23,10 @@ class EditResult:
     ascent_m: float
     overlap_frac: float
     detours: int
-    removed_m: float   # route length replaced
-    added_m: float     # detour length spliced in
+    removed_m: float        # route length replaced
+    added_m: float          # detour length spliced in
+    failed_detours: int = 0  # sections that could not be rerouted
+    fail_reason: str = ""
 
 
 def _dist_m(a, b) -> float:
@@ -402,12 +404,29 @@ def detour_around(points, zone, provider,
     new_points = []
     cursor = 0
     removed = added = 0.0
-    nogo = [(zlat, zlon, zr + 100.0)]
+    failed = 0
+    fail_reason = ""
     for a, b in gaps:
-        leg = provider.route([points[a][:2], points[b][:2]], avoid=nogo)
+        # a no-go circle must never swallow the leg's own endpoints — an
+        # avoid zone ~1 km from the rider's home once enclosed the route's
+        # end, the router 400'd, and the section was silently kept
+        r_gap = min(zr + 100.0,
+                    _dist_m(points[a], (zlat, zlon)) - 120.0,
+                    _dist_m(points[b], (zlat, zlon)) - 120.0)
+        if r_gap < 120.0:
+            failed += 1
+            fail_reason = ("the ride starts or ends practically on it — "
+                           "that part can't be avoided")
+            print(f"  section at {cum[a] / METERS_PER_MILE:.1f} mi begins/"
+                  "ends inside the avoid area — keeping it")
+            continue
+        leg = provider.route([points[a][:2], points[b][:2]],
+                             avoid=[(zlat, zlon, r_gap)])
         if leg is None:
-            print(f"  detour leg failed at {cum[a] / METERS_PER_MILE:.1f} mi — "
-                  "keeping the original section")
+            failed += 1
+            fail_reason = "no way around it from that section"
+            print(f"  detour leg failed at {cum[a] / METERS_PER_MILE:.1f} mi "
+                  "— keeping the original section")
             continue
         new_points.extend(points[cursor:a + 1])
         new_points.extend(leg["points"])
@@ -415,13 +434,19 @@ def detour_around(points, zone, provider,
         removed += cum[b] - cum[a]
         added += leg["distance_m"]
     new_points.extend(points[cursor:])
+    # all-failed still returns a result (detours=0, failed>0) so the caller
+    # can distinguish "couldn't avoid it" from "route never goes there"
+    if failed == len(gaps):
+        print("  none of the affected sections could be rerouted")
 
     return EditResult(
         points=new_points,
         distance_m=_cum(new_points)[-1],
         ascent_m=track_ascent(new_points),
         overlap_frac=repeated_fraction(new_points),
-        detours=len(gaps),
+        detours=len(gaps) - failed,
         removed_m=removed,
         added_m=added,
+        failed_detours=failed,
+        fail_reason=fail_reason,
     )

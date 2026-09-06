@@ -143,10 +143,11 @@ def _dispatch(text: str, default_address: str | None, workdir: str) -> dict:
             delta = abs(diff)
             print(f"Current route is {cur_mi:.1f} mi; "
                   f"{mode}ing by {delta:.1f} mi")
-        out, message = run_edit(route_path, e.get("place"), e["radius_m"],
-                                mode=mode, out_dir=workdir, miles_delta=delta,
-                                connect_return=e.get("connect_return", False),
-                                places=e.get("places"))
+        out, message, edit_ok = run_edit(
+            route_path, e.get("place"), e["radius_m"],
+            mode=mode, out_dir=workdir, miles_delta=delta,
+            connect_return=e.get("connect_return", False),
+            places=e.get("places"))
         print(message)
         if out is None:
             # keep the unchanged route on screen — a failed edit must never
@@ -158,7 +159,7 @@ def _dispatch(text: str, default_address: str | None, workdir: str) -> dict:
                         "gpx": route_path,
                         "latlngs": _downsample(_parse_gpx(route_path)),
                     }]}
-        return {"kind": "edit", "ok": True, "summary": message,
+        return {"kind": "edit", "ok": edit_ok, "summary": message,
                 "candidates": [{
                     "label": f"{os.path.basename(out)} — {_parse_desc(out)}",
                     "gpx": out, "latlngs": _downsample(_parse_gpx(out)),

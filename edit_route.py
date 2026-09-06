@@ -59,13 +59,15 @@ def run_edit(route_path: str, place: str | None = None,
              profile: str | None = None, out_dir: str = OUT_DIR,
              miles_delta: float | None = None,
              connect_return: bool = False,
-             places: list[str] | None = None) -> tuple[str | None, str]:
+             places: list[str] | None = None):
     """Edit route_path. Modes: avoid, via, extend, shorten, move_start,
     move_end, anchor, connect. Returns (new GPX path or None, a
-    human-readable outcome message — shown prominently in the UI)."""
+    human-readable outcome message, ok: True | "partial" | False).
+    Avoid edits VERIFY the outcome: the final route is measured against
+    the zone rather than trusting that every section rerouted."""
     points = _parse_gpx(route_path)
     if not points:
-        return None, f"Couldn't read the route file ({route_path})."
+        return None, f"Couldn't read the route file ({route_path}).", False
     provider = BRouterProvider(profile=profile)
 
     # bias place lookups to the route's own neighborhood (~15 km margin)
@@ -77,7 +79,7 @@ def run_edit(route_path: str, place: str | None = None,
     skipped: list[str] = []
     if mode in ("extend", "shorten"):
         if not miles_delta or miles_delta <= 0:
-            return None, "How much longer/shorter? Give a number of miles."
+            return None, "How much longer/shorter? Give a number of miles.", False
         meters = miles_delta * METERS_PER_MILE
         if mode == "extend":
             print(f"Extending by ~{miles_delta:.0f} mi")
@@ -87,7 +89,7 @@ def run_edit(route_path: str, place: str | None = None,
             result = shorten_route(points, meters, provider)
         if result is None:
             return None, (f"Couldn't find a good way to {mode} this route "
-                          "by that much — it's unchanged.")
+                          "by that much — it's unchanged."), False
         place = f"{mode} {miles_delta:.0f}mi"
     elif mode == "via" and places and len(places) > 1:
         targets, names = [], []
@@ -102,41 +104,41 @@ def run_edit(route_path: str, place: str | None = None,
         if not targets:
             return None, ("Couldn't locate any of those places near the "
                           f"route ({', '.join(places)}) — try road names "
-                          "plus the city, or landmarks.")
+                          "plus the city, or landmarks."), False
         result = route_via_chain(points, targets, provider,
                                  buffer_m=max(radius_m, 1200.0))
         if result is None:
             return None, ("Couldn't route through those places — the "
-                          "route is unchanged.")
+                          "route is unchanged."), False
         place = " + ".join(names)
     else:
         if not place:
-            return None, "That edit needs a place or address."
+            return None, "That edit needs a place or address.", False
         try:
             zlat, zlon, zname = geocode_flexible(place, near=near)
         except ValueError as e:
             return None, (f"Couldn't find {place!r} near your route "
-                          f"({e}). The route is unchanged.")
+                          f"({e}). The route is unchanged."), False
         if mode == "via":
             print(f"Routing through: {zname}")
             result = route_via(points, (zlat, zlon),
                                provider, buffer_m=max(radius_m, 1200.0))
             if result is None:
                 return None, (f"Couldn't splice the route through "
-                              f"{place!r} — it's unchanged.")
+                              f"{place!r} — it's unchanged."), False
         elif mode in ("move_start", "move_end"):
             where = "start" if mode == "move_start" else "end"
             print(f"Moving the {where} to: {zname}")
             result = move_endpoint(points, (zlat, zlon), provider, at=where)
             if result is None:
                 return None, (f"Couldn't move the {where} there — the "
-                              "route is unchanged.")
+                              "route is unchanged."), False
         elif mode == "anchor":
             print(f"Making it a round trip from: {zname}")
             result = anchor_at(points, (zlat, zlon), provider)
             if result is None:
                 return None, ("The ride already starts and ends there — "
-                              "nothing to change.")
+                              "nothing to change."), False
         elif mode == "connect":
             print(f"Connecting from: {zname}"
                   + (" (and back at the end)" if connect_return else ""))
@@ -144,13 +146,17 @@ def run_edit(route_path: str, place: str | None = None,
                                   with_return=connect_return)
             if result is None:
                 return None, ("Couldn't route from there to the ride — "
-                              "the route is unchanged.")
+                              "the route is unchanged."), False
         else:
             print(f"Detouring around: {zname} (r={radius_m:.0f} m)")
             result = detour_around(points, (zlat, zlon, radius_m), provider)
+            if result is not None and result.detours == 0                     and result.failed_detours > 0:
+                return None, (f"Couldn't avoid {place!r}: "
+                              f"{result.fail_reason}. The route is "
+                              "unchanged."), False
             if result is None:
                 return None, (f"The route never passes through {place!r} — "
-                              "nothing to change.")
+                              "nothing to change."), False
 
     os.makedirs(out_dir, exist_ok=True)
     base = os.path.basename(route_path).rsplit(".", 1)[0]
@@ -182,9 +188,29 @@ def run_edit(route_path: str, place: str | None = None,
     message = (f"Done — {verbs.get(mode, mode)} {place}: now "
                f"{result.distance_m / METERS_PER_MILE:.1f} mi "
                f"({delta / METERS_PER_MILE:+.1f} mi).")
+    ok = True
     if skipped:
         message += f" Couldn't locate and skipped: {', '.join(skipped)}."
-    return out_path, message
+        ok = "partial"
+    if getattr(result, "failed_detours", 0):
+        message = (f"Partly done — rerouted {result.detours} section(s) "
+                   f"around {place}, but {result.failed_detours} couldn't "
+                   f"be ({result.fail_reason}). "
+                   f"Now {result.distance_m / METERS_PER_MILE:.1f} mi.")
+        ok = "partial"
+    if mode == "avoid":
+        # verify the OUTCOME: does the final route actually clear the zone?
+        from routes.editing import _dist_m
+        min_d = min(_dist_m(p, (zlat, zlon)) for p in result.points)
+        if min_d >= radius_m:
+            if ok is True:
+                message += " Verified clear of the area."
+        elif ok is True:
+            message = (f"Partly done — the route was rerouted but still "
+                       f"passes within {min_d:.0f} m of {place}. "
+                       f"Now {result.distance_m / METERS_PER_MILE:.1f} mi.")
+            ok = "partial"
+    return out_path, message, ok
 
 
 def main() -> int:
@@ -216,7 +242,8 @@ def main() -> int:
         place, radius_m = raw, 1000.0
 
     mode = "via" if args.via else "avoid"
-    out, message = run_edit(route_path, place, radius_m, mode, args.profile)
+    out, message, _ok = run_edit(route_path, place, radius_m, mode,
+                                 args.profile)
     print(message)
     return 0 if out else 1
 

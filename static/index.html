@@ -40,6 +40,8 @@
                border-left:3px solid #2f9e44; }
   #banner.bad { display:block; background:#3b1517; color:#ffa8a8;
                 border-left:3px solid #e03131; }
+  #banner.warn { display:block; background:#3b2c12; color:#ffd8a8;
+                 border-left:3px solid #f08c00; }
   #results { overflow-y:auto; flex:0 0 auto; max-height:38%; }
   .cand { padding:9px 16px; border-bottom:1px solid var(--line); cursor:pointer;
           display:flex; align-items:center; gap:9px;
@@ -120,7 +122,8 @@ const norm = p => (p || '').replaceAll('\\\\', '/').replaceAll('\\', '/');
 function banner(msg, ok) {
   const b = document.getElementById('banner');
   b.textContent = msg || '';
-  b.className = msg ? (ok ? 'ok' : 'bad') : '';
+  b.className = !msg ? '' :
+    (ok === 'partial' ? 'warn' : ok === false ? 'bad' : 'ok');
 }
 
 function restyleLines() {
@@ -257,7 +260,8 @@ async function send() {
       log.textContent = j.log || '...';
       log.scrollTop = log.scrollHeight;
       if (j.status === 'done') {
-        banner(j.result.summary || 'Done.', j.result.ok !== false);
+        banner(j.result.summary || 'Done.',
+               j.result.ok === undefined ? true : j.result.ok);
         showResult(j.result); refreshCurrent(); break;
       }
       if (j.status === 'error') {
