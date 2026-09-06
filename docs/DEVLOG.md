@@ -432,6 +432,23 @@ Verified live, chained: upload a 19.8 mi loop → "make it ~5 miles longer"
 → 25.6 mi → "route me from 210 Langdon St to the start and back at the
 end" → 37.6 mi commute-wrapped ride.
 
+## Phase 19 — The backtracking start (2026-09-06)
+
+First field test of the upload flow found it within minutes: "start from
+this address" produced a ride that traveled to a point already on the
+route, then back toward the old start — a doubled corridor. The user's
+diagnosis ("routed to another point already on the ride, then back") was
+exactly right: the join anchor was FIXED ~2 km along the old route, so
+the new lead-in leg rode the route's own roads backward to reach it.
+
+The fix is a semantics upgrade, not a patch: **join the route where it
+passes nearest the new point.** Closed loops get the elegant version —
+a loop has no privileged start, so ROTATE it until the closest-approach
+point is the seam, then add one clean connecting leg. Open routes drop
+the stretch before/after the join instead of re-riding it. Live check on
+a real loop: start moved to a town the loop passes through → rotated
+seam, 0.1 mi lead-in, 1% repeated road.
+
 ## Testing & verification practices that emerged
 
 - 24 unit tests: despurring (exact, corridor, palindrome semantics),
