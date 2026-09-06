@@ -403,6 +403,35 @@ an optional shared invite code gates the expensive endpoint when set;
 identity waits for "Sign in with Strava", which the roadmap wants anyway
 for per-user segments.
 
+## Phase 18 — Bring your own GPX (2026-09-06)
+
+The user's insight: "I have a great route already, but one road I've found
+I don't like riding." Editing an existing route is a smaller trust ask
+than generating a whole one — and the edit system had unknowingly been
+built for it all along, since it always operated on GPX files rather than
+internal objects. Upload = hand it a file and declare it current.
+
+Built against a written list of nine things a rider would actually ask:
+avoid a road ✓ (existed), add a road / hit a specific cafe ✓ (via mode
+existed), plus four new operations — **extend** (bow a section outward,
+the loop-synthesis trick applied to an existing route), **shorten**
+(bridge the best cuttable detour; an over-ask falls back to the best
+partial cut with a note instead of refusing), **move_start / move_end**,
+and **connect** (a leg from an address to the route's start, optionally
+with the leg home at the end — the commute wrapper). Parse coverage: all
+nine phrasings map to the right operation, verified against the live
+parser before any routing code ran.
+
+Two robustness details that came out of testing: uploaded files are
+rewritten through the normalizer (which also strips timestamps and HR
+data the original may carry — an accidental privacy win), and edit-place
+geocoding is now bounded to the route's own bounding box, so "Whitney
+Way" on a Madison route finds Madison's, not one anywhere on Earth.
+
+Verified live, chained: upload a 19.8 mi loop → "make it ~5 miles longer"
+→ 25.6 mi → "route me from 210 Langdon St to the start and back at the
+end" → 37.6 mi commute-wrapped ride.
+
 ## Testing & verification practices that emerged
 
 - 24 unit tests: despurring (exact, corridor, palindrome semantics),
