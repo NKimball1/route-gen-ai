@@ -105,6 +105,34 @@ def test_move_start_open_route_joins_at_closest_approach():
     assert result.points[-1][:2] == pts[-1][:2]
 
 
+def test_anchor_loop_round_trip():
+    from routes.editing import anchor_at, _dist_m
+    pts = square_loop()
+    far = (pts[120][0] + 0.006, pts[120][1] + 0.006)
+    result = anchor_at(pts, far, FakeProvider())
+    assert result is not None
+    assert _dist_m(result.points[0], far) < 50
+    assert _dist_m(result.points[-1], far) < 50
+    assert result.distance_m > total(pts)  # whole loop + both legs
+
+
+def test_anchor_open_route_connects_both_ends():
+    from routes.editing import anchor_at, _dist_m
+    pts = road(300)
+    home = (pts[150][0], pts[150][1] + 0.02)
+    result = anchor_at(pts, home, FakeProvider())
+    assert result is not None
+    assert _dist_m(result.points[0], home) < 50
+    assert _dist_m(result.points[-1], home) < 50
+
+
+def test_anchor_already_anchored_is_noop():
+    from routes.editing import anchor_at
+    pts = square_loop()
+    at_start = (pts[0][0], pts[0][1])
+    assert anchor_at(pts, at_start, FakeProvider()) is None
+
+
 def test_connect_one_way_and_round_trip():
     pts = road(100)
     home = (pts[0][0] - 0.02, pts[0][1])

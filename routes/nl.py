@@ -30,8 +30,11 @@ route-generation tool. Three request types:
     extend, miles_delta 10). If the user gives a TOTAL instead ("make it
     40 miles total"), put the total in target_miles and leave miles_delta
     null — the tool knows the current length.
-  - "move_start" / "move_end": start or finish somewhere else ("end at
+  - "move_start" / "move_end": start OR finish somewhere else ("end at
     X", "start from Y instead"). place = the new point.
+  - "anchor": start AND end at the same place — a round trip from there
+    ("start and end at X", "make it start and finish at my house",
+    "round trip from X"). Never split this into move_start alone.
   - "connect": add a leg FROM an address TO the route's start ("route me
     from ADDR to the start of this ride"). connect_return=true when they
     also want the leg home at the end ("...and back to ADDR after").
@@ -99,7 +102,8 @@ SCHEMA = {
             "properties": {
                 "mode": {"type": "string",
                          "enum": ["avoid", "via", "extend", "shorten",
-                                  "move_start", "move_end", "connect"]},
+                                  "move_start", "move_end", "anchor",
+                                  "connect"]},
                 "place": {"type": ["string", "null"]},
                 "radius_m": {"type": "number"},
                 "miles_delta": {"type": ["number", "null"]},

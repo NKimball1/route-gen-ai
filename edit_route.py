@@ -16,8 +16,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from routes.editing import (connect_from, detour_around, extend_route,
-                            move_endpoint, route_via, shorten_route)
+from routes.editing import (anchor_at, connect_from, detour_around,
+                            extend_route, move_endpoint, route_via,
+                            shorten_route)
 from routes.geocode import geocode_flexible
 from routes.gpx_out import write_track
 from routes.preview import _parse_gpx, build_preview
@@ -84,6 +85,9 @@ def run_edit(route_path: str, place: str | None = None,
             where = "start" if mode == "move_start" else "end"
             print(f"Moving the {where} to: {zname}")
             result = move_endpoint(points, (zlat, zlon), provider, at=where)
+        elif mode == "anchor":
+            print(f"Making it a round trip from: {zname}")
+            result = anchor_at(points, (zlat, zlon), provider)
         elif mode == "connect":
             print(f"Connecting from: {zname}"
                   + (" (and back at the end)" if connect_return else ""))
@@ -108,7 +112,8 @@ def run_edit(route_path: str, place: str | None = None,
 
     verbs = {"via": "via", "avoid": "around", "extend": "",
              "shorten": "", "move_start": "start at",
-             "move_end": "end at", "connect": "connect"}
+             "move_end": "end at", "connect": "connect",
+             "anchor": "round trip from"}
     desc = (f"{result.distance_m / METERS_PER_MILE:.1f} mi, "
             f"{result.ascent_m / METERS_PER_FOOT:.0f} ft "
             f"(edit: {verbs.get(mode, mode)} {place})".replace(":  ", ": "))

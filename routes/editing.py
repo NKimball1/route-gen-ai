@@ -194,6 +194,46 @@ def move_endpoint(points, target, provider,
                    leg["distance_m"])
 
 
+def anchor_at(points, target, provider) -> EditResult | None:
+    """Make the ride a round trip from target: start AND end there.
+
+    Born from a field test where 'start from X and end at X' could only be
+    parsed as move_start — leaving the rider stranded at the loop's old
+    seam. Loops rotate to their closest approach and get a lead-in plus a
+    ride-home leg; open routes get connected at both ends (dropping any
+    stub before/after the joins)."""
+    cum = _cum(points)
+    total = cum[-1]
+    if _is_loop(points):
+        j = min(range(len(points)), key=lambda k: _dist_m(points[k], target))
+        body = points[j:] + points[1:j + 1]
+        removed = 0.0
+    else:
+        half = next(k for k in range(len(points)) if cum[k] >= 0.5 * total)
+        j1 = min(range(half + 1), key=lambda k: _dist_m(points[k], target))
+        j2 = min(range(half, len(points)),
+                 key=lambda k: _dist_m(points[k], target))
+        body = points[j1:j2 + 1]
+        removed = cum[j1] + (total - cum[j2])
+    added = 0.0
+    if _dist_m(target, body[0]) > 150.0:
+        leg = provider.route([target, body[0][:2]])
+        if leg is None:
+            return None
+        body = leg["points"] + body
+        added += leg["distance_m"]
+    if _dist_m(body[-1], target) > 150.0:
+        leg = provider.route([body[-1][:2], target])
+        if leg is None:
+            return None
+        body = body + leg["points"]
+        added += leg["distance_m"]
+    if added == 0.0 and removed == 0.0:
+        print("  the ride already starts and ends there — nothing to change")
+        return None
+    return _result(body, removed, added, detours=2)
+
+
 def connect_from(points, addr, provider,
                  with_return: bool = False) -> EditResult | None:
     """Prepend a leg from addr to the route's start ('ride there from my
