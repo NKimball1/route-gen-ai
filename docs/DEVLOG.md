@@ -471,6 +471,37 @@ connections are skipped. The exact reported sentence now parses to
 anchor and turns the same uploaded loop into a 49.3 mi round trip
 starting and ending 1 m from the requested address.
 
+## Phase 21 — The silent failure (2026-09-06)
+
+A rider proposed a neighborhood shortcut — "through Greentree, past Exact
+Sciences, take the tunnel under the Beltline, both out and back" — and
+the request quietly did nothing. Their sharpest complaint wasn't the
+failure; it was that **nothing told them it failed**: the only evidence
+was buried in a JSON log. Reconstructing from the session files found
+three stacked defects:
+
+1. **Vocabulary again** (third time — phases 15, 20): one place per edit,
+   so the parser comma-joined three waypoints into a single garbage
+   string. Now: a `places` list, chained into one spliced leg through
+   every waypoint in ride order.
+2. **Confidently wrong geocoding**: the garbage string's unbounded
+   fallback matched an Applebee's on Greentree Road in **Pittsburgh,
+   819 km away** (an 8 km sanity check saved the route, with a baffling
+   message). Now: far-outside-the-route hits are rejected as "not
+   found", and generic suffixes ("neighborhood") are stripped as query
+   variants — OSM names the place, not the word.
+3. **Found while fixing 1**: the first chain implementation matched the
+   two waypoints to OPPOSITE passes of the out-and-back corridor and
+   replaced 49 miles of ride with a 5-mile shortcut. Pass selection is
+   now span-aware (smallest span wins; >45% of the ride refuses).
+
+And the UX fix that motivated it all: every result now carries a
+one-line outcome shown as a green/red banner — including partial truth:
+*"Done — via Greentree neighborhood + Exact Sciences: now 52.2 mi
+(+2.9 mi). Couldn't locate and skipped: tunnel under the beltline."*
+Failures are loud, successes are specific, and nobody reads JSON to
+learn what happened.
+
 ## Testing & verification practices that emerged
 
 - 24 unit tests: despurring (exact, corridor, palindrome semantics),
