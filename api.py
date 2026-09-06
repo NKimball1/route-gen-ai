@@ -21,11 +21,24 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from fastapi import FastAPI, Header
+from fastapi import FastAPI, Header, Request
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 
+from routes import limits
+
 app = FastAPI(title="Route Gen AI")
+
+# Optional shared invite code: set ROUTEGEN_INVITE_CODE to gate the
+# expensive endpoint; unset = open (local/dev).
+INVITE_CODE = os.environ.get("ROUTEGEN_INVITE_CODE")
+
+
+def client_ip(request: Request) -> str:
+    fwd = request.headers.get("x-forwarded-for")
+    if fwd:  # trust only behind your own reverse proxy
+        return fwd.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
 
 JOBS: dict = {}          # job id -> {"status", "buf", "result", "sid"}
 RUNNING: dict = {}       # session id -> job id currently running
@@ -70,14 +83,21 @@ class Ask(BaseModel):
 def _run(job_id: str, text: str, start: str | None, workdir: str) -> None:
     from routes.service import handle_request
     job = JOBS[job_id]
+    t0 = time.time()
     try:
         result = handle_request(text, log_sink=job["buf"],
                                 default_address=start, workdir=workdir)
         job["result"] = result
         job["status"] = "done"
+        limits.log_event("ask_done", sid=job["sid"], kind=result.get("kind"),
+                         candidates=len(result.get("candidates", [])),
+                         seconds=round(time.time() - t0, 1))
     except Exception as e:  # surfaced to the UI, not swallowed
         job["buf"].write(f"\nERROR: {type(e).__name__}: {e}\n")
         job["status"] = "error"
+        limits.log_event("ask_error", sid=job["sid"],
+                         error=f"{type(e).__name__}: {e}",
+                         seconds=round(time.time() - t0, 1))
     finally:
         with LOCK:
             if RUNNING.get(job["sid"]) == job_id:
@@ -85,11 +105,20 @@ def _run(job_id: str, text: str, start: str | None, workdir: str) -> None:
 
 
 @app.post("/api/ask")
-def ask(body: Ask, x_session_id: str | None = Header(default=None)):
+def ask(body: Ask, request: Request,
+        x_session_id: str | None = Header(default=None),
+        x_invite_code: str | None = Header(default=None)):
     workdir = session_dir(x_session_id)
     if workdir is None:
         return JSONResponse({"error": "missing or invalid session id"},
                             status_code=400)
+    if INVITE_CODE and x_invite_code != INVITE_CODE:
+        return JSONResponse({"error": "invite code required"}, status_code=401)
+    ip = client_ip(request)
+    refusal = limits.check_ask(x_session_id, ip)
+    if refusal:
+        limits.log_event("ask_limited", sid=x_session_id, ip=ip, why=refusal)
+        return JSONResponse({"error": refusal}, status_code=429)
     job_id = uuid.uuid4().hex[:12]
     with LOCK:
         running = RUNNING.get(x_session_id)
@@ -98,9 +127,16 @@ def ask(body: Ask, x_session_id: str | None = Header(default=None)):
                 {"error": "a request is already running for this session — "
                           "wait for it to finish"},
                 status_code=429)
+        busy = sum(1 for j in JOBS.values() if j["status"] == "running")
+        if busy >= limits.Limits.JOBS_CONCURRENT:
+            return JSONResponse(
+                {"error": "the server is busy — try again in a minute"},
+                status_code=429)
         RUNNING[x_session_id] = job_id
         JOBS[job_id] = {"status": "running", "buf": StringIO(),
                         "result": None, "sid": x_session_id}
+    limits.log_event("ask", sid=x_session_id, ip=ip, text=body.text,
+                     start=body.start)
     threading.Thread(target=_run,
                      args=(job_id, body.text, body.start, workdir),
                      daemon=True).start()
@@ -108,7 +144,10 @@ def ask(body: Ask, x_session_id: str | None = Header(default=None)):
 
 
 @app.get("/api/geocode")
-def api_geocode(q: str):
+def api_geocode(q: str, request: Request):
+    refusal = limits.check_geocode(client_ip(request))
+    if refusal:
+        return JSONResponse({"error": refusal}, status_code=429)
     from routes.geocode import geocode_flexible
     try:
         lat, lon, name = geocode_flexible(q)

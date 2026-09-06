@@ -88,7 +88,13 @@ let currentPath = null;
 // state from everyone else's on a shared server
 let SID = localStorage.getItem('rg_sid');
 if (!SID) { SID = crypto.randomUUID(); localStorage.setItem('rg_sid', SID); }
-const HDRS = {'Content-Type': 'application/json', 'X-Session-Id': SID};
+function hdrs() {
+  const h = {'Content-Type': 'application/json', 'X-Session-Id': SID};
+  const inv = localStorage.getItem('rg_invite');
+  if (inv) h['X-Invite-Code'] = inv;
+  return h;
+}
+const HDRS = hdrs();
 
 const norm = p => (p || '').replaceAll('\\\\', '/').replaceAll('\\', '/');
 
@@ -204,10 +210,17 @@ async function send() {
     return;
   }
   try {
-    const resp = await fetch('/api/ask', {method:'POST', headers: HDRS,
+    const resp = await fetch('/api/ask', {method:'POST', headers: hdrs(),
       body: JSON.stringify({text, start})});
-    if (resp.status === 429) {
-      log.textContent = 'A request is already running for this session — wait for it to finish.';
+    if (resp.status === 401) {
+      const code = prompt('This server needs an invite code:');
+      if (code) { localStorage.setItem('rg_invite', code); send(); }
+      go.disabled = false;
+      return;
+    }
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      log.textContent = err.error || ('Request refused (' + resp.status + ').');
       go.disabled = false;
       return;
     }
