@@ -449,6 +449,28 @@ the stretch before/after the join instead of re-riding it. Live check on
 a real loop: start moved to a town the loop passes through → rotated
 seam, 0.1 mi lead-in, 1% repeated road.
 
+## Phase 20 — Anchor mode, and live-debugging a user session (2026-09-06)
+
+The rider asked "start this ride from X **and end at X**, skip the tiny
+original starting leg" — and got only half: the schema allows one mode
+per edit, so the parser chose move_start, wrote the both-ends intent into
+its notes (which gate nothing — the phase-15 lesson recurring), and left
+the ride ending at the loop's old seam 3.6 mi from home.
+
+The debugging itself is worth recording: because sessions are just
+directories of GPX files plus a usage log, the whole failure was
+reconstructable from disk — the original upload (a true 40.2 mi loop,
+endpoints 82 m apart), edit1 (correct move_start: rotated, lead-in
+added, but one-way), and edit3 (a 1.2-mi no-op because the start was
+already right). No reproduction needed; the artifacts told the story.
+
+Fix: mode **anchor** — a round trip from a place, as one operation.
+Loops rotate to their closest approach and get a lead-in plus a
+ride-home leg; open routes connect both ends and drop stubs; sub-150 m
+connections are skipped. The exact reported sentence now parses to
+anchor and turns the same uploaded loop into a 49.3 mi round trip
+starting and ending 1 m from the requested address.
+
 ## Testing & verification practices that emerged
 
 - 24 unit tests: despurring (exact, corridor, palindrome semantics),
