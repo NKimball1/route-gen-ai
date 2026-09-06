@@ -358,6 +358,33 @@ Verified with the original sentence verbatim: parses as via, splices
 5.0 mi through the path. Known limit: a long linear feature anchors at its
 geocoded point — splicing along its full OSM geometry is future work.
 
+## Phase 16 — Multi-user state (2026-09-06)
+
+The prerequisite for anyone else using it. What was global: one
+`latest.txt` current-route pointer, one shared output folder (concurrent
+users would overwrite each other's GPX files), and — found only by
+actually simulating two users — stdout capture itself.
+
+- **Per-session workspaces**: each browser session carries a UUID
+  (localStorage → X-Session-Id header) and owns `output/sessions/<id>/` —
+  its GPX files and its current-route pointer. A session can only select
+  its own files. Stale workspaces sweep after 7 days. The CLI keeps its
+  single-user behavior.
+- **One job per session** (429 otherwise); other sessions run freely in
+  parallel.
+- **The bug the test earned**: `contextlib.redirect_stdout` swaps stdout
+  process-globally — with two concurrent jobs, one job's context exit
+  stole or dropped the other's log (user B's log came back empty).
+  Replaced with a thread-routed stdout installed once: each job thread
+  writes to its own buffer, everything else falls through. Concurrency
+  bugs don't announce themselves; the two-user test was the only reason
+  this surfaced before real users hit it.
+
+Verified live: two sessions with isolated current-route state and two
+concurrent jobs with fully separate logs, zero cross-leak. Still open for
+public deployment: rate limiting / auth (state isolation was this phase;
+abuse control is its own).
+
 ## Testing & verification practices that emerged
 
 - 24 unit tests: despurring (exact, corridor, palindrome semantics),
