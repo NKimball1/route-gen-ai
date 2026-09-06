@@ -141,29 +141,57 @@ def shorten_route(points, cut_m: float, provider) -> EditResult | None:
     return best[1]
 
 
-def move_endpoint(points, target, provider, at: str = "end",
-                  buffer_m: float = 2000.0) -> EditResult | None:
-    """Reroute the first/last stretch so the ride starts or ends at target."""
+def _is_loop(points, tolerance_m: float = 250.0) -> bool:
+    return _dist_m(points[0], points[-1]) <= tolerance_m
+
+
+def move_endpoint(points, target, provider,
+                  at: str = "end") -> EditResult | None:
+    """Make the ride start or end at target.
+
+    Join the route where it passes NEAREST the target — a fixed anchor
+    near the old start sent the new leg riding along the route's own
+    corridor to reach it, re-riding the same stretch (field-reported
+    backtracking). For a closed loop, rotate it so the ride begins/ends at
+    the closest-approach point, then add one clean connecting leg; for an
+    open route, drop the stretch before/after the join."""
     cum = _cum(points)
     total = cum[-1]
-    span = min(buffer_m, 0.3 * total)
-    if at == "end":
-        a = next(k for k in range(len(points) - 1, -1, -1)
-                 if total - cum[k] >= span or k == 0)
-        leg = provider.route([points[a][:2], target])
+
+    if _is_loop(points):
+        # rotate the loop so the join point is the seam
+        j = min(range(len(points)), key=lambda k: _dist_m(points[k], target))
+        rotated = points[j:] + points[1:j + 1]
+        if at == "start":
+            leg = provider.route([target, rotated[0][:2]])
+            if leg is None:
+                return None
+            new_pts = leg["points"] + rotated
+        else:
+            leg = provider.route([rotated[-1][:2], target])
+            if leg is None:
+                return None
+            new_pts = rotated + leg["points"]
+        return _result(new_pts, 0.0, leg["distance_m"])
+
+    if at == "start":
+        # join at the closest approach within the first 60% of the ride
+        limit = next(k for k in range(len(points)) if cum[k] >= 0.6 * total)
+        j = min(range(limit + 1), key=lambda k: _dist_m(points[k], target))
+        j = max(j, 1)
+        leg = provider.route([target, points[j][:2]])
         if leg is None:
             return None
-        new_pts = points[:a + 1] + leg["points"]
-        removed = total - cum[a]
-    else:
-        b = next(k for k in range(len(points))
-                 if cum[k] >= span or k == len(points) - 1)
-        leg = provider.route([target, points[b][:2]])
-        if leg is None:
-            return None
-        new_pts = leg["points"] + points[b:]
-        removed = cum[b]
-    return _result(new_pts, removed, leg["distance_m"])
+        return _result(leg["points"] + points[j:], cum[j], leg["distance_m"])
+
+    lo = next(k for k in range(len(points)) if cum[k] >= 0.4 * total)
+    j = min(range(lo, len(points)), key=lambda k: _dist_m(points[k], target))
+    j = min(j, len(points) - 2)
+    leg = provider.route([points[j][:2], target])
+    if leg is None:
+        return None
+    return _result(points[:j + 1] + leg["points"], total - cum[j],
+                   leg["distance_m"])
 
 
 def connect_from(points, addr, provider,

@@ -60,6 +60,51 @@ def test_move_endpoint_start():
     assert result.points[-1][:2] == pts[-1][:2]
 
 
+def square_loop(n_side=60):
+    import tests.test_editing as te
+    step = te.LAT_STEP
+    pts = []
+    for k in range(n_side):
+        pts.append((43.0 + k * step, -89.5, 300.0))
+    for k in range(n_side):
+        pts.append((43.0 + n_side * step, -89.5 + k * step, 300.0))
+    for k in range(n_side):
+        pts.append((43.0 + (n_side - k) * step, -89.5 + n_side * step, 300.0))
+    for k in range(n_side + 1):
+        pts.append((43.0, -89.5 + (n_side - k) * step, 300.0))
+    return pts
+
+
+def test_move_start_on_loop_rotates_to_nearest_point():
+    # the field bug: new start near the loop's FAR corner used to route to
+    # a fixed anchor near the old start, riding the loop's own corridor
+    # backward. Now the loop rotates so the ride joins at closest approach.
+    pts = square_loop()
+    far_corner = pts[120]  # opposite the old start
+    new_start = (far_corner[0] + 0.004, far_corner[1] + 0.004)
+    result = move_endpoint(pts, new_start, FakeProvider(), at="start")
+    assert result is not None
+    assert abs(result.points[0][0] - new_start[0]) < 1e-6
+    # the lead-in joins right at the nearest corner — no long doubled ride
+    from routes.editing import _dist_m
+    join = result.points[3]  # first route point after the fake 3-pt leg
+    assert _dist_m(join, far_corner) < 300
+    assert result.overlap_frac < 0.05
+    # the whole loop is still ridden
+    assert result.distance_m > total(pts)
+
+
+def test_move_start_open_route_joins_at_closest_approach():
+    pts = road(300)
+    near_mid = (pts[100][0], pts[100][1] + 0.003)
+    result = move_endpoint(pts, near_mid, FakeProvider(), at="start")
+    assert result is not None
+    assert abs(result.points[0][0] - near_mid[0]) < 1e-6
+    # everything before the join is dropped, not re-ridden
+    assert result.removed_m > 2000
+    assert result.points[-1][:2] == pts[-1][:2]
+
+
 def test_connect_one_way_and_round_trip():
     pts = road(100)
     home = (pts[0][0] - 0.02, pts[0][1])
