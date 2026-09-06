@@ -2,6 +2,10 @@
 
 Describe a ride in plain English, get a Garmin-ready GPX.
 
+> **How it was built:** [docs/DEVLOG.md](docs/DEVLOG.md) — 17 phases of
+> field-tested iteration, every real-ride complaint turned into a
+> permanent, unit-tested fix.
+
 **Web app:** run `start_app.cmd` (with `start_brouter.cmd` running) and open
 http://localhost:8903 — one text box for routes, interval spots, and edits;
 candidates draw on a map with GPX downloads; edits chain against the
