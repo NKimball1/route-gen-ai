@@ -568,6 +568,26 @@ Rider retested the full flow after this round and confirmed it holding
 up — closing out a single day in which live use drove seven shipped
 phases (18–24).
 
+## Phase 25 — Pre-launch hardening (2026-09-06)
+
+Before going live: every field-discovered failure CLASS got scenario
+variants beyond the single case that exposed it — avoid-edit failure
+accounting (all-failed vs never-touches, a zone sitting on the route's
+own start), loop-shaped endpoint moves and anchors, via chains with far
+waypoints and out-of-order waypoints, length edits on loops, undo
+lineage with numbering gaps, riding-vs-crossing a road. The new tests
+immediately earned their keep: extend_route silently gave up on tight
+loops (its bow can net shorter than the winding section it replaces —
+the fix grows the bow instead of quitting).
+
+The parser got its own regression corpus: 16 realistic phrasings pinning
+every trap it ever fell into ("take X instead" is via not avoid, "start
+and end at X" is anchor not move_start, corrections revert first, "give
+me a totally NEW route" after edits is generation not editing). It runs
+against the live model, opt-in (RUN_LLM_TESTS=1), and currently passes
+16/16 — the LLM's behavior is now under test the same way the geometry
+is. Suite: 74 offline + 16 live.
+
 ## Testing & verification practices that emerged
 
 - 24 unit tests: despurring (exact, corridor, palindrome semantics),
