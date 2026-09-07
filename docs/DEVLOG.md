@@ -564,6 +564,9 @@ Field result on the exact reported route: 2.02 mi riding Whitney Way →
 "Verified: no longer rides along it" is a measurement, not a hope.
 Point-plus-radius survives as the fallback for non-road places (parks,
 intersections, landmarks) — where a point is actually the right model.
+Rider retested the full flow after this round and confirmed it holding
+up — closing out a single day in which live use drove seven shipped
+phases (18–24).
 
 ## Testing & verification practices that emerged
 

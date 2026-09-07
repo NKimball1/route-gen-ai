@@ -83,10 +83,32 @@ copy .env.example .env   # or edit .env: API key, home address
 `ask.py` needs `ANTHROPIC_API_KEY`; everything else runs keyless.
 Dev: `pip install -r requirements-dev.txt` then `python -m pytest tests/`.
 
+## Editing (generated or uploaded routes)
+
+Upload any GPX (button in the app) or use a generated route, then ask in
+plain English — edits chain, with an undo button and a green/amber/red
+outcome banner that verifies results instead of narrating them:
+
+- "avoid Whitney Way" — avoids the ROAD as a line (real OSM way
+  geometry; the result is verified by measuring on-road meters), with
+  point-plus-radius fallback for parks/landmarks
+- "go down the commuter path instead" / "add a stop at Colectivo" — via,
+  including multi-waypoint chains ("through X, past Y, take Z")
+- "make it ~8 miles longer" / "shorten it to 40 miles total"
+- "start and end at my house" (anchor: loops rotate to their closest
+  approach), "end at Olbrich Park", "route me from ADDR to the start
+  and back at the end"
+- corrective phrasing ("that wasn't what I meant — use Struck St")
+  automatically reverts the bad change before applying the fix
+
 ## Known limits / next steps
 
-- Interval "traffic interruptions" are proxied by turn density; stop signs
-  and traffic lights would need an OSM Overpass query (upgrade path).
-- Strava segment-explore integration (popularity scoring; routing to real
-  categorized climbs for max-climb requests) is designed but not built.
-- ORS provider skips out-and-backs and avoid-zones (BRouter covers both).
+- "Both out and back" edits change one pass of a corridor at a time.
+- Uploaded GPX without elevation data reads low on climbing until edits
+  splice in routed legs.
+- Interval rep sizing assumes fixed speeds; power-based sizing (rider
+  watts + weight) is designed but not built.
+- Strava starred segments feed climb targeting; segment-explore requires
+  Strava's Extended Access tier (application pending a public launch).
+- ORS provider skips out-and-backs, avoid-zones, and via routing
+  (BRouter covers all three).
