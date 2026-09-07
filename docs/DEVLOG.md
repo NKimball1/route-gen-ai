@@ -543,6 +543,28 @@ avoiding a LINEAR road; when home is 1 km from the road, "avoid it by
 pretending. True road-shape avoidance (the way's geometry as a chain of
 no-gos) is logged as the upgrade.
 
+## Phase 24 — A road is a line (2026-09-06)
+
+The rider's map made the case brutally: the freshly "avoided" route ran
+directly down Whitney Way. Twice. Phase 23's honesty upgrade had
+truthfully said "partly done" — but it was honestly measuring the wrong
+thing: distance to the ONE POINT geocoding returns for a named road,
+which sat a kilometer from where the route actually used the road.
+
+The fix stops approximating: fetch every matching way's real geometry
+from OSM ("Whitney Way" matches its North/South variants), detect
+stretches where the route travels ALONG the centerline (28 m for 60 m+,
+so mere crossings don't trigger), chain no-go circles down the road's
+own shape with the leg endpoints kept clear, and reroute each stretch.
+Verification measures what the user means: **on-road meters** on the
+final route.
+
+Field result on the exact reported route: 2.02 mi riding Whitney Way →
+0.00 mi, both offending sections rerouted (+3.0 mi), and the banner's
+"Verified: no longer rides along it" is a measurement, not a hope.
+Point-plus-radius survives as the fallback for non-road places (parks,
+intersections, landmarks) — where a point is actually the right model.
+
 ## Testing & verification practices that emerged
 
 - 24 unit tests: despurring (exact, corridor, palindrome semantics),
