@@ -588,6 +588,30 @@ against the live model, opt-in (RUN_LLM_TESTS=1), and currently passes
 16/16 — the LLM's behavior is now under test the same way the geometry
 is. Suite: 74 offline + 16 live.
 
+## Phase 26 — Taxonomy review (2026-09-07)
+
+A structured pass over the codebase against an 11-type bug taxonomy
+(functional, logical, workflow, unit, integration, out-of-bound,
+security, performance, compatibility, usability, concurrency). Seven
+concrete fixes came out — notably a self-XSS via innerHTML'd labels
+carrying user-typed place names, a compatibility landmine
+(crypto.randomUUID is secure-context-only: a plain-http deploy would
+have broken every visitor's session on day one), an unbounded JOBS
+memory leak, and a logical gate for road-mode avoidance ("Pheasant
+Branch Conservancy" was one regex match away from being treated as
+Pheasant Branch Road). The gate's own fix then had a bug — a heredoc
+turned literal \b into a backspace control character, making the regex
+match nothing — caught because the gate got a unit test in the same
+commit.
+
+Open items recorded, not fixed (deliberately, with reasons): no job
+cancellation (a stray request blocks its session until done), undo's
+numeric lineage dead-ends across numbering gaps, no retry/backoff on
+Nominatim, lat-before-lon assumed in GPX attribute order, usage.jsonl
+retains IPs + request text (a privacy line for the public-launch
+checklist), and interval-spot results don't expose the outcome banner's
+verification the way edits do.
+
 ## Testing & verification practices that emerged
 
 - 24 unit tests: despurring (exact, corridor, palindrome semantics),
