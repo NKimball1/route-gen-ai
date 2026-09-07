@@ -148,8 +148,34 @@ def run_edit(route_path: str, place: str | None = None,
                 return None, ("Couldn't route from there to the ride — "
                               "the route is unchanged."), False
         else:
-            print(f"Detouring around: {zname} (r={radius_m:.0f} m)")
-            result = detour_around(points, (zlat, zlon, radius_m), provider)
+            # a named ROAD is a line — try its real OSM geometry first, so
+            # 'avoid Whitney Way' guards the road, not one point on it
+            from routes.road_avoid import (detour_around_road, fetch_road,
+                                           on_road_meters)
+            road_ways = fetch_road(place.split(",")[0], zlat, zlon, 12000)
+            road_result = None
+            if road_ways:
+                before_m = on_road_meters(points, road_ways)
+                if before_m >= 60.0:
+                    print(f"Avoiding the road itself: {zname} "
+                          f"(riding {before_m / 1609.344:.1f} mi along it)")
+                    road_result = detour_around_road(points, road_ways,
+                                                     provider)
+            if road_result is not None:
+                result = road_result
+                result.road_mode = True
+                after_m = on_road_meters(result.points, road_ways)
+                result.fail_reason = result.fail_reason or ""
+                if after_m <= 30.0:
+                    print("  verified: no longer rides along it")
+                else:
+                    result.failed_detours = max(result.failed_detours, 1)
+                    result.fail_reason = (f"still rides "
+                                          f"{after_m / 1609.344:.1f} mi of it")
+            else:
+                print(f"Detouring around: {zname} (r={radius_m:.0f} m)")
+                result = detour_around(points, (zlat, zlon, radius_m),
+                                       provider)
             if result is not None and result.detours == 0                     and result.failed_detours > 0:
                 return None, (f"Couldn't avoid {place!r}: "
                               f"{result.fail_reason}. The route is "
@@ -198,7 +224,11 @@ def run_edit(route_path: str, place: str | None = None,
                    f"be ({result.fail_reason}). "
                    f"Now {result.distance_m / METERS_PER_MILE:.1f} mi.")
         ok = "partial"
-    if mode == "avoid":
+    if mode == "avoid" and getattr(result, "road_mode", False):
+        # road mode verified itself by measuring on-road meters
+        if ok is True:
+            message += " Verified: no longer rides along it."
+    elif mode == "avoid":
         # verify the OUTCOME: does the final route actually clear the zone?
         from routes.editing import _dist_m
         min_d = min(_dist_m(p, (zlat, zlon)) for p in result.points)
