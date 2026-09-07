@@ -72,7 +72,7 @@ def extend_route(points, add_m: float, provider,
         mid = ((points[a][0] + points[b][0]) / 2,
                (points[a][1] + points[b][1]) / 2)
         r = add_m / 2 / 1.2
-        for _ in range(3):
+        for _ in range(4):
             ext = _destination(mid[0], mid[1], bearing + 90 * side, r)
             leg = provider.route([points[a][:2], ext, points[b][:2]])
             if leg is None:
@@ -80,7 +80,11 @@ def extend_route(points, add_m: float, provider,
             new_pts = points[:a + 1] + leg["points"] + points[b:]
             gained = _cum(new_pts)[-1] - total
             if gained <= 0:
-                break
+                # the bow replaced a winding section with something net
+                # shorter (tight loops do this) — a BIGGER bow gains;
+                # giving up here left 'make it longer' failing on loops
+                r *= 2.5
+                continue
             cand = (abs(gained - add_m),
                     _result(new_pts, cum[b] - cum[a], leg["distance_m"]))
             if best is None or cand[0] < best[0]:
