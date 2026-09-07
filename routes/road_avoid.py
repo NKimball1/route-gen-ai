@@ -18,6 +18,17 @@ out geom;"""
 
 ON_ROAD_M = 28.0  # within this of the centerline counts as riding the road
 
+ROAD_WORDS = re.compile(
+    r"\b(road|rd|street|st|way|avenue|ave|drive|dr|lane|ln|"
+    r"boulevard|blvd|parkway|pkwy|highway|hwy|route|pike|path|"
+    r"trail|court|ct|circle|cir|terrace|ter|place|pl)\b", re.I)
+
+
+def looks_like_road(name: str) -> bool:
+    """Gate for road-as-line avoidance: only names that read as roads.
+    A park named after a nearby road must not trigger road mode."""
+    return bool(ROAD_WORDS.search(name.split(",")[0]))
+
 
 def fetch_road(name: str, lat: float, lon: float,
                radius_m: float) -> list[list[tuple[float, float]]]:

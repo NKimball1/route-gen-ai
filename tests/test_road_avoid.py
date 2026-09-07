@@ -58,3 +58,13 @@ def test_route_never_on_road_returns_none():
     ways = [road_way()]
     off = [(43.0 + k * STEP, -89.6, 300.0) for k in range(50)]
     assert detour_around_road(off, ways, FakeProvider()) is None
+
+
+def test_looks_like_road_gate():
+    from routes.road_avoid import looks_like_road
+    assert looks_like_road("Whitney Way")
+    assert looks_like_road("Struck Street, Madison WI")
+    assert looks_like_road("the west beltline bike path")
+    assert not looks_like_road("Pheasant Branch Conservancy")
+    assert not looks_like_road("Exact Sciences")   # 'ct' must not match
+    assert not looks_like_road("Olin Park")

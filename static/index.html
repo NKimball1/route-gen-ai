@@ -107,8 +107,14 @@ let currentPath = null;
 
 // per-browser session id: isolates this user's routes and current-route
 // state from everyone else's on a shared server
+function makeSid() {
+  if (crypto.randomUUID) return crypto.randomUUID();  // needs secure context
+  const a = new Uint8Array(16);
+  crypto.getRandomValues(a);
+  return Array.from(a, b => b.toString(16).padStart(2, '0')).join('');
+}
 let SID = localStorage.getItem('rg_sid');
-if (!SID) { SID = crypto.randomUUID(); localStorage.setItem('rg_sid', SID); }
+if (!SID) { SID = makeSid(); localStorage.setItem('rg_sid', SID); }
 function hdrs() {
   const h = {'Content-Type': 'application/json', 'X-Session-Id': SID};
   const inv = localStorage.getItem('rg_invite');
@@ -198,11 +204,21 @@ function showResult(result) {
     const row = document.createElement('div');
     row.className = 'cand';
     row.dataset.gpx = c.gpx;
-    row.innerHTML = `<span class="dot" style="background:${color}"></span>
-      <span class="label">${c.label} <span class="sel">✓ selected</span></span>
-      <a href="/api/gpx?path=${encodeURIComponent(c.gpx)}"
-         title="download for your Garmin">gpx</a>
-      <button class="selbtn" title="ride/edit this one instead">select</button>`;
+    // labels carry user-typed text (place names) — build with textContent
+    const dot = document.createElement('span');
+    dot.className = 'dot'; dot.style.background = color;
+    const label = document.createElement('span');
+    label.className = 'label'; label.textContent = c.label + ' ';
+    const sel = document.createElement('span');
+    sel.className = 'sel'; sel.textContent = '✓ selected';
+    label.appendChild(sel);
+    const dl = document.createElement('a');
+    dl.href = '/api/gpx?path=' + encodeURIComponent(c.gpx);
+    dl.title = 'download for your Garmin'; dl.textContent = 'gpx';
+    const btn = document.createElement('button');
+    btn.className = 'selbtn'; btn.title = 'ride/edit this one instead';
+    btn.textContent = 'select';
+    row.append(dot, label, dl, btn);
     row.onclick = () => {
       map.fitBounds(line.getBounds(), {padding:[30,30]});
       // peek at a non-selected candidate without changing the selection

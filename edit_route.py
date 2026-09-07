@@ -151,8 +151,11 @@ def run_edit(route_path: str, place: str | None = None,
             # a named ROAD is a line — try its real OSM geometry first, so
             # 'avoid Whitney Way' guards the road, not one point on it
             from routes.road_avoid import (detour_around_road, fetch_road,
-                                           on_road_meters)
-            road_ways = fetch_road(place.split(",")[0], zlat, zlon, 12000)
+                                           looks_like_road, on_road_meters)
+            # only road-like names get road mode: 'Pheasant Branch
+            # Conservancy' must not match 'Pheasant Branch Road' by regex
+            road_ways = (fetch_road(place.split(",")[0], zlat, zlon, 12000)
+                         if looks_like_road(place) else [])
             road_result = None
             if road_ways:
                 before_m = on_road_meters(points, road_ways)

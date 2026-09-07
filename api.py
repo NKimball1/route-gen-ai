@@ -23,7 +23,7 @@ load_dotenv()
 
 from fastapi import FastAPI, File, Header, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from routes import limits
 
@@ -76,8 +76,9 @@ _sweep_stale_sessions()
 
 
 class Ask(BaseModel):
-    text: str
-    start: str | None = None  # the user's starting point (address string)
+    # caps: a request is a sentence, not a document (cost + abuse bound)
+    text: str = Field(max_length=600)
+    start: str | None = Field(default=None, max_length=200)
 
 
 def _run(job_id: str, text: str, start: str | None, workdir: str) -> None:
@@ -121,6 +122,11 @@ def ask(body: Ask, request: Request,
         return JSONResponse({"error": refusal}, status_code=429)
     job_id = uuid.uuid4().hex[:12]
     with LOCK:
+        # evict finished jobs older than an hour — JOBS grew forever
+        cutoff = time.time() - 3600
+        for jid in [j for j, v in JOBS.items()
+                    if v["status"] != "running" and v.get("ts", 0) < cutoff]:
+            del JOBS[jid]
         running = RUNNING.get(x_session_id)
         if running and JOBS.get(running, {}).get("status") == "running":
             return JSONResponse(
@@ -134,7 +140,8 @@ def ask(body: Ask, request: Request,
                 status_code=429)
         RUNNING[x_session_id] = job_id
         JOBS[job_id] = {"status": "running", "buf": StringIO(),
-                        "result": None, "sid": x_session_id}
+                        "result": None, "sid": x_session_id,
+                        "ts": time.time()}
     limits.log_event("ask", sid=x_session_id, ip=ip, text=body.text,
                      start=body.start)
     threading.Thread(target=_run,
@@ -225,7 +232,7 @@ def gpx(path: str):
     # only serve GPX files from our own output tree
     norm = os.path.normpath(path)
     if norm.startswith("..") or os.path.isabs(norm) \
-            or not norm.startswith("output") or not norm.endswith(".gpx"):
+            or not norm.startswith("output" + os.sep)             or not norm.endswith(".gpx"):
         return JSONResponse({"error": "bad path"}, status_code=400)
     if not os.path.exists(norm):
         return JSONResponse({"error": "not found"}, status_code=404)

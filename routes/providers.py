@@ -87,6 +87,10 @@ class BRouterProvider:
             resp = requests.get(self.base_url, params=params, timeout=120)
             resp.raise_for_status()
             feature = resp.json()["features"][0]
+        except requests.ConnectionError:
+            print(f"  ROUTING SERVER UNREACHABLE at {self.base_url} — "
+                  "is BRouter running? (start_brouter.cmd)")
+            return None
         except (requests.RequestException, KeyError, IndexError, ValueError) as e:
             print(f"  brouter: request failed ({e})")
             return None
