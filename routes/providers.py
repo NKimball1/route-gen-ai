@@ -19,9 +19,7 @@ import requests
 
 from routes.despur import corridor_despur, despur
 from routes.elevation import track_ascent
-from routes.spec import RouteCandidate, RouteSpec
-
-EARTH_RADIUS_M = 6371000.0
+from routes.spec import EARTH_RADIUS_M, METERS_PER_DEG_LAT, METERS_PER_DEG_LON_EQ, RouteCandidate, RouteSpec
 
 
 def _bearing(a: tuple[float, float], b: tuple[float, float]) -> float:
@@ -167,8 +165,8 @@ class BRouterProvider:
     @staticmethod
     def _passes_near(points, via, radius_m: float) -> bool:
         for p in points[::4]:
-            dy = (p[0] - via[0]) * 110540.0
-            dx = (p[1] - via[1]) * 111320.0 * math.cos(math.radians(via[0]))
+            dy = (p[0] - via[0]) * METERS_PER_DEG_LAT
+            dx = (p[1] - via[1]) * METERS_PER_DEG_LON_EQ * math.cos(math.radians(via[0]))
             if dx * dx + dy * dy <= radius_m * radius_m:
                 return True
         return False

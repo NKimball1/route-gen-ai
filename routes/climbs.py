@@ -12,7 +12,7 @@ import math
 from dataclasses import dataclass
 
 from routes.intervals import _resample
-from routes.spec import METERS_PER_MILE
+from routes.spec import METERS_PER_DEG_LAT, METERS_PER_DEG_LON_EQ, METERS_PER_MILE
 
 
 @dataclass
@@ -27,8 +27,8 @@ class Climb:
 
 
 def _dist_m(a, b) -> float:
-    dy = (a[0] - b[0]) * 110540.0
-    dx = (a[1] - b[1]) * 111320.0 * math.cos(math.radians(a[0]))
+    dy = (a[0] - b[0]) * METERS_PER_DEG_LAT
+    dx = (a[1] - b[1]) * METERS_PER_DEG_LON_EQ * math.cos(math.radians(a[0]))
     return math.hypot(dx, dy)
 
 

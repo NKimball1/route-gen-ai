@@ -9,8 +9,7 @@ the junction point, so the track stays continuous.
 Provider-agnostic on purpose: works on any polyline, not just BRouter's.
 """
 import math
-
-EARTH_RADIUS_M = 6371000.0
+from routes.spec import EARTH_RADIUS_M
 
 
 def _hav_m(a, b) -> float:

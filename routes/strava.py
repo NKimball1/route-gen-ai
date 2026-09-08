@@ -16,6 +16,7 @@ import os
 import time
 
 import requests
+from routes.spec import METERS_PER_DEG_LAT, METERS_PER_DEG_LON_EQ
 
 TOKEN_FILE = ".strava_tokens.json"
 SEED_TOKEN_FILE = os.path.join(
@@ -72,8 +73,8 @@ def explore_segments(lat: float, lon: float, radius_m: float) -> list[dict]:
     """Popular riding segments in a box around (lat, lon). Each dict has
     name, climb_category, avg_grade, elev_difference (m), distance (m),
     start_latlng, end_latlng, and decoded polyline points."""
-    dlat = radius_m / 110540.0
-    dlon = radius_m / (111320.0 * math.cos(math.radians(lat)))
+    dlat = radius_m / METERS_PER_DEG_LAT
+    dlon = radius_m / (METERS_PER_DEG_LON_EQ * math.cos(math.radians(lat)))
     bounds = f"{lat - dlat},{lon - dlon},{lat + dlat},{lon + dlon}"
     resp = requests.get(
         EXPLORE_URL,

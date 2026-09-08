@@ -11,6 +11,7 @@ which is the right direction for interval hunting.
 import math
 
 import requests
+from routes.spec import METERS_PER_DEG_LAT, METERS_PER_DEG_LON_EQ
 
 OVERPASS_URLS = [
     "https://overpass-api.de/api/interpreter",
@@ -34,8 +35,8 @@ out;"""
 
 
 def bbox_around(lat: float, lon: float, radius_m: float) -> str:
-    dlat = radius_m / 110540.0
-    dlon = radius_m / (111320.0 * math.cos(math.radians(lat)))
+    dlat = radius_m / METERS_PER_DEG_LAT
+    dlon = radius_m / (METERS_PER_DEG_LON_EQ * math.cos(math.radians(lat)))
     return f"{lat - dlat},{lon - dlon},{lat + dlat},{lon + dlon}"
 
 
@@ -77,8 +78,8 @@ def _cluster(controls, radius_m: float = 35.0) -> list:
     merged = []
     for lat, lon, weight in controls:
         for i, (mlat, mlon, mweight) in enumerate(merged):
-            dy = (lat - mlat) * 110540.0
-            dx = (lon - mlon) * 111320.0 * math.cos(math.radians(lat))
+            dy = (lat - mlat) * METERS_PER_DEG_LAT
+            dx = (lon - mlon) * METERS_PER_DEG_LON_EQ * math.cos(math.radians(lat))
             if dx * dx + dy * dy <= radius_m * radius_m:
                 merged[i] = (mlat, mlon, max(mweight, weight))
                 break
@@ -89,10 +90,10 @@ def _cluster(controls, radius_m: float = 35.0) -> list:
 
 def _project(lat0: float, lon0: float):
     """Local equirectangular meters projection around (lat0, lon0)."""
-    kx = 111320.0 * math.cos(math.radians(lat0))
+    kx = METERS_PER_DEG_LON_EQ * math.cos(math.radians(lat0))
 
     def to_xy(lat, lon):
-        return (lon - lon0) * kx, (lat - lat0) * 110540.0
+        return (lon - lon0) * kx, (lat - lat0) * METERS_PER_DEG_LAT
     return to_xy
 
 

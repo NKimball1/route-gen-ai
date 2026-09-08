@@ -17,9 +17,7 @@ a known upgrade path.
 import math
 from dataclasses import dataclass, field
 
-from routes.spec import METERS_PER_FOOT, METERS_PER_MILE
-
-EARTH_RADIUS_M = 6371000.0
+from routes.spec import EARTH_RADIUS_M, METERS_PER_FOOT, METERS_PER_MILE
 
 # Speed assumptions for turning rep duration into stretch length.
 FLAT_SPEED_MPH = 20.0      # threshold pace on flat road

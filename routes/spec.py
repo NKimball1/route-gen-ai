@@ -9,6 +9,15 @@ from dataclasses import dataclass, field
 METERS_PER_MILE = 1609.344
 METERS_PER_FOOT = 0.3048
 
+# ---- geodesy constants (every module doing local geometry uses these) ----
+# Meters per one degree of latitude — near-constant everywhere on Earth.
+METERS_PER_DEG_LAT = 110540.0
+# Meters per one degree of longitude AT THE EQUATOR; the local east-west
+# value shrinks with latitude, so usages multiply this by cos(latitude).
+METERS_PER_DEG_LON_EQ = 111320.0
+# Mean Earth radius, for haversine great-circle distances.
+EARTH_RADIUS_M = 6371000.0
+
 
 @dataclass
 class RouteSpec:

@@ -11,6 +11,7 @@ import math
 import re
 
 from routes.interruptions import bbox_around, query_overpass
+from routes.spec import METERS_PER_DEG_LAT, METERS_PER_DEG_LON_EQ
 
 ROAD_QUERY = """[out:json][timeout:60];
 way["highway"]["name"~"{name}",i]({bbox});
@@ -51,9 +52,9 @@ def fetch_road(name: str, lat: float, lon: float,
 
 def _seg_dist_m(p, a, b) -> float:
     """Meters from point p to segment a-b (local equirectangular)."""
-    kx = 111320.0 * math.cos(math.radians(a[0]))
-    px, py = (p[1] - a[1]) * kx, (p[0] - a[0]) * 110540.0
-    bx, by = (b[1] - a[1]) * kx, (b[0] - a[0]) * 110540.0
+    kx = METERS_PER_DEG_LON_EQ * math.cos(math.radians(a[0]))
+    px, py = (p[1] - a[1]) * kx, (p[0] - a[0]) * METERS_PER_DEG_LAT
+    bx, by = (b[1] - a[1]) * kx, (b[0] - a[0]) * METERS_PER_DEG_LAT
     seg2 = bx * bx + by * by
     t = 0.0 if seg2 == 0 else max(0.0, min(1.0, (px * bx + py * by) / seg2))
     return math.hypot(px - t * bx, py - t * by)

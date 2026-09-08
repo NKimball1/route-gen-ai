@@ -11,6 +11,7 @@ import math
 import re
 
 from routes.interruptions import bbox_around, query_overpass
+from routes.spec import METERS_PER_DEG_LAT, METERS_PER_DEG_LON_EQ
 
 PEAK_QUERY = """[out:json][timeout:60];
 node["natural"="peak"]["ele"]({bbox});
@@ -39,8 +40,8 @@ def fetch_peaks(lat: float, lon: float, radius_m: float, top: int = 3) -> list[d
     merged: list[dict] = []
     for p in sorted(peaks, key=lambda p: -p["ele_m"]):
         near = any(
-            math.hypot((p["lat"] - q["lat"]) * 110540.0,
-                       (p["lon"] - q["lon"]) * 111320.0
+            math.hypot((p["lat"] - q["lat"]) * METERS_PER_DEG_LAT,
+                       (p["lon"] - q["lon"]) * METERS_PER_DEG_LON_EQ
                        * math.cos(math.radians(p["lat"]))) < 2000
             for q in merged)
         if not near:
@@ -61,8 +62,8 @@ def climb_to_peak(start_lat: float, start_lon: float, peak: dict, provider):
     candidates = extract_climbs(_resample(leg["points"]))
     best, best_d = None, None
     for c in candidates:
-        d = math.hypot((c["end"][0] - peak["lat"]) * 110540.0,
-                       (c["end"][1] - peak["lon"]) * 111320.0
+        d = math.hypot((c["end"][0] - peak["lat"]) * METERS_PER_DEG_LAT,
+                       (c["end"][1] - peak["lon"]) * METERS_PER_DEG_LON_EQ
                        * math.cos(math.radians(peak["lat"])))
         if d <= 3000 and (best is None or c["gain_m"] > best["gain_m"]):
             best, best_d = c, d

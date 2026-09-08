@@ -17,11 +17,17 @@ from fitparse import FitFile
 from routes.despur import _resample
 from routes.elevation import track_ascent
 from routes.preview import _parse_gpx
-from routes.spec import METERS_PER_FOOT, METERS_PER_MILE
+from routes.spec import METERS_PER_DEG_LAT, METERS_PER_DEG_LON_EQ, METERS_PER_FOOT, METERS_PER_MILE
 
 SEMI = 180.0 / 2 ** 31        # FIT semicircles -> degrees
 ON_ROUTE_M = 60.0             # within this of the route = following it
 OFF_RUN = 100                 # consecutive off-route samples = peeled off
+MIN_CHUNK_M = 800.0           # ignore on-route touches shorter than ~0.5 mi
+# The route is resampled at ~25 m spacing, so 8 consecutive route indices
+# span ~200 m. Used two ways below: a gap in covered indices larger than
+# this splits the coverage into separate segments, and segments shorter
+# than this carry no climbing signal worth comparing.
+SEG_200M_IDX = 8
 
 
 def load_fit(path):
@@ -54,7 +60,7 @@ def device_ascent(points, min_step: float = 0.0):
 
 class RouteIndex:
     def __init__(self, route_pts, cell_m: float = 100.0):
-        self.kx = 111320.0 * math.cos(math.radians(route_pts[0][0]))
+        self.kx = METERS_PER_DEG_LON_EQ * math.cos(math.radians(route_pts[0][0]))
         self.cell = cell_m
         self.grid = {}
         for i, p in enumerate(route_pts):
@@ -62,7 +68,7 @@ class RouteIndex:
         self.pts = route_pts
 
     def _key(self, p):
-        return (int(p[0] * 110540.0 / self.cell), int(p[1] * self.kx / self.cell))
+        return (int(p[0] * METERS_PER_DEG_LAT / self.cell), int(p[1] * self.kx / self.cell))
 
     def nearest(self, p):
         kx, ky = self._key(p)
@@ -71,7 +77,7 @@ class RouteIndex:
             for dy in (-1, 0, 1):
                 for i in self.grid.get((kx + dx, ky + dy), ()):
                     q = self.pts[i]
-                    d = math.hypot((p[0] - q[0]) * 110540.0,
+                    d = math.hypot((p[0] - q[0]) * METERS_PER_DEG_LAT,
                                    (p[1] - q[1]) * self.kx)
                     if best_d is None or d < best_d:
                         best_d, best_i = d, i
@@ -92,7 +98,7 @@ def main() -> int:
 
     def polyline_len(pts):
         return sum(
-            math.hypot((pts[k + 1][0] - pts[k][0]) * 110540.0,
+            math.hypot((pts[k + 1][0] - pts[k][0]) * METERS_PER_DEG_LAT,
                        (pts[k + 1][1] - pts[k][1]) * index.kx)
             for k in range(len(pts) - 1))
 
@@ -114,7 +120,7 @@ def main() -> int:
             start = i
         elif not on and start is not None:
             chunk = ride[start:i]
-            if polyline_len(chunk) >= 800:  # ignore sub-0.5-mile touches
+            if polyline_len(chunk) >= MIN_CHUNK_M:
                 chunks.append(chunk)
             start = None
     if not chunks:
@@ -128,11 +134,11 @@ def main() -> int:
     idxs = sorted(covered)
     segs, s = [], idxs[0]
     for a, b in zip(idxs, idxs[1:] + [None]):
-        if b is None or b - a > 8:  # gap ~200 m ends a segment
+        if b is None or b - a > SEG_200M_IDX:
             segs.append((s, a))
             s = b
     model_ft = sum(track_ascent(route[a:b + 1]) for a, b in segs
-                   if b - a >= 8) / METERS_PER_FOOT
+                   if b - a >= SEG_200M_IDX) / METERS_PER_FOOT
     covered_dist = sum(polyline_len(route[a:b + 1]) for a, b in segs)
 
     print(f"\nOn the route for {followed_dist / METERS_PER_MILE:.1f} mi across "

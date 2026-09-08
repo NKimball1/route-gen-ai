@@ -12,9 +12,7 @@ import os
 import re
 import sys
 
-from routes.spec import METERS_PER_FOOT, METERS_PER_MILE
-
-EARTH_RADIUS_M = 6371000.0
+from routes.spec import EARTH_RADIUS_M, METERS_PER_FOOT, METERS_PER_MILE
 
 PAGE = """<!DOCTYPE html><html><head><title>Route candidates</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>

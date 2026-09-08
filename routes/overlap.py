@@ -6,6 +6,7 @@ contiguous-mirror detector can see. Used to reject loop candidates that
 pretend to be loops.
 """
 import math
+from routes.spec import EARTH_RADIUS_M, METERS_PER_DEG_LAT, METERS_PER_DEG_LON_EQ
 
 CELL_M = 35.0        # grid cell size: two passes on one road share cells
 STEP_M = 60.0        # sampling step along the route
@@ -17,7 +18,7 @@ def _hav_m(a, b) -> float:
     dphi = phi2 - phi1
     dlam = math.radians(b[1] - a[1])
     h = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlam / 2) ** 2
-    return 2 * 6371000.0 * math.asin(math.sqrt(h))
+    return 2 * EARTH_RADIUS_M * math.asin(math.sqrt(h))
 
 
 def repeated_fraction(points) -> float:
@@ -37,10 +38,10 @@ def repeated_fraction(points) -> float:
         return 0.0
 
     lat0 = samples[0][0]
-    kx = 111320.0 * math.cos(math.radians(lat0))
+    kx = METERS_PER_DEG_LON_EQ * math.cos(math.radians(lat0))
 
     def cell(p):
-        return (int(p[0] * 110540.0 / CELL_M), int(p[1] * kx / CELL_M))
+        return (int(p[0] * METERS_PER_DEG_LAT / CELL_M), int(p[1] * kx / CELL_M))
 
     seen: dict = {}   # cell -> first sample index
     repeated = 0
