@@ -32,8 +32,8 @@ def run_spot_search(spec: IntervalSpec, profile: str | None = None,
                     out_dir: str = OUT_DIR) -> list:
     lat, lon, place = geocode(spec.address)
     print(f"Start: {place} ({lat:.5f}, {lon:.5f})")
-    print(f"Looking for a {spec.kind} stretch ~{spec.rep_distance_m / 1609.344:.1f} mi "
-          f"long within ~{spec.travel_radius_m / 1609.344:.0f} mi "
+    print(f"Looking for a {spec.kind} stretch ~{spec.rep_distance_m / METERS_PER_MILE:.1f} mi "
+          f"long within ~{spec.travel_radius_m / METERS_PER_MILE:.0f} mi "
           f"({spec.max_travel_minutes:.0f} min easy riding)...")
 
     provider = BRouterProvider(profile=profile)
@@ -52,13 +52,13 @@ def run_spot_search(spec: IntervalSpec, profile: str | None = None,
         desc = (f"{s.length_mi:.1f} mi @ {s.mean_grade_pct:+.1f}% "
                 f"(±{s.grade_std_pct:.1f}), {s.turns_per_km:.1f} turns/km, "
                 f"{s.n_controls} stops/signals, "
-                f"{s.dist_from_start_m / 1609.344:.1f} mi from start")
+                f"{s.dist_from_start_m / METERS_PER_MILE:.1f} mi from start")
         write_track(s.points, f"{spec.kind} spot #{i} ({spec.reps}x{spec.rep_minutes:.0f})",
                     desc, path)
         gpx_paths.append(path)
         print(f"{i:<5}{s.length_mi:>7.1f}{s.mean_grade_pct:>9.1f}"
               f"{s.grade_std_pct:>6.1f}{s.turns_per_km:>10.1f}"
-              f"{s.n_controls:>7}{s.dist_from_start_m / 1609.344:>13.1f}  {path}")
+              f"{s.n_controls:>7}{s.dist_from_start_m / METERS_PER_MILE:>13.1f}  {path}")
 
     build_preview(gpx_paths, os.path.join(out_dir, "preview.html"))
 
@@ -66,7 +66,7 @@ def run_spot_search(spec: IntervalSpec, profile: str | None = None,
     laps = max(1, round(spec.rep_distance_m / best.length_m + 0.49))
     note = "" if laps == 1 else f" (~{laps} laps per rep — expect turnarounds)"
     print(f"\nBest: {best.length_mi:.1f} mi at {best.mean_grade_pct:+.1f}%, "
-          f"{best.dist_from_start_m / 1609.344:.1f} mi ride out{note}")
+          f"{best.dist_from_start_m / METERS_PER_MILE:.1f} mi ride out{note}")
     return spots
 
 

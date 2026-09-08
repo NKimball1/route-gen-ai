@@ -14,7 +14,7 @@ import sys
 
 from fitparse import FitFile
 
-from routes.despur import _resample
+from routes.despur import RESAMPLE_STEP_M, _resample
 from routes.elevation import track_ascent
 from routes.preview import _parse_gpx
 from routes.spec import METERS_PER_DEG_LAT, METERS_PER_DEG_LON_EQ, METERS_PER_FOOT, METERS_PER_MILE
@@ -23,11 +23,11 @@ SEMI = 180.0 / 2 ** 31        # FIT semicircles -> degrees
 ON_ROUTE_M = 60.0             # within this of the route = following it
 OFF_RUN = 100                 # consecutive off-route samples = peeled off
 MIN_CHUNK_M = 800.0           # ignore on-route touches shorter than ~0.5 mi
-# The route is resampled at ~25 m spacing, so 8 consecutive route indices
-# span ~200 m. Used two ways below: a gap in covered indices larger than
-# this splits the coverage into separate segments, and segments shorter
-# than this carry no climbing signal worth comparing.
-SEG_200M_IDX = 8
+# How many consecutive resampled route indices span ~200 m. Used two ways
+# below: a gap in covered indices larger than this splits the coverage into
+# separate segments, and segments shorter than this carry no climbing
+# signal worth comparing.
+SEG_200M_IDX = int(200 / RESAMPLE_STEP_M)
 
 
 def load_fit(path):

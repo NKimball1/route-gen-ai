@@ -82,6 +82,9 @@ def _bearing_deg(a, b) -> float:
 
 
 BIN_M = 100.0  # resample step: kills GPS-style elevation jitter in grades
+# Controls just past a window's ends still interrupt every lap (you
+# turn around there), and mapped positions carry a little noise.
+CONTROL_PAD_M = 150.0
 
 
 def _resample(points, step_m: float = BIN_M):
@@ -190,8 +193,8 @@ def find_spots(spec: IntervalSpec, lat: float, lon: float, provider,
                 continue
             # Pad the range: a light AT the turnaround point still interrupts
             # every lap, and mapped positions carry a little noise.
-            a = bisect_left(hit_pos, rs[i0][3] - 150.0)
-            b = bisect_right(hit_pos, rs[j][3] + 150.0)
+            a = bisect_left(hit_pos, rs[i0][3] - CONTROL_PAD_M)
+            b = bisect_right(hit_pos, rs[j][3] + CONTROL_PAD_M)
             wt = hit_wt_cum[b] - hit_wt_cum[a]
             wt_per_km = wt / max(length / 1000.0, 0.001)
             score = _score(spec, length, mean, std, tpk, wt)

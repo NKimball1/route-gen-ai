@@ -18,6 +18,10 @@ METERS_PER_DEG_LON_EQ = 111320.0
 # Mean Earth radius, for haversine great-circle distances.
 EARTH_RADIUS_M = 6371000.0
 
+# Below this many meters on major highways, result tables show '0' --
+# crossing a highway at an intersection is not riding it.
+MAJOR_DISPLAY_MIN_M = 50.0
+
 
 @dataclass
 class RouteSpec:

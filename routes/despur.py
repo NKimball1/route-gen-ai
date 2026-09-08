@@ -11,6 +11,10 @@ Provider-agnostic on purpose: works on any polyline, not just BRouter's.
 import math
 from routes.spec import EARTH_RADIUS_M
 
+# Uniform spacing for resampled tracks. The elevation model and FIT
+# comparison (compare_ride.py) assume this spacing — change together.
+RESAMPLE_STEP_M = 25.0
+
 
 def _hav_m(a, b) -> float:
     phi1, phi2 = math.radians(a[0]), math.radians(b[0])
@@ -64,7 +68,7 @@ def despur(points, tolerance_m: float = 10.0, min_spur_m: float = 40.0,
     return pts, removed_dist, removed_ascent
 
 
-def _resample(points, step_m: float = 25.0) -> list:
+def _resample(points, step_m: float = RESAMPLE_STEP_M) -> list:
     """Uniformly spaced copy of the polyline (linear interpolation)."""
     out = [tuple(points[0][:3])]
     prev = points[0]

@@ -612,6 +612,32 @@ retains IPs + request text (a privacy line for the public-launch
 checklist), and interval-spot results don't expose the outcome banner's
 verification the way edits do.
 
+## Phase 27 — Naming the magic numbers (2026-09-08)
+
+A readability pass prompted by a fair question while reading
+compare_ride.py: "110540.0? 8? what do these mean?" Rule applied: any
+number used more than once, or whose meaning isn't obvious at the use
+site, becomes a named constant with a comment saying what it is and why
+that value.
+
+The geodesy trio (meters per degree of latitude, meters per degree of
+longitude at the equator, Earth's radius) had been retyped in seven
+modules — they now live once in `routes/spec.py` next to
+METERS_PER_MILE/METERS_PER_FOOT, and every raw `/ 1609.344` and
+`/ 0.3048` conversion now reads as units. The rest got names where they
+lived: NOTABLE_SPUR_M, VIA_CHAIN_MAX_SPAN_FRAC, ANCHOR_LEG_SKIP_M,
+CONTROL_PAD_M, TWIN_SUMMIT_MERGE_M, MIN_RIDING_RUN_M, RESAMPLE_STEP_M,
+HOUR_S/DAY_S, UPLOAD_MAX_BYTES, and more. Two derived values stopped
+being coincidences: compare_ride's segment-gap index is now
+`int(200 / RESAMPLE_STEP_M)` instead of a bare 8, and the upload error
+message can no longer disagree with the actual size cap.
+
+One process lesson relearned: the bulk-edit script's first version
+replaced an 8-space-indented string that was also a substring of a
+12-space occurrence — `str.replace` consumed both and the second
+patch's assertion failed. Fix: one global replace on the
+indentation-free core of the line. Tests unchanged: 75 passed.
+
 ## Testing & verification practices that emerged
 
 - 24 unit tests: despurring (exact, corridor, palindrome semantics),

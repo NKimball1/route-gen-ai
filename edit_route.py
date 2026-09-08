@@ -27,6 +27,12 @@ from routes.providers import BRouterProvider
 from routes.spec import METERS_PER_FOOT, METERS_PER_MILE
 
 OUT_DIR = os.path.join("output", "routes")
+# Via edits need room to leave and rejoin the route around the target.
+VIA_BUFFER_MIN_M = 1200.0
+# Place lookups are biased to the route's neighborhood: bbox padded by
+# these degrees (~15 km at Midwest latitudes).
+NEAR_MARGIN_LAT_DEG = 0.15
+NEAR_MARGIN_LON_DEG = 0.2
 
 
 def current_route(workdir: str = OUT_DIR) -> str | None:
@@ -73,8 +79,10 @@ def run_edit(route_path: str, place: str | None = None,
     # bias place lookups to the route's own neighborhood (~15 km margin)
     lats = [p[0] for p in points]
     lons = [p[1] for p in points]
-    near = (min(lats) - 0.15, min(lons) - 0.2,
-            max(lats) + 0.15, max(lons) + 0.2)
+    near = (min(lats) - NEAR_MARGIN_LAT_DEG,
+            min(lons) - NEAR_MARGIN_LON_DEG,
+            max(lats) + NEAR_MARGIN_LAT_DEG,
+            max(lons) + NEAR_MARGIN_LON_DEG)
 
     skipped: list[str] = []
     if mode in ("extend", "shorten"):
@@ -106,7 +114,7 @@ def run_edit(route_path: str, place: str | None = None,
                           f"route ({', '.join(places)}) — try road names "
                           "plus the city, or landmarks."), False
         result = route_via_chain(points, targets, provider,
-                                 buffer_m=max(radius_m, 1200.0))
+                                 buffer_m=max(radius_m, VIA_BUFFER_MIN_M))
         if result is None:
             return None, ("Couldn't route through those places — the "
                           "route is unchanged."), False
@@ -122,7 +130,7 @@ def run_edit(route_path: str, place: str | None = None,
         if mode == "via":
             print(f"Routing through: {zname}")
             result = route_via(points, (zlat, zlon),
-                               provider, buffer_m=max(radius_m, 1200.0))
+                               provider, buffer_m=max(radius_m, VIA_BUFFER_MIN_M))
             if result is None:
                 return None, (f"Couldn't splice the route through "
                               f"{place!r} — it's unchanged."), False
@@ -161,7 +169,7 @@ def run_edit(route_path: str, place: str | None = None,
                 before_m = on_road_meters(points, road_ways)
                 if before_m >= 60.0:
                     print(f"Avoiding the road itself: {zname} "
-                          f"(riding {before_m / 1609.344:.1f} mi along it)")
+                          f"(riding {before_m / METERS_PER_MILE:.1f} mi along it)")
                     road_result = detour_around_road(points, road_ways,
                                                      provider)
             if road_result is not None:
@@ -174,7 +182,7 @@ def run_edit(route_path: str, place: str | None = None,
                 else:
                     result.failed_detours = max(result.failed_detours, 1)
                     result.fail_reason = (f"still rides "
-                                          f"{after_m / 1609.344:.1f} mi of it")
+                                          f"{after_m / METERS_PER_MILE:.1f} mi of it")
             else:
                 print(f"Detouring around: {zname} (r={radius_m:.0f} m)")
                 result = detour_around(points, (zlat, zlon, radius_m),

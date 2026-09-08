@@ -13,6 +13,9 @@ from collections import defaultdict, deque
 LOCK = threading.Lock()
 _WINDOWS: dict = defaultdict(deque)
 
+HOUR_S = 3600
+DAY_S = 86400
+
 
 class Limits:
     """Env-tunable knobs (defaults sized for a friendly beta)."""
@@ -20,6 +23,7 @@ class Limits:
     ASK_PER_IP_HOUR = int(os.environ.get("RATE_ASK_IP_HOUR", 20))
     ASK_GLOBAL_DAY = int(os.environ.get("RATE_ASK_GLOBAL_DAY", 400))
     GEOCODE_PER_IP_HOUR = int(os.environ.get("RATE_GEOCODE_IP_HOUR", 30))
+    UPLOAD_PER_IP_HOUR = int(os.environ.get("RATE_UPLOAD_IP_HOUR", 20))
     JOBS_CONCURRENT = int(os.environ.get("RATE_JOBS_CONCURRENT", 3))
 
 
@@ -38,17 +42,17 @@ def allow(key, limit: int, period_s: float, now: float | None = None) -> bool:
 
 def check_ask(sid: str, ip: str) -> str | None:
     """None if allowed, else a human-readable refusal."""
-    if not allow(("ask_g",), Limits.ASK_GLOBAL_DAY, 86400):
+    if not allow(("ask_g",), Limits.ASK_GLOBAL_DAY, DAY_S):
         return "daily capacity reached — try again tomorrow"
-    if not allow(("ask_s", sid), Limits.ASK_PER_SESSION_HOUR, 3600):
+    if not allow(("ask_s", sid), Limits.ASK_PER_SESSION_HOUR, HOUR_S):
         return "hourly limit reached for this session — take a break"
-    if not allow(("ask_ip", ip), Limits.ASK_PER_IP_HOUR, 3600):
+    if not allow(("ask_ip", ip), Limits.ASK_PER_IP_HOUR, HOUR_S):
         return "hourly limit reached — take a break"
     return None
 
 
 def check_geocode(ip: str) -> str | None:
-    if not allow(("geo", ip), Limits.GEOCODE_PER_IP_HOUR, 3600):
+    if not allow(("geo", ip), Limits.GEOCODE_PER_IP_HOUR, HOUR_S):
         return "too many lookups — slow down"
     return None
 

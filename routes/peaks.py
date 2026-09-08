@@ -13,6 +13,12 @@ import re
 from routes.interruptions import bbox_around, query_overpass
 from routes.spec import METERS_PER_DEG_LAT, METERS_PER_DEG_LON_EQ
 
+# Twin summits of one hill (East/West Blue Mound) merge within this.
+TWIN_SUMMIT_MERGE_M = 2000.0
+# A harvested climb must top out within this of the peak to count as
+# the summit road.
+CLIMB_TOP_NEAR_PEAK_M = 3000.0
+
 PEAK_QUERY = """[out:json][timeout:60];
 node["natural"="peak"]["ele"]({bbox});
 out;"""
@@ -42,7 +48,7 @@ def fetch_peaks(lat: float, lon: float, radius_m: float, top: int = 3) -> list[d
         near = any(
             math.hypot((p["lat"] - q["lat"]) * METERS_PER_DEG_LAT,
                        (p["lon"] - q["lon"]) * METERS_PER_DEG_LON_EQ
-                       * math.cos(math.radians(p["lat"]))) < 2000
+                       * math.cos(math.radians(p["lat"]))) < TWIN_SUMMIT_MERGE_M
             for q in merged)
         if not near:
             merged.append(p)
@@ -65,7 +71,7 @@ def climb_to_peak(start_lat: float, start_lon: float, peak: dict, provider):
         d = math.hypot((c["end"][0] - peak["lat"]) * METERS_PER_DEG_LAT,
                        (c["end"][1] - peak["lon"]) * METERS_PER_DEG_LON_EQ
                        * math.cos(math.radians(peak["lat"])))
-        if d <= 3000 and (best is None or c["gain_m"] > best["gain_m"]):
+        if d <= CLIMB_TOP_NEAR_PEAK_M and (best is None or c["gain_m"] > best["gain_m"]):
             best, best_d = c, d
     if best is None:
         return None

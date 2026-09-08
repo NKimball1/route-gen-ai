@@ -16,6 +16,17 @@ from routes.overlap import repeated_fraction
 from routes.spec import METERS_PER_DEG_LAT, METERS_PER_DEG_LON_EQ, METERS_PER_MILE
 
 
+# A via/waypoint target farther than this from the route is not an
+# edit -- it's a different ride (route_via, chains, road mode agree).
+MAX_TARGET_FROM_ROUTE_M = 8000.0
+# anchor_at skips a connecting leg shorter than this -- the ride
+# effectively already starts/ends there.
+ANCHOR_LEG_SKIP_M = 150.0
+# A via chain whose waypoints span more than this fraction of the ride
+# would replace most of it -- refused (ask one at a time instead).
+VIA_CHAIN_MAX_SPAN_FRAC = 0.45
+
+
 @dataclass
 class EditResult:
     points: list
@@ -141,8 +152,8 @@ def shorten_route(points, cut_m: float, provider) -> EditResult | None:
         return None
     achieved = total - best[1].distance_m
     if achieved < 0.85 * cut_m:
-        print(f"  could only shorten by ~{achieved / 1609.344:.1f} mi "
-              f"(asked ~{cut_m / 1609.344:.1f}) — the route has no bigger "
+        print(f"  could only shorten by ~{achieved / METERS_PER_MILE:.1f} mi "
+              f"(asked ~{cut_m / METERS_PER_MILE:.1f}) — the route has no bigger "
               "cuttable detour")
     return best[1]
 
@@ -216,7 +227,7 @@ def route_via_chain(points, targets, provider,
         twice — out and back): (cum_position, distance) per pass."""
         d = [_dist_m(p, t) for p in points]
         mind = min(d)
-        if mind > 8000:
+        if mind > MAX_TARGET_FROM_ROUTE_M:
             return []
         thresh = max(mind * 1.5, mind + 400.0)
         out, run = [], []
@@ -251,7 +262,7 @@ def route_via_chain(points, targets, provider,
         span = max(combo) - min(combo)
         if best_span is None or span < best_span:
             best_combo, best_span = combo, span
-    if best_span > 0.45 * total:
+    if best_span > VIA_CHAIN_MAX_SPAN_FRAC * total:
         print(f"  those places span {best_span / total:.0%} of the ride — "
               "that edit would replace most of the route. Ask for them one "
               "at a time instead.")
@@ -298,13 +309,13 @@ def anchor_at(points, target, provider) -> EditResult | None:
         body = points[j1:j2 + 1]
         removed = cum[j1] + (total - cum[j2])
     added = 0.0
-    if _dist_m(target, body[0]) > 150.0:
+    if _dist_m(target, body[0]) > ANCHOR_LEG_SKIP_M:
         leg = provider.route([target, body[0][:2]])
         if leg is None:
             return None
         body = leg["points"] + body
         added += leg["distance_m"]
-    if _dist_m(body[-1], target) > 150.0:
+    if _dist_m(body[-1], target) > ANCHOR_LEG_SKIP_M:
         leg = provider.route([body[-1][:2], target])
         if leg is None:
             return None
@@ -346,7 +357,7 @@ def route_via(points, target, provider,
     cum = _cum(points)
     dists = [_dist_m(p, (tlat, tlon)) for p in points]
     i = min(range(len(points)), key=lambda k: dists[k])
-    if dists[i] > 8000:
+    if dists[i] > MAX_TARGET_FROM_ROUTE_M:
         print(f"  that place is {dists[i] / 1000:.1f} km from the route — "
               "too far to splice through; generate a fresh route instead")
         return None

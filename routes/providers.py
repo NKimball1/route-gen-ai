@@ -19,7 +19,9 @@ import requests
 
 from routes.despur import corridor_despur, despur
 from routes.elevation import track_ascent
-from routes.spec import EARTH_RADIUS_M, METERS_PER_DEG_LAT, METERS_PER_DEG_LON_EQ, RouteCandidate, RouteSpec
+from routes.spec import (EARTH_RADIUS_M, METERS_PER_DEG_LAT,
+                         METERS_PER_DEG_LON_EQ, METERS_PER_MILE,
+                         RouteCandidate, RouteSpec)
 
 
 def _bearing(a: tuple[float, float], b: tuple[float, float]) -> float:
@@ -41,6 +43,10 @@ def _destination(lat: float, lon: float, bearing_deg: float, dist_m: float) -> t
     lam2 = lam1 + math.atan2(math.sin(theta) * math.sin(delta) * math.cos(phi1),
                              math.cos(delta) - math.sin(phi1) * math.sin(phi2))
     return math.degrees(phi2), math.degrees(lam2)
+
+
+# Spur trims larger than this get a log line -- smaller are routine.
+NOTABLE_SPUR_M = 400.0
 
 
 class BRouterProvider:
@@ -114,8 +120,8 @@ class BRouterProvider:
         points, c_dist, c_ascent = corridor_despur(points, protect=protect)
         spur_dist += c_dist
         spur_ascent += c_ascent
-        if spur_dist > 400:
-            print(f"  brouter: trimmed {spur_dist / 1609.344:.1f} mi of "
+        if spur_dist > NOTABLE_SPUR_M:
+            print(f"  brouter: trimmed {spur_dist / METERS_PER_MILE:.1f} mi of "
                   f"out-and-back spurs")
         return {
             "points": points,
@@ -249,7 +255,7 @@ class BRouterProvider:
                     cand = RouteCandidate(
                         provider=self.name,
                         seed=f"via leg={li} side={'+' if side > 0 else '-'} "
-                             f"r={r / 1609.344:.1f}mi",
+                             f"r={r / METERS_PER_MILE:.1f}mi",
                         distance_m=leg["distance_m"], ascent_m=leg["ascent_m"],
                         points=leg["points"],
                         overlap_frac=repeated_fraction(leg["points"]),
@@ -349,9 +355,9 @@ class ORSProvider:
             points = [(c[1], c[0], c[2] if len(c) > 2 else None)
                       for c in feature["geometry"]["coordinates"]]
             points, spur_dist, spur_ascent = despur(points)
-            if spur_dist > 400:
+            if spur_dist > NOTABLE_SPUR_M:
                 print(f"  ors seed {seed}: trimmed "
-                      f"{spur_dist / 1609.344:.1f} mi of out-and-back spurs")
+                      f"{spur_dist / METERS_PER_MILE:.1f} mi of out-and-back spurs")
             out.append(RouteCandidate(
                 provider=self.name,
                 seed=f"seed={seed}",

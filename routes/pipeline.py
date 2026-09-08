@@ -11,7 +11,7 @@ from routes.gpx_out import write_gpx
 from routes.preview import build_preview
 from routes.providers import BRouterProvider, ORSProvider
 from routes.scoring import rank
-from routes.spec import METERS_PER_MILE, RouteSpec
+from routes.spec import MAJOR_DISPLAY_MIN_M, METERS_PER_MILE, RouteSpec
 
 OUT_DIR = os.path.join("output", "routes")
 
@@ -80,7 +80,7 @@ def compose(specs: list[RouteSpec], providers: list, candidates_per: int = 6,
         write_gpx(c, f"{miles:.0f}mi {goal} #{i}", path)
         gpx_paths.append(path)
         repeat = "n/a" if c.shape == "outback" else f"{c.overlap_frac:.0%}"
-        major = "0" if c.major_m < 50 else f"{c.major_m / 1609.344:.1f}mi"
+        major = "0" if c.major_m < MAJOR_DISPLAY_MIN_M else f"{c.major_m / METERS_PER_MILE:.1f}mi"
         print(f"{i:<5}{c.provider:<9}{c.shape:<9}{c.distance_mi:>7.1f}"
               f"{c.ascent_ft:>10.0f}{repeat:>8}{major:>7}  {path}")
 

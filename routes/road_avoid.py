@@ -11,13 +11,16 @@ import math
 import re
 
 from routes.interruptions import bbox_around, query_overpass
-from routes.spec import METERS_PER_DEG_LAT, METERS_PER_DEG_LON_EQ
+from routes.spec import (METERS_PER_DEG_LAT, METERS_PER_DEG_LON_EQ,
+                         METERS_PER_MILE)
 
 ROAD_QUERY = """[out:json][timeout:60];
 way["highway"]["name"~"{name}",i]({bbox});
 out geom;"""
 
 ON_ROAD_M = 28.0  # within this of the centerline counts as riding the road
+# shorter on-road stretches are mere crossings, not riding the road
+MIN_RIDING_RUN_M = 60.0
 
 ROAD_WORDS = re.compile(
     r"\b(road|rd|street|st|way|avenue|ave|drive|dr|lane|ln|"
@@ -122,7 +125,7 @@ def detour_around_road(points, ways, provider,
         if flag and s is None:
             s = i
         elif not flag and s is not None:
-            if cum[i - 1] - cum[s] >= 60.0:  # ignore mere crossings
+            if cum[i - 1] - cum[s] >= MIN_RIDING_RUN_M:
                 runs.append((s, i - 1))
             s = None
     if not runs:
@@ -158,7 +161,7 @@ def detour_around_road(points, ways, provider,
             failed += 1
             fail_reason = "no way around that stretch"
             print(f"  couldn't reroute the stretch at "
-                  f"{cum[a] / 1609.344:.1f} mi — keeping it")
+                  f"{cum[a] / METERS_PER_MILE:.1f} mi — keeping it")
             continue
         new_points.extend(points[cursor:a + 1])
         new_points.extend(leg["points"])

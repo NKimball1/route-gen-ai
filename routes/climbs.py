@@ -15,6 +15,10 @@ from routes.intervals import _resample
 from routes.spec import METERS_PER_DEG_LAT, METERS_PER_DEG_LON_EQ, METERS_PER_MILE
 
 
+# Climb-start dedupe grid: cells per degree (~600 m squares).
+DEDUPE_CELLS_PER_DEG = 180
+
+
 @dataclass
 class Climb:
     name: str
@@ -127,7 +131,8 @@ def find_climbs(lat: float, lon: float, radius_m: float, provider,
     priority = {"starred": 2, "peak": 1, "elevation": 0}
     best: dict = {}
     for c in found:
-        key = (round(c.start[0] * 180), round(c.start[1] * 180))
+        key = (round(c.start[0] * DEDUPE_CELLS_PER_DEG),
+               round(c.start[1] * DEDUPE_CELLS_PER_DEG))
         cur = best.get(key)
         if cur is None or ((priority[c.source], c.gain_m)
                            > (priority[cur.source], cur.gain_m)):

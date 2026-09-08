@@ -27,6 +27,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from routes import limits
+from routes.spec import METERS_PER_FOOT, METERS_PER_MILE
 
 app = FastAPI(title="Route Gen AI")
 app.mount("/assets", StaticFiles(directory="static"), name="assets")
@@ -45,10 +46,14 @@ def client_ip(request: Request) -> str:
 JOBS: dict = {}          # job id -> {"status", "buf", "result", "sid"}
 RUNNING: dict = {}       # session id -> job id currently running
 LOCK = threading.Lock()
+JOB_TTL_S = limits.HOUR_S     # finished jobs older than this are evicted
 
 SESSIONS_ROOT = os.path.join("output", "sessions")
 SID_RE = re.compile(r"^[A-Za-z0-9-]{8,64}$")
-SESSION_MAX_AGE_S = 7 * 86400
+SESSION_MAX_AGE_S = 7 * limits.DAY_S
+
+UPLOAD_MAX_MB = 8
+UPLOAD_MAX_BYTES = UPLOAD_MAX_MB * 1024 * 1024
 
 
 def session_dir(sid: str | None) -> str | None:
@@ -124,8 +129,8 @@ def ask(body: Ask, request: Request,
         return JSONResponse({"error": refusal}, status_code=429)
     job_id = uuid.uuid4().hex[:12]
     with LOCK:
-        # evict finished jobs older than an hour — JOBS grew forever
-        cutoff = time.time() - 3600
+        # evict finished jobs — JOBS grew forever without this
+        cutoff = time.time() - JOB_TTL_S
         for jid in [j for j, v in JOBS.items()
                     if v["status"] != "running" and v.get("ts", 0) < cutoff]:
             del JOBS[jid]
@@ -164,13 +169,15 @@ async def upload(request: Request, file: UploadFile = File(...),
                             status_code=400)
     if INVITE_CODE and x_invite_code != INVITE_CODE:
         return JSONResponse({"error": "invite code required"}, status_code=401)
-    if not limits.allow(("upload", client_ip(request)), 20, 3600):
+    if not limits.allow(("upload", client_ip(request)),
+                        limits.Limits.UPLOAD_PER_IP_HOUR, limits.HOUR_S):
         return JSONResponse({"error": "too many uploads — slow down"},
                             status_code=429)
     data = await file.read()
-    if len(data) > 8 * 1024 * 1024:
-        return JSONResponse({"error": "file too large (8 MB max)"},
-                            status_code=413)
+    if len(data) > UPLOAD_MAX_BYTES:
+        return JSONResponse(
+            {"error": f"file too large ({UPLOAD_MAX_MB} MB max)"},
+            status_code=413)
     from routes.elevation import track_ascent
     from routes.preview import parse_gpx_text
     from routes.editing import _cum
@@ -184,8 +191,8 @@ async def upload(request: Request, file: UploadFile = File(...),
     safe = re.sub(r"[^A-Za-z0-9_-]+", "_",
                   os.path.splitext(file.filename or "route")[0])[:40] or "route"
     out = os.path.join(workdir, f"upload_{safe}.gpx")
-    dist_mi = _cum(points)[-1] / 1609.344
-    ascent_ft = track_ascent(points) / 0.3048
+    dist_mi = _cum(points)[-1] / METERS_PER_MILE
+    ascent_ft = track_ascent(points) / METERS_PER_FOOT
     ele_note = "" if any(p[2] is not None for p in points) else \
         " — no elevation data in this file; climbing will read low until an edit adds routed legs"
     # rewriting through write_track normalizes the format and drops

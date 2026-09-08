@@ -1,5 +1,6 @@
 """Deterministic candidate filtering and ranking (no LLM judgment — ADR 0004)."""
-from routes.spec import RouteCandidate, RouteSpec
+from routes.spec import (MAJOR_DISPLAY_MIN_M, METERS_PER_MILE,
+                         RouteCandidate, RouteSpec)
 
 
 def rank(spec: RouteSpec, candidates: list[RouteCandidate]
@@ -17,7 +18,7 @@ def rank(spec: RouteSpec, candidates: list[RouteCandidate]
             rejects.append((c, f"{c.overlap_frac:.0%} of the route rides the "
                                f"same road twice"))
         elif c.major_m > 800:
-            rejects.append((c, f"{c.major_m / 1609.344:.1f} mi on major "
+            rejects.append((c, f"{c.major_m / METERS_PER_MILE:.1f} mi on major "
                                f"highways (trunk/primary)"))
         else:
             keepers.append(c)

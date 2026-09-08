@@ -9,7 +9,8 @@ import os
 import sys
 import threading
 
-from routes.spec import METERS_PER_FOOT, METERS_PER_MILE
+from routes.spec import (MAJOR_DISPLAY_MIN_M, METERS_PER_FOOT,
+                         METERS_PER_MILE)
 
 HOME_WORDS = ("home", "my house", "my home", "house")
 
@@ -137,7 +138,7 @@ def _dispatch(text: str, default_address: str | None, workdir: str) -> dict:
         delta = e.get("miles_delta")
         if mode in ("extend", "shorten") and not delta and e.get("target_miles"):
             from routes.editing import _cum
-            cur_mi = _cum(_parse_gpx(route_path))[-1] / 1609.344
+            cur_mi = _cum(_parse_gpx(route_path))[-1] / METERS_PER_MILE
             diff = e["target_miles"] - cur_mi
             mode = "extend" if diff > 0 else "shorten"
             delta = abs(diff)
@@ -232,7 +233,7 @@ def _dispatch(text: str, default_address: str | None, workdir: str) -> dict:
     for i, c in enumerate(keepers, 1):
         path = os.path.join(workdir,
                             f"route_{miles:.0f}mi_{goal}_{i}_{c.shape}_{c.provider}.gpx")
-        major = "" if c.major_m < 50 else f", {c.major_m / 1609.344:.1f} mi major"
+        major = "" if c.major_m < MAJOR_DISPLAY_MIN_M else f", {c.major_m / METERS_PER_MILE:.1f} mi major"
         cands.append({
             "label": (f"#{i} {c.shape}: {c.distance_mi:.1f} mi, "
                       f"{c.ascent_m / METERS_PER_FOOT:.0f} ft"
