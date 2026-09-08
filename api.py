@@ -23,11 +23,13 @@ load_dotenv()
 
 from fastapi import FastAPI, File, Header, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from routes import limits
 
 app = FastAPI(title="Route Gen AI")
+app.mount("/assets", StaticFiles(directory="static"), name="assets")
 
 # Optional shared invite code: set ROUTEGEN_INVITE_CODE to gate the
 # expensive endpoint; unset = open (local/dev).
@@ -296,3 +298,19 @@ def get_current(x_session_id: str | None = Header(default=None)):
 @app.get("/")
 def index():
     return FileResponse(os.path.join("static", "index.html"))
+
+
+# Text pages: every static/pages/<slug>.html is a real URL (/about, ...).
+# Server-rendered static HTML with its own <title>/<meta> — what SEO wants.
+# Adding a future page = dropping one file in that directory.
+PAGES_DIR = os.path.join("static", "pages")
+PAGE_RE = re.compile(r"^[a-z0-9-]{1,40}$")
+
+
+@app.get("/{slug}")
+def text_page(slug: str):
+    if PAGE_RE.match(slug):
+        path = os.path.join(PAGES_DIR, f"{slug}.html")
+        if os.path.exists(path):
+            return FileResponse(path)
+    return JSONResponse({"error": "not found"}, status_code=404)

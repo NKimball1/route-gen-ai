@@ -1,0 +1,30 @@
+/* Shared styles for text pages (/about and future pages) — matches the
+   app's dark look. Each page is a standalone HTML file in static/pages/;
+   dropping a new file there creates a new URL. */
+:root { --bg:#101418; --panel:#1a2027; --ink:#e8edf2; --dim:#8b98a5;
+        --accent:#ff6b35; --line:#2a323c; }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink);
+       font:16px/1.65 system-ui, sans-serif; }
+nav { display:flex; gap:18px; align-items:baseline; padding:16px 22px;
+      border-bottom:1px solid var(--line); background:var(--panel); }
+nav .brand { font-size:17px; font-weight:700; color:var(--ink);
+             text-decoration:none; }
+nav .brand span { color:var(--accent); }
+nav a { color:var(--dim); text-decoration:none; font-size:14px; }
+nav a:hover, nav a.here { color:var(--ink); }
+nav .cta { margin-left:auto; color:#fff; background:var(--accent);
+           padding:6px 14px; border-radius:8px; font-weight:600; }
+main { max-width:680px; margin:0 auto; padding:40px 22px 80px; }
+h1 { font-size:28px; line-height:1.25; margin:0 0 6px; }
+h2 { font-size:19px; margin:34px 0 8px; }
+p, li { color:var(--ink); }
+.lede { color:var(--dim); font-size:18px; margin-top:0; }
+a { color:var(--accent); }
+ul { padding-left:22px; }
+li { margin:6px 0; }
+footer { max-width:680px; margin:0 auto; padding:0 22px 40px;
+         color:var(--dim); font-size:13px; border-top:1px solid var(--line);
+         padding-top:18px; }
+code { background:var(--panel); border:1px solid var(--line);
+       border-radius:5px; padding:1px 6px; font-size:14px; }

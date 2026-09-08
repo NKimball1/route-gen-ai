@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>About — Route Gen AI</title>
+<meta name="description" content="Route Gen AI turns a plain-English request
+— 'give me a 40 mile loop from home, not much climbing' — into a
+Garmin-ready cycling route on quiet roads. How it works, and why the AI
+never draws the map.">
+<link rel="stylesheet" href="/assets/pages.css">
+</head>
+<body>
+<nav>
+  <a class="brand" href="/about">Route <span>Gen</span> AI</a>
+  <a href="/about" class="here">About</a>
+  <a class="cta" href="/">Open the app</a>
+</nav>
+<main>
+  <h1>Routes in plain English</h1>
+  <p class="lede">Tell it the ride you want — <em>"a 40&nbsp;mile loop from
+  home, not much climbing"</em> — and get a GPX file your Garmin or Wahoo
+  can navigate, built on quiet roads cyclists actually want to ride.</p>
+
+  <h2>What it does</h2>
+  <ul>
+    <li><strong>Composes rides</strong>: loops or out-and-backs at your
+      distance, flattest possible, max climbing (it finds real summits),
+      or through towns you name.</li>
+    <li><strong>Finds interval spots</strong>: a flat, uninterrupted
+      stretch for 2×20 threshold work, or a steady grade for VO2 reps —
+      scored against real stop signs and traffic lights from
+      OpenStreetMap.</li>
+    <li><strong>Edits any route conversationally</strong>: upload a GPX
+      you already love, then "avoid that road", "add a stop at the café",
+      "make it 10 miles longer", "start and end at my place". Changes
+      splice locally; the rest of your route is untouched, and there's an
+      undo.</li>
+  </ul>
+
+  <h2>How it works (and why the AI never draws the map)</h2>
+  <p>A language model does exactly one job: reading your request into a
+  precise, typed specification. Everything after that is deterministic —
+  an open-source routing engine over OpenStreetMap data proposes
+  candidates, and computed validators judge them: distance tolerance,
+  climbing (calibrated against real head-unit measurements), how many
+  meters land on busy highways, how much road repeats, whether an
+  "avoid" actually cleared the road it named. Results are verified
+  measurements, not model opinions — when an edit only partly works,
+  the app says so.</p>
+
+  <h2>Built in the open</h2>
+  <p>The whole project — including a development log of every field-tested
+  failure and fix — is open source:
+  <a href="https://github.com/NKimball1/route-gen-ai">github.com/NKimball1/route-gen-ai</a>.</p>
+
+  <h2>Privacy</h2>
+  <p>No accounts. Uploaded GPX files are normalized on arrival — timestamps
+  and sensor data (heart rate, power) from ride recordings are stripped and
+  never stored. Requests are logged to improve the tool.</p>
+</main>
+<footer>
+  Built in Madison, Wisconsin — field-tested on the roads it routes.
+</footer>
+</body>
+</html>
