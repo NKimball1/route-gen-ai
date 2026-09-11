@@ -2,7 +2,7 @@
 
 Describe a ride in plain English, get a Garmin-ready GPX.
 
-> **How it was built:** [docs/DEVLOG.md](docs/DEVLOG.md) — 17 phases of
+> **How it was built:** [docs/DEVLOG.md](docs/DEVLOG.md) — 27 phases of
 > field-tested iteration, every real-ride complaint turned into a
 > permanent, unit-tested fix.
 
@@ -10,6 +10,10 @@ Describe a ride in plain English, get a Garmin-ready GPX.
 http://localhost:8903 — one text box for routes, interval spots, and edits;
 candidates draw on a map with GPX downloads; edits chain against the
 current route. Same brain as the CLI below (routes/service.py).
+Sessions are per-browser (concurrent users never share state), requests
+are rate-limited (env-tunable `RATE_*`), and setting `ROUTEGEN_INVITE_CODE`
+gates the expensive endpoints for a public deploy. Text pages like
+[/about](static/pages/about.html) are drop-in files in `static/pages/`.
 
 CLI:
 
@@ -51,11 +55,12 @@ rate-limits) — and **OpenRouteService** (activates when `ORS_API_KEY` is
 set). Geocoding is OSM Nominatim (free). Avoid-zones ("not Verona Rd") ride
 along as BRouter `nogos`.
 
-Profiles: `fastbike-lowtraffic` (default) avoids busy roads;
-**`fastbike-quiet`** (custom, self-hosted only) additionally penalizes
-primary/secondary/tertiary — i.e. county-highway-class — roads 2-3x, keeping
-rides on quiet rural/residential roads at the cost of longer detours. Pass
-`--profile fastbike-quiet`. Routing data covers the two 5° tiles around
+Profiles: **`fastbike-quiet`** (custom, default when self-hosted)
+penalizes primary/secondary/tertiary — i.e. county-highway-class — roads
+2-3x on top of avoiding busy roads, keeping rides on quiet
+rural/residential roads at the cost of longer detours;
+`fastbike-lowtraffic` is the fallback default on the public server,
+which lacks the custom profile. Override either with `--profile`. Routing data covers the two 5° tiles around
 southern Wisconsin (W90_N40, W95_N40); grab more `.rd5` tiles from
 brouter.de/brouter/segments4/ into `segments4\` for other regions.
 
