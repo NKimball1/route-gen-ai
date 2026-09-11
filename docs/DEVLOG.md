@@ -638,6 +638,38 @@ replaced an 8-space-indented string that was also a substring of a
 patch's assertion failed. Fix: one global replace on the
 indentation-free core of the line. Tests unchanged: 75 passed.
 
+## Phase 28 — The prompt injection that couldn't happen, and the one that could (2026-09-11)
+
+A threat-modeling question from a walk: could you prompt-inject this
+thing through an uploaded GPX file? Traced the data flow to answer it
+properly. No: there is exactly one LLM call site (routes/nl.py) and the
+only thing it ever receives is the typed request (600-char cap). GPX
+content never enters a prompt — and the upload path launders the file
+anyway (filename sanitized, track rewritten through write_track,
+dropping desc/metadata/extensions). A malicious GPX is an XSS/parser
+surface (covered in the taxonomy review), not an injection one.
+
+The injection surface that DOES exist is the text box itself, which on
+a public deploy is attacker-controlled. The design already keeps the
+blast radius small — single non-agentic call, no tools, structured
+outputs with enum-locked modes, downstream sanitization before Overpass
+queries — so the worst a hostile prompt can produce is weird-but-
+schema-valid VALUES. That was the real gap (open since phase 26): a
+"radius of a million meters" parse was schema-valid and would have
+sized a giant Overpass bbox or an hours-long compute.
+
+Fix: server-side clamps in routes/service.py, applied right after the
+parse. Every number the LLM can emit now has explicit bounds
+(distance 2–150 mi, radius 50–5000 m, reps ≤ 20, ...), place lists are
+truncated at 8, and every clamp prints a log line so the user sees it
+happened rather than wondering why their number changed. Five tests
+lock it in, including the hostile cases.
+
+Rule carried forward for future features: the day GPX metadata or route
+names enter a prompt ("summarize my ride"), that file content becomes a
+classic indirect-injection channel — delimit it, keep structured
+outputs, and let it influence fields, never behavior.
+
 ## Testing & verification practices that emerged
 
 - 24 unit tests: despurring (exact, corridor, palindrome semantics),

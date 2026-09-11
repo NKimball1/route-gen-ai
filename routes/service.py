@@ -14,6 +14,44 @@ from routes.spec import (MAJOR_DISPLAY_MIN_M, METERS_PER_FOOT,
 
 HOME_WORDS = ("home", "my house", "my home", "house")
 
+# ---- server-side bounds on parsed numbers ----
+# The parser is an LLM fed user text: schema-VALID output can still carry
+# absurd values ("radius of a million meters"), and on a public deploy the
+# text box is attacker-controlled. A rogue number must not become a giant
+# Overpass bbox or an hours-long compute. Out-of-range values are pulled
+# to the nearest edge, with a log line so the user sees it happened.
+PARSE_BOUNDS = {
+    "route": {"distance_miles": (2.0, 150.0),
+              "max_climb_ft": (0.0, 20000.0)},
+    "interval": {"reps": (1, 20), "rep_minutes": (1.0, 60.0),
+                 "max_travel_minutes": (5.0, 90.0)},
+    "edit": {"radius_m": (50.0, 5000.0), "miles_delta": (0.0, 50.0),
+             "target_miles": (2.0, 150.0)},
+}
+MAX_PLACES = 8  # waypoint/avoid lists longer than this are truncated
+
+
+def _clamp_parsed(req: dict) -> None:
+    """Bound every number and list the LLM parse produced (in place)."""
+    for section, bounds in PARSE_BOUNDS.items():
+        obj = req.get(section)
+        if not obj:
+            continue
+        for fld, (lo, hi) in bounds.items():
+            v = obj.get(fld)
+            if v is None:
+                continue
+            c = min(max(v, lo), hi)
+            if c != v:
+                print(f"Clamped {fld}: {v:g} -> {c:g}")
+                obj[fld] = c
+        for fld in ("places", "avoid_places", "via_places"):
+            v = obj.get(fld)
+            if isinstance(v, list) and len(v) > MAX_PLACES:
+                print(f"Keeping the first {MAX_PLACES} of "
+                      f"{len(v)} {fld}")
+                obj[fld] = v[:MAX_PLACES]
+
 
 class _StdoutRouter(io.TextIOBase):
     """Routes print() by THREAD to each job's own log buffer.
@@ -96,6 +134,7 @@ def _dispatch(text: str, default_address: str | None, workdir: str) -> dict:
           f"{ {k: v for k, v in req.items() if v} }")
     if req.get("notes"):
         print(f"Note: couldn't map: {req['notes']}")
+    _clamp_parsed(req)
 
     if req["request_type"] == "undo":
         from edit_route import current_route, predecessor
