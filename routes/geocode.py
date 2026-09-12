@@ -3,22 +3,45 @@
 Nominatim usage policy: identify yourself with a User-Agent and stay
 under 1 request/second. We make one request per compose run.
 """
+import time
+
 import requests
 
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
 USER_AGENT = "cycling-agentic-flow-route-prototype/0.1"
 
+RETRIES = 3
+# Grows per attempt (1.5s, 3s); also keeps retries under Nominatim's
+# 1 request/second usage policy.
+RETRY_WAIT_S = 1.5
+RETRYABLE_HTTP = (429, 502, 503, 504)
+
+
+def _nominatim_get(params: dict) -> list:
+    """GET with retries — Nominatim occasionally 429s or times out, and
+    one flaky lookup shouldn't kill a whole compose run."""
+    last = None
+    for attempt in range(RETRIES):
+        if attempt:
+            time.sleep(RETRY_WAIT_S * attempt)
+        try:
+            resp = requests.get(NOMINATIM_URL, params=params,
+                                headers={"User-Agent": USER_AGENT},
+                                timeout=30)
+            if resp.status_code in RETRYABLE_HTTP:
+                last = RuntimeError(
+                    f"Nominatim HTTP {resp.status_code} (busy)")
+                continue
+            resp.raise_for_status()
+            return resp.json()
+        except (requests.ConnectionError, requests.Timeout) as e:
+            last = e
+    raise last
+
 
 def geocode(address: str) -> tuple[float, float, str]:
     """Return (lat, lon, display_name) for an address string."""
-    resp = requests.get(
-        NOMINATIM_URL,
-        params={"q": address, "format": "json", "limit": 1},
-        headers={"User-Agent": USER_AGENT},
-        timeout=30,
-    )
-    resp.raise_for_status()
-    results = resp.json()
+    results = _nominatim_get({"q": address, "format": "json", "limit": 1})
     if not results:
         raise ValueError(f"Could not geocode address: {address!r}")
     hit = results[0]
@@ -29,16 +52,9 @@ def _geocode_bounded(query: str, near) -> tuple[float, float, str]:
     """Geocode restricted to a (minlat, minlon, maxlat, maxlon) box — so
     'Whitney Way' on a Madison route finds Madison's, not one anywhere."""
     minlat, minlon, maxlat, maxlon = near
-    resp = requests.get(
-        NOMINATIM_URL,
-        params={"q": query, "format": "json", "limit": 1,
-                "viewbox": f"{minlon},{minlat},{maxlon},{maxlat}",
-                "bounded": 1},
-        headers={"User-Agent": USER_AGENT},
-        timeout=30,
-    )
-    resp.raise_for_status()
-    results = resp.json()
+    results = _nominatim_get(
+        {"q": query, "format": "json", "limit": 1,
+         "viewbox": f"{minlon},{minlat},{maxlon},{maxlat}", "bounded": 1})
     if not results:
         raise ValueError(f"Could not geocode near the route: {query!r}")
     hit = results[0]

@@ -670,6 +670,28 @@ names enter a prompt ("summarize my ride"), that file content becomes a
 classic indirect-injection channel — delimit it, keep structured
 outputs, and let it influence fields, never behavior.
 
+## Phase 29 — Two small robustness items off the open list (2026-09-12)
+
+Both had sat on the phase-26 open list; both are the kind of bug that
+only fires in the field, on someone else's data or someone else's bad
+day.
+
+GPX attribute order: the point parser required `lat` before `lon` in
+trkpt/rtept tags. Our writer emits lat-first, but XML promises no
+attribute order, and uploads come from arbitrary exporters — a
+lon-first file would have parsed as zero points and been rejected as
+"no track points found" despite being perfectly valid. The parser now
+extracts each attribute independently from the tag, order-blind, and
+skips (rather than crashes on) a point missing a coordinate.
+
+Nominatim retries: every geocode was one raw HTTP call — a single 429
+or timeout killed the whole compose run. Both lookup paths now share a
+retrying GET: three attempts with a growing wait (which also keeps
+retries under Nominatim's 1 req/s policy), retrying only what can heal
+(429/502/503/504, timeouts, connection errors). A 400 still fails
+fast — a bad request stays bad. Eight new offline tests, mocked HTTP;
+88 total.
+
 ## Testing & verification practices that emerged
 
 - 24 unit tests: despurring (exact, corridor, palindrome semantics),
