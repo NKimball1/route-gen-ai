@@ -55,13 +55,19 @@ def _haversine_m(a: tuple[float, float], b: tuple[float, float]) -> float:
 
 def parse_gpx_text(text: str) -> list[tuple[float, float, float | None]]:
     """Track or route points from GPX text. Tolerant of uploads: accepts
-    <trkpt> and <rtept>, missing <ele>, self-closing tags."""
+    <trkpt> and <rtept>, missing <ele>, self-closing tags, and lat/lon
+    attributes in either order (XML doesn't promise an order; ours writes
+    lat first but a foreign exporter may not)."""
     pts = []
     for m in re.finditer(
-            r'<(?:trkpt|rtept)\s+lat="([\-0-9.]+)"\s+lon="([\-0-9.]+)"\s*'
+            r'<(?:trkpt|rtept)\s+([^>]*?)\s*'
             r'(?:/>|>(?:\s*<ele>([\-0-9.]+)</ele>)?)', text):
-        lat, lon, ele = float(m.group(1)), float(m.group(2)), m.group(3)
-        pts.append((lat, lon, float(ele) if ele else None))
+        attrs, ele = m.group(1), m.group(2)
+        lat = re.search(r'\blat="([\-0-9.]+)"', attrs)
+        lon = re.search(r'\blon="([\-0-9.]+)"', attrs)
+        if lat and lon:
+            pts.append((float(lat.group(1)), float(lon.group(1)),
+                        float(ele) if ele else None))
     return pts
 
 
