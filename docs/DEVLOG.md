@@ -692,6 +692,27 @@ retries under Nominatim's 1 req/s policy), retrying only what can heal
 fast — a bad request stays bad. Eight new offline tests, mocked HTTP;
 88 total.
 
+## Phase 30 — Undo followed the numbers, not the history (2026-09-14)
+
+The last phase-26 item that could be fixed cheaply, and it turned out to
+bite the exact flow this project's users rely on. Edit files are
+numbered with the next FREE number, and undo assumed editN was built on
+editN-1. After an undo — or a revert-first correction ("that wasn't
+what I meant, use Struck St"), which reverts edit2 to edit1 and then
+writes edit3 — undo on edit3 went to edit2: the change the user had
+just rejected. Numbers only go up; history branches.
+
+Fix: run_edit records real parentage in a per-workdir lineage.json
+(edit file -> the file it was built on), and predecessor() follows
+that. Without a record (sessions from before this change) it falls back
+to walking the numbers down, now tolerant of gaps. A corrupt lineage
+file degrades to the fallback rather than breaking undo. Four tests,
+including the correction scenario itself.
+
+Also added docs/OVERVIEW.md — what the project is, the stack, and the
+design decisions on one page — for anyone who lands on the repo
+without time for thirty devlog phases.
+
 ## Testing & verification practices that emerged
 
 - 24 unit tests: despurring (exact, corridor, palindrome semantics),
