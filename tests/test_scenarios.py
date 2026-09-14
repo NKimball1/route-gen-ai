@@ -133,8 +133,8 @@ def test_predecessor_lineage(tmp_path):
         f.write_text("<gpx/>")
     assert predecessor(str(e1)) == str(base)
     assert predecessor(str(base)) is None
-    # gap in numbering: edit3's predecessor (edit2) doesn't exist
-    assert predecessor(str(e3)) is None
+    # gap in numbering with no lineage record: walk down to what exists
+    assert predecessor(str(e3)) == str(e1)
 
 
 # ---- phase 21: geocode query variants (pure logic) ----

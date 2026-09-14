@@ -10,6 +10,7 @@ new current route, so edits chain. Radius defaults to 1000 m; append
 ":<meters>" to the place to widen/narrow the zone.
 """
 import argparse
+import json
 import os
 import sys
 
@@ -46,18 +47,56 @@ def current_route(workdir: str = OUT_DIR) -> str | None:
     return None
 
 
+# Per-workdir map of edit file -> the file it was built on. Edit numbers
+# only ever go UP (next free number), so after an undo or a revert-first
+# correction the newest edit's parent is NOT editN-1 — it's whatever was
+# current when the edit ran. Undo must follow real parentage, not numbers.
+LINEAGE_FILE = "lineage.json"
+
+
+def _lineage_path(route_path: str) -> str:
+    return os.path.join(os.path.dirname(route_path), LINEAGE_FILE)
+
+
+def _load_lineage(route_path: str) -> dict:
+    try:
+        with open(_lineage_path(route_path), encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return {}
+
+
+def record_parent(out_path: str, parent_path: str) -> None:
+    data = _load_lineage(out_path)
+    same_dir = os.path.dirname(parent_path) == os.path.dirname(out_path)
+    data[os.path.basename(out_path)] = (os.path.basename(parent_path)
+                                        if same_dir else parent_path)
+    with open(_lineage_path(out_path), "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=1)
+
+
 def predecessor(route_path: str) -> str | None:
-    """The version this edit was built on: editN -> editN-1 -> the base
-    file. Edit files persist in the workdir, so undo is just a pointer
-    move."""
+    """The version this edit was built on. Edit files persist in the
+    workdir, so undo is just a pointer move. Recorded parentage wins;
+    without it (older sessions), fall back to walking the numbers down —
+    tolerant of gaps — to the base file."""
+    parent = _load_lineage(route_path).get(os.path.basename(route_path))
+    if parent:
+        full = (parent if os.path.dirname(parent)
+                else os.path.join(os.path.dirname(route_path), parent))
+        if os.path.exists(full):
+            return full
     base, ext = os.path.splitext(route_path)
     if "_edit" not in base:
         return None
     stem, n = base.rsplit("_edit", 1)
     if not n.isdigit():
         return None
-    prev = stem + ext if int(n) <= 1 else f"{stem}_edit{int(n) - 1}{ext}"
-    return prev if os.path.exists(prev) else None
+    for k in range(int(n) - 1, 0, -1):
+        cand = f"{stem}_edit{k}{ext}"
+        if os.path.exists(cand):
+            return cand
+    return stem + ext if os.path.exists(stem + ext) else None
 
 
 def run_edit(route_path: str, place: str | None = None,
@@ -211,6 +250,7 @@ def run_edit(route_path: str, place: str | None = None,
             f"{result.ascent_m / METERS_PER_FOOT:.0f} ft "
             f"(edit: {verbs.get(mode, mode)} {place})".replace(":  ", ": "))
     write_track(result.points, f"{base} edit{n}", desc, out_path)
+    record_parent(out_path, route_path)
     build_preview([out_path, route_path], os.path.join(out_dir, "preview.html"))
     with open(os.path.join(out_dir, "latest.txt"), "w") as f:
         f.write(out_path)
