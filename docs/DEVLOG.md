@@ -713,6 +713,26 @@ Also added docs/OVERVIEW.md — what the project is, the stack, and the
 design decisions on one page — for anyone who lands on the repo
 without time for thirty devlog phases.
 
+## Phase 31 — Launch-checklist items: log privacy and a health check (2026-09-15)
+
+Two small pieces of deploy prep.
+
+usage.jsonl had been logging raw client IPs alongside request text
+since phase 17 — flagged as a privacy line for the public launch and
+left open. Now every IP is pseudonymized before it touches disk: a
+salted SHA-256 (ROUTEGEN_IP_SALT), truncated. Distinct visitors are
+still countable and one abuser still stands out, but the log is no
+longer a list of who was here. Rate limiting is unaffected (in-memory,
+never written). Honest caveat in the code: with the empty default salt
+an IPv4 hash is brute-forceable — the env example says to set one.
+
+/api/health: a load balancer needs something to poll, and the single
+most common way a request fails outright is the routing server being
+down. The endpoint does a 1-second TCP connect to BRouter (no routing
+work), reports up/down plus running-job count, and returns 503 when
+the router is unreachable so the balancer can act on it. Six tests;
+98 total.
+
 ## Testing & verification practices that emerged
 
 - 24 unit tests: despurring (exact, corridor, palindrome semantics),

@@ -14,6 +14,7 @@ Both return RouteCandidate lists for the same RouteSpec.
 """
 import math
 import os
+import socket
 
 import requests
 
@@ -47,6 +48,20 @@ def _destination(lat: float, lon: float, bearing_deg: float, dist_m: float) -> t
 
 # Spur trims larger than this get a log line -- smaller are routine.
 NOTABLE_SPUR_M = 400.0
+
+
+def brouter_reachable(base_url: str, timeout_s: float = 1.0) -> bool:
+    """Cheap liveness probe: a TCP connect to the routing server, no
+    routing work. For health checks and a clear error before a job
+    spends the user's rate-limit budget on a dead backend."""
+    from urllib.parse import urlparse
+    u = urlparse(base_url)
+    port = u.port or (443 if u.scheme == "https" else 80)
+    try:
+        with socket.create_connection((u.hostname, port), timeout=timeout_s):
+            return True
+    except OSError:
+        return False
 
 
 class BRouterProvider:

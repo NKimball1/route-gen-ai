@@ -210,6 +210,19 @@ async def upload(request: Request, file: UploadFile = File(...),
     }]}
 
 
+@app.get("/api/health")
+def health():
+    """Liveness for load balancers + a one-line answer to "is the router
+    up?" — the most common reason a request fails outright."""
+    from routes.providers import BRouterProvider, brouter_reachable
+    url = BRouterProvider().base_url
+    up = brouter_reachable(url)
+    body = {"ok": up, "brouter": "up" if up else "down", "brouter_url": url,
+            "jobs_running": sum(1 for j in JOBS.values()
+                                if j["status"] == "running")}
+    return JSONResponse(body, status_code=200 if up else 503)
+
+
 @app.get("/api/geocode")
 def api_geocode(q: str, request: Request):
     refusal = limits.check_geocode(client_ip(request))
