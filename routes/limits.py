@@ -4,6 +4,7 @@ Session ids are client-generated (trivially forged), so limits apply per
 session AND per IP, with a global daily cap as the cost backstop. All
 tunable via env without code changes.
 """
+import hashlib
 import json
 import os
 import threading
@@ -61,6 +62,15 @@ def check_geocode(ip: str) -> str | None:
 
 USAGE_LOG = os.path.join("output", "usage.jsonl")
 LOG_TEXT = os.environ.get("ROUTEGEN_LOG_TEXT", "1") == "1"
+# IPs are pseudonymized before they touch disk: a salted hash still lets
+# you count distinct visitors and spot one abuser, without keeping a
+# list of who they were. Set a secret salt in production; with the
+# empty default, IPv4 hashes are brute-forceable (4 billion inputs).
+IP_SALT = os.environ.get("ROUTEGEN_IP_SALT", "")
+
+
+def pseudonymize_ip(ip: str) -> str:
+    return hashlib.sha256((IP_SALT + ip).encode()).hexdigest()[:16]
 
 
 def log_event(event: str, **fields) -> None:
@@ -68,6 +78,8 @@ def log_event(event: str, **fields) -> None:
     try:
         if not LOG_TEXT:
             fields.pop("text", None)
+        if fields.get("ip"):
+            fields["ip"] = pseudonymize_ip(fields["ip"])
         row = {"ts": round(time.time(), 3), "event": event, **fields}
         os.makedirs(os.path.dirname(USAGE_LOG), exist_ok=True)
         with LOCK:
