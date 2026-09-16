@@ -733,6 +733,29 @@ work), reports up/down plus running-job count, and returns 503 when
 the router is unreachable so the balancer can act on it. Six tests;
 98 total.
 
+## Phase 32 — Cancel (2026-09-16)
+
+The last phase-26 open item: a stray request blocked its session until
+it finished, with nothing to do but wait. Python threads can't be
+killed, and threading cooperative "are we cancelled?" checks through
+every routing stage would have touched half the codebase.
+
+The trick that made it small: every stage already prints progress
+through the job's own log buffer (the thread-routed stdout from phase
+16). So the buffer IS the cancellation point — once a job is cancelled,
+its next write raises, and the pipeline unwinds within one step
+(an in-flight BRouter call just finishes first, a few seconds at most).
+The signal derives from BaseException on purpose, so the pipeline's
+"never fatal" except-Exception guards (Strava, etc.) can't swallow it —
+a test pins that. POST /api/cancel frees the session immediately (a new
+request may start while the old thread unwinds) and the abandoned
+result is discarded; the UI shows a Cancel button only while a job is
+running and an amber "Cancelled — the previous route is unchanged."
+
+Verified live in the browser: request sent, cancelled mid-generation,
+banner correct, Send re-enabled, server log clean. Three tests; 101
+total. With this, every item from the phase-26 review is closed.
+
 ## Testing & verification practices that emerged
 
 - 24 unit tests: despurring (exact, corridor, palindrome semantics),

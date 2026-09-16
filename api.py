@@ -82,6 +82,25 @@ def _sweep_stale_sessions() -> None:
 _sweep_stale_sessions()
 
 
+class JobCancelled(BaseException):
+    """Raised INSIDE the job thread at its next progress print once the
+    user cancels. BaseException on purpose: the pipeline's "never fatal"
+    except-Exception guards must not swallow it."""
+
+
+class JobLog(StringIO):
+    """A job's live log buffer, doubling as its cancellation point. Every
+    stage prints progress, so raising from write() unwinds the pipeline
+    within one step — no cooperative checks sprinkled through routing
+    code, and an in-flight BRouter call just finishes first."""
+    cancelled = False
+
+    def write(self, s):
+        if self.cancelled:
+            raise JobCancelled()
+        return super().write(s)
+
+
 class Ask(BaseModel):
     # caps: a request is a sentence, not a document (cost + abuse bound)
     text: str = Field(max_length=600)
@@ -99,6 +118,10 @@ def _run(job_id: str, text: str, start: str | None, workdir: str) -> None:
         job["status"] = "done"
         limits.log_event("ask_done", sid=job["sid"], kind=result.get("kind"),
                          candidates=len(result.get("candidates", [])),
+                         seconds=round(time.time() - t0, 1))
+    except JobCancelled:
+        job["status"] = "cancelled"
+        limits.log_event("ask_cancelled", sid=job["sid"],
                          seconds=round(time.time() - t0, 1))
     except Exception as e:  # surfaced to the UI, not swallowed
         job["buf"].write(f"\nERROR: {type(e).__name__}: {e}\n")
@@ -146,7 +169,7 @@ def ask(body: Ask, request: Request,
                 {"error": "the server is busy — try again in a minute"},
                 status_code=429)
         RUNNING[x_session_id] = job_id
-        JOBS[job_id] = {"status": "running", "buf": StringIO(),
+        JOBS[job_id] = {"status": "running", "buf": JobLog(),
                         "result": None, "sid": x_session_id,
                         "ts": time.time()}
     limits.log_event("ask", sid=x_session_id, ip=ip, text=body.text,
@@ -155,6 +178,21 @@ def ask(body: Ask, request: Request,
                      args=(job_id, body.text, body.start, workdir),
                      daemon=True).start()
     return {"job": job_id}
+
+
+@app.post("/api/cancel")
+def cancel(x_session_id: str | None = Header(default=None)):
+    """Abandon the session's running job. The session is freed at once
+    (a new request may start); the old thread unwinds at its next
+    progress print and its result is discarded."""
+    with LOCK:
+        job_id = RUNNING.pop(x_session_id, None)
+        job = JOBS.get(job_id)
+    if not job or job["status"] != "running":
+        return JSONResponse({"error": "nothing is running for this session"},
+                            status_code=404)
+    job["buf"].cancelled = True
+    return {"cancelled": job_id}
 
 
 @app.post("/api/upload")

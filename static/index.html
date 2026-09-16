@@ -84,6 +84,10 @@
   <div id="askbox">
     <textarea id="ask" placeholder="give me a 40 mile loop from home, not much climbing&#10;&#10;find a flat spot for 2x20 within 30 min&#10;&#10;detour around Pheasant Branch, use roads"></textarea>
     <button id="go">Send</button>
+    <button id="cancelbtn" hidden title="stop the running request"
+        style="width:100%; margin-top:6px; padding:7px; background:#3b2c12;
+        color:#ffd8a8; border:0; border-radius:8px; cursor:pointer;">
+      Cancel</button>
     <div id="hints">Routes, interval spots, and edits all go in the same box.
       The <b>selected</b> route (✓) is what "detour around X" requests
       modify and what you'd ride — the top result is selected automatically.</div>
@@ -247,6 +251,7 @@ async function send() {
   const text = document.getElementById('ask').value.trim();
   if (!text) return;
   const go = document.getElementById('go');
+  const cancelBtn = document.getElementById('cancelbtn');
   const log = document.getElementById('log');
   go.disabled = true;
   banner('', true);
@@ -274,6 +279,7 @@ async function send() {
       return;
     }
     const {job} = await resp.json();
+    cancelBtn.hidden = false;
     while (true) {
       await new Promise(r => setTimeout(r, 1200));
       const j = await fetch('/api/job/' + job).then(r => r.json());
@@ -288,10 +294,19 @@ async function send() {
         banner('Something went wrong — details in the log below.', false);
         break;
       }
+      if (j.status === 'cancelled') {
+        banner('Cancelled — the previous route is unchanged.', 'partial');
+        break;
+      }
     }
-  } finally { go.disabled = false; }
+  } finally { go.disabled = false; cancelBtn.hidden = true; }
 }
 document.getElementById('go').onclick = send;
+document.getElementById('cancelbtn').onclick = async () => {
+  document.getElementById('cancelbtn').disabled = true;
+  await fetch('/api/cancel', {method:'POST', headers: hdrs()});
+  document.getElementById('cancelbtn').disabled = false;
+};
 
 document.getElementById('undobtn').onclick = async () => {
   const r = await fetch('/api/undo', {method:'POST', headers: hdrs()})
