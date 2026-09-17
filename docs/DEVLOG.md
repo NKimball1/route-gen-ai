@@ -758,9 +758,13 @@ total. With this, every item from the phase-26 review is closed.
 
 ## Testing & verification practices that emerged
 
-- 24 unit tests: despurring (exact, corridor, palindrome semantics),
-  interval scoring (including the exact field-complaint cases), overlap
-  detection, ranking rules, control mapping.
+- 101 offline tests (no API keys, mocked HTTP): despurring, interval
+  scoring (including the exact field-complaint cases), overlap
+  detection, ranking, control mapping, every edit operation, road-line
+  avoidance, geocode fallbacks and retries, rate limits, LLM-output
+  clamps, undo lineage, cancellation — plus a 16-phrase live NL
+  parse-regression corpus (opt-in, ~3 cents a run) rerun after any
+  prompt or schema change.
 - Every field complaint became a regression test before the fix shipped.
 - Independent re-verification of winners (e.g., re-fetching traffic
   controls around a winning stretch's midpoint) caught a counting bug the
@@ -769,12 +773,18 @@ total. With this, every item from the phase-26 review is closed.
   computable: distance tolerance, climb caps, repeat %, major-road meters,
   interruptions per rep.
 
-## Open items
+## Open items (as of phase 32)
 
-- Strava segment integration (popularity scoring; routing to real
-  categorized climbs) — designed, blocked on API credentials.
-- Power-based interval rep sizing (rider watts + weight → stretch length).
-- Uncontrolled-crossroads detection (road-crossing counting via Overpass).
-- Distance spread after heavy trims; ascent accounting unreliable for
-  heavily-trimmed candidates.
-- Web frontend; multi-user Strava OAuth.
+- **Deployment** — the only thing between the current code and a public
+  URL: a Lightsail box with BRouter tiles, HTTPS, and the invite code.
+- Strava segment *explore* (popularity scoring) is gated behind Strava's
+  Extended Access tier; starred segments work today. Per-user
+  "Sign in with Strava" OAuth is the planned identity model.
+- Power-based interval rep sizing (rider watts + weight → stretch
+  length) instead of fixed speed assumptions.
+- "Both passes" corridor edits: an out-and-back edit changes one pass
+  of a corridor at a time.
+- Uncontrolled-crossroads detection (road-crossing counting via
+  Overpass) for interval spots.
+- Worldwide coverage: BRouter tiles are the only regional piece; the
+  quiet profile's road-class weights are tuned to US tagging.
