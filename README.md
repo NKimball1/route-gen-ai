@@ -4,7 +4,7 @@ Describe a ride in plain English, get a Garmin-ready GPX.
 
 > **What it is:** [docs/OVERVIEW.md](docs/OVERVIEW.md) — the project,
 > the stack, and the design decisions on one page.
-> **How it was built:** [docs/DEVLOG.md](docs/DEVLOG.md) — 30 phases of
+> **How it was built:** [docs/DEVLOG.md](docs/DEVLOG.md) — 32 phases of
 > field-tested iteration, every real-ride complaint turned into a
 > permanent, unit-tested fix.
 
@@ -89,6 +89,8 @@ copy .env.example .env   # or edit .env: API key, home address
 
 `ask.py` needs `ANTHROPIC_API_KEY`; everything else runs keyless.
 Dev: `pip install -r requirements-dev.txt` then `python -m pytest tests/`.
+
+MIT licensed — see [LICENSE](LICENSE).
 
 ## Editing (generated or uploaded routes)
 
