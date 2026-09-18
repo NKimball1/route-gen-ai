@@ -756,6 +756,24 @@ Verified live in the browser: request sent, cancelled mid-generation,
 banner correct, Send re-enabled, server log clean. Three tests; 101
 total. With this, every item from the phase-26 review is closed.
 
+## Phase 33 — Repo hygiene and CI (2026-09-17 → 09-18)
+
+A look-over of the public repo as a stranger would see it turned up
+small things that code review never would: no LICENSE file (a public
+repo without one is legally "all rights reserved" — added MIT), a
+favicon.ico 404 on every page load (now an inline SVG data-URI, so
+there is still no asset pipeline), and this devlog's own closing
+sections describing a project 25 phases younger ("24 unit tests",
+"web frontend" listed as future work).
+
+Then CI: GitHub Actions runs the offline suite on every push across
+Python 3.11-3.13 on Linux. The decision that made this free was made
+back in phase 25 — tests mock HTTP and the live NL corpus is opt-in, so
+the suite needs no API keys, no routing server, and no secrets in the
+repo settings. First run was also the first time the code had ever
+executed off Windows or off Python 3.12: all three green, 101 tests,
+~16 s per job. Status badge on the README.
+
 ## Testing & verification practices that emerged
 
 - 101 offline tests (no API keys, mocked HTTP): despurring, interval
