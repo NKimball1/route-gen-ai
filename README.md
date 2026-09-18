@@ -1,5 +1,7 @@
 # Route Gen AI
 
+[![tests](https://github.com/NKimball1/route-gen-ai/actions/workflows/tests.yml/badge.svg)](https://github.com/NKimball1/route-gen-ai/actions/workflows/tests.yml)
+
 Describe a ride in plain English, get a Garmin-ready GPX.
 
 > **What it is:** [docs/OVERVIEW.md](docs/OVERVIEW.md) — the project,
