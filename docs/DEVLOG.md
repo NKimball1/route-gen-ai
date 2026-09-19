@@ -774,9 +774,56 @@ repo settings. First run was also the first time the code had ever
 executed off Windows or off Python 3.12: all three green, 101 tests,
 ~16 s per job. Status badge on the README.
 
+## Phase 34 — Simulating a user found seven bugs the tests couldn't (2026-09-19)
+
+With the open-items list empty, the question became "what's broken that
+nobody has noticed?" Wrote a script that drives the running app over
+HTTP exactly like a browser session — generate, download, chain edits,
+correct a mistake, undo, upload an awkward foreign GPX, cancel mid-job,
+plus a battery of hostile inputs — and checks every outcome. First run:
+all the security defenses held (path traversal, session isolation,
+oversize/garbage uploads, cancel/concurrency), and seven real bugs fell
+out.
+
+1. **A whole feature was dead.** Interval-spot requests crashed with
+   `NameError: METERS_PER_MILE`. Cause: my own phase-27 constants sweep
+   replaced a literal in find_spot.py without adding the import. It
+   survived eleven days because every module still *imported* fine and
+   all 101 tests passed — a missing name inside a function only fails
+   when that line runs. The systemic fix matters more than the one-line
+   import: tests/test_static.py now runs pyflakes and fails on any
+   undefined name, locally and in CI.
+2. **A malformed upload returned HTTP 500** — `lat="."` matched the
+   number regex and crashed float().
+3. **Impossible coordinates were accepted** — lat=943 became a
+   "410,794-mile route" and the session's current route. The point
+   parser now validates every number and range, and skips bad points.
+4. **Elevation vanished** when `<ele>` wasn't the point's first child;
+   the parser now searches the whole point (and only that point).
+5. **"Go through Olbrich Park" failed** with "needs a place": the LLM
+   reasonably returns a lone place as a one-element `places` list, and
+   run_edit only honored that list at 2+ entries.
+6. **A correction could destroy good work.** Because of #5 the edit
+   failed; the follow-up "that wasn't what I meant, use Tenney Park"
+   triggered revert-first — which reverted the user's earlier +6 mile
+   extension, a change they never complained about. The session now
+   records whether the last request changed anything; after a failed
+   edit (or an undo) there is nothing to revert.
+7. **Anchor discarded its own work.** A loop passing within 150 m of
+   the new start was correctly rotated to begin there, then thrown away
+   as "already starts and ends there" because no legs were added.
+   Rotation now counts as the change it is.
+
+Re-ran the full simulation against the fixed server: zero issues. The
+script lives on as scripts/simulate.py (takes a URL, exits non-zero on
+any issue) — the post-deploy smoke test. 112 tests.
+
+Lesson worth keeping: "all tests pass" and "every module imports" are
+both statements about code that RAN. Bug #1 lived precisely in the gap.
+
 ## Testing & verification practices that emerged
 
-- 101 offline tests (no API keys, mocked HTTP): despurring, interval
+- 112 offline tests (no API keys, mocked HTTP): despurring, interval
   scoring (including the exact field-complaint cases), overlap
   detection, ranking, control mapping, every edit operation, road-line
   avoidance, geocode fallbacks and retries, rate limits, LLM-output
