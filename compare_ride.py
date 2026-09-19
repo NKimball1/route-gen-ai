@@ -11,44 +11,47 @@ Every ridden route is a free calibration point for routes/elevation.py.
 """
 import math
 import sys
+from typing import Any, Sequence
 
 from fitparse import FitFile
 
 from routes.despur import RESAMPLE_STEP_M, _resample
 from routes.elevation import track_ascent
 from routes.preview import _parse_gpx
-from routes.spec import METERS_PER_DEG_LAT, METERS_PER_DEG_LON_EQ, METERS_PER_FOOT, METERS_PER_MILE
+from routes.spec import (METERS_PER_DEG_LAT, METERS_PER_DEG_LON_EQ,
+                         METERS_PER_FOOT, METERS_PER_MILE, Coord, Track)
 
-SEMI = 180.0 / 2 ** 31        # FIT semicircles -> degrees
-ON_ROUTE_M = 60.0             # within this of the route = following it
-OFF_RUN = 100                 # consecutive off-route samples = peeled off
-MIN_CHUNK_M = 800.0           # ignore on-route touches shorter than ~0.5 mi
+SEMI: float = 180.0 / 2 ** 31   # FIT semicircles -> degrees
+ON_ROUTE_M: float = 60.0        # within this of the route = following it
+OFF_RUN: int = 100              # consecutive off-route samples = peeled off
+MIN_CHUNK_M: float = 800.0      # ignore on-route touches shorter than ~0.5 mi
 # How many consecutive resampled route indices span ~200 m. Used two ways
 # below: a gap in covered indices larger than this splits the coverage into
 # separate segments, and segments shorter than this carry no climbing
 # signal worth comparing.
-SEG_200M_IDX = int(200 / RESAMPLE_STEP_M)
+SEG_200M_IDX: int = int(200 / RESAMPLE_STEP_M)
 
 
-def load_fit(path):
+def load_fit(path: str) -> tuple[Track, dict[str, Any]]:
     """(lat, lon, ele) points + total device ascent from the FIT session."""
     fit = FitFile(path)
-    pts = []
+    pts: Track = []
     for rec in fit.get_messages("record"):
         v = rec.get_values()
         lat, lon = v.get("position_lat"), v.get("position_long")
         ele = v.get("enhanced_altitude", v.get("altitude"))
         if lat is not None and lon is not None:
             pts.append((lat * SEMI, lon * SEMI, ele))
-    totals = {}
+    totals: dict[str, Any] = {}
     for msg in fit.get_messages("session"):
         totals = msg.get_values()
     return pts, totals
 
 
-def device_ascent(points, min_step: float = 0.0):
+def device_ascent(points: Track, min_step: float = 0.0) -> float:
     """Sum of positive barometric deltas — what head units report."""
-    total, last = 0.0, None
+    total = 0.0
+    last: float | None = None
     for _, _, e in points:
         if e is None:
             continue
@@ -59,20 +62,22 @@ def device_ascent(points, min_step: float = 0.0):
 
 
 class RouteIndex:
-    def __init__(self, route_pts, cell_m: float = 100.0):
+    def __init__(self, route_pts: Track, cell_m: float = 100.0) -> None:
         self.kx = METERS_PER_DEG_LON_EQ * math.cos(math.radians(route_pts[0][0]))
         self.cell = cell_m
-        self.grid = {}
+        self.grid: dict[tuple[int, int], list[int]] = {}  # cell -> point indices
         for i, p in enumerate(route_pts):
             self.grid.setdefault(self._key(p), []).append(i)
         self.pts = route_pts
 
-    def _key(self, p):
+    def _key(self, p: Coord) -> tuple[int, int]:
         return (int(p[0] * METERS_PER_DEG_LAT / self.cell), int(p[1] * self.kx / self.cell))
 
-    def nearest(self, p):
+    def nearest(self, p: Coord) -> tuple[float | None, int | None]:
+        """(meters, index) of the closest route point, or (None, None)."""
         kx, ky = self._key(p)
-        best_d, best_i = None, None
+        best_d: float | None = None
+        best_i: int | None = None
         for dx in (-1, 0, 1):
             for dy in (-1, 0, 1):
                 for i in self.grid.get((kx + dx, ky + dy), ()):
@@ -96,7 +101,7 @@ def main() -> int:
 
     index = RouteIndex(route)
 
-    def polyline_len(pts):
+    def polyline_len(pts: Sequence[Coord]) -> float:
         return sum(
             math.hypot((pts[k + 1][0] - pts[k][0]) * METERS_PER_DEG_LAT,
                        (pts[k + 1][1] - pts[k][1]) * index.kx)
@@ -106,15 +111,17 @@ def main() -> int:
     # single cut point undercounts badly. Instead: mark every ride sample
     # on/off route, then compare over contiguous on-route chunks and the
     # route indices they covered.
-    on_flags, covered = [], set()
+    on_flags: list[bool] = []
+    covered: set[int] = set()   # route indices the ride passed
     for p in ride:
         d, ri = index.nearest(p)
         on = d is not None and d <= ON_ROUTE_M
         on_flags.append(on)
-        if on:
+        if on and ri is not None:
             covered.add(ri)
 
-    chunks, start = [], None
+    chunks: list[Track] = []    # contiguous on-route stretches of the ride
+    start: int | None = None
     for i, on in enumerate(on_flags + [False]):
         if on and start is None:
             start = i
@@ -132,11 +139,14 @@ def main() -> int:
 
     # model ascent over the covered contiguous route segments
     idxs = sorted(covered)
-    segs, s = [], idxs[0]
-    for a, b in zip(idxs, idxs[1:] + [None]):
-        if b is None or b - a > SEG_200M_IDX:
+    segs: list[tuple[int, int]] = []   # (first, last) covered route index
+    s = idxs[0]
+    following: list[int | None] = [*idxs[1:], None]
+    for a, nxt in zip(idxs, following):
+        if nxt is None or nxt - a > SEG_200M_IDX:
             segs.append((s, a))
-            s = b
+            if nxt is not None:
+                s = nxt
     model_ft = sum(track_ascent(route[a:b + 1]) for a, b in segs
                    if b - a >= SEG_200M_IDX) / METERS_PER_FOOT
     covered_dist = sum(polyline_len(route[a:b + 1]) for a, b in segs)

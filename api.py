@@ -13,6 +13,7 @@ import threading
 import time
 import uuid
 from io import StringIO
+from typing import Any, TypedDict
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -27,6 +28,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from routes import limits
+from routes.service import ServiceResult
 from routes.spec import METERS_PER_FOOT, METERS_PER_MILE
 
 app = FastAPI(title="Route Gen AI")
@@ -34,7 +36,7 @@ app.mount("/assets", StaticFiles(directory="static"), name="assets")
 
 # Optional shared invite code: set ROUTEGEN_INVITE_CODE to gate the
 # expensive endpoint; unset = open (local/dev).
-INVITE_CODE = os.environ.get("ROUTEGEN_INVITE_CODE")
+INVITE_CODE: str | None = os.environ.get("ROUTEGEN_INVITE_CODE")
 
 
 def client_ip(request: Request) -> str:
@@ -43,17 +45,17 @@ def client_ip(request: Request) -> str:
         return fwd.split(",")[0].strip()
     return request.client.host if request.client else "unknown"
 
-JOBS: dict = {}          # job id -> {"status", "buf", "result", "sid"}
-RUNNING: dict = {}       # session id -> job id currently running
+JOBS: dict[str, "Job"] = {}     # job id -> job
+RUNNING: dict[str, str] = {}    # session id -> job id currently running
 LOCK = threading.Lock()
-JOB_TTL_S = limits.HOUR_S     # finished jobs older than this are evicted
+JOB_TTL_S: int = limits.HOUR_S     # finished jobs older than this are evicted
 
-SESSIONS_ROOT = os.path.join("output", "sessions")
-SID_RE = re.compile(r"^[A-Za-z0-9-]{8,64}$")
-SESSION_MAX_AGE_S = 7 * limits.DAY_S
+SESSIONS_ROOT: str = os.path.join("output", "sessions")
+SID_RE: re.Pattern[str] = re.compile(r"^[A-Za-z0-9-]{8,64}$")
+SESSION_MAX_AGE_S: int = 7 * limits.DAY_S
 
-UPLOAD_MAX_MB = 8
-UPLOAD_MAX_BYTES = UPLOAD_MAX_MB * 1024 * 1024
+UPLOAD_MAX_MB: int = 8
+UPLOAD_MAX_BYTES: int = UPLOAD_MAX_MB * 1024 * 1024
 
 
 def session_dir(sid: str | None) -> str | None:
@@ -93,12 +95,20 @@ class JobLog(StringIO):
     stage prints progress, so raising from write() unwinds the pipeline
     within one step — no cooperative checks sprinkled through routing
     code, and an in-flight BRouter call just finishes first."""
-    cancelled = False
+    cancelled: bool = False
 
-    def write(self, s):
+    def write(self, s: str) -> int:
         if self.cancelled:
             raise JobCancelled()
         return super().write(s)
+
+
+class Job(TypedDict):
+    status: str                     # running | done | error | cancelled
+    buf: JobLog                     # live progress log (and cancel point)
+    result: ServiceResult | None    # set when status == "done"
+    sid: str                        # owning session
+    ts: float                       # start time, for eviction
 
 
 class Ask(BaseModel):
@@ -135,12 +145,15 @@ def _run(job_id: str, text: str, start: str | None, workdir: str) -> None:
                 del RUNNING[job["sid"]]
 
 
-@app.post("/api/ask")
+# response_model=None throughout: FastAPI reads a return annotation as a
+# response model, and a union containing a Response class is not one.
+@app.post("/api/ask", response_model=None)
 def ask(body: Ask, request: Request,
         x_session_id: str | None = Header(default=None),
-        x_invite_code: str | None = Header(default=None)):
+        x_invite_code: str | None = Header(default=None)
+        ) -> dict[str, str] | JSONResponse:
     workdir = session_dir(x_session_id)
-    if workdir is None:
+    if workdir is None or x_session_id is None:
         return JSONResponse({"error": "missing or invalid session id"},
                             status_code=400)
     if INVITE_CODE and x_invite_code != INVITE_CODE:
@@ -155,10 +168,11 @@ def ask(body: Ask, request: Request,
         # evict finished jobs — JOBS grew forever without this
         cutoff = time.time() - JOB_TTL_S
         for jid in [j for j, v in JOBS.items()
-                    if v["status"] != "running" and v.get("ts", 0) < cutoff]:
+                    if v["status"] != "running" and v["ts"] < cutoff]:
             del JOBS[jid]
         running = RUNNING.get(x_session_id)
-        if running and JOBS.get(running, {}).get("status") == "running":
+        active = JOBS.get(running) if running else None
+        if active is not None and active["status"] == "running":
             return JSONResponse(
                 {"error": "a request is already running for this session — "
                           "wait for it to finish"},
@@ -180,25 +194,27 @@ def ask(body: Ask, request: Request,
     return {"job": job_id}
 
 
-@app.post("/api/cancel")
-def cancel(x_session_id: str | None = Header(default=None)):
+@app.post("/api/cancel", response_model=None)
+def cancel(x_session_id: str | None = Header(default=None)
+           ) -> dict[str, str] | JSONResponse:
     """Abandon the session's running job. The session is freed at once
     (a new request may start); the old thread unwinds at its next
     progress print and its result is discarded."""
     with LOCK:
-        job_id = RUNNING.pop(x_session_id, None)
-        job = JOBS.get(job_id)
-    if not job or job["status"] != "running":
+        job_id = RUNNING.pop(x_session_id or "", None)
+        job = JOBS.get(job_id) if job_id else None
+    if not job_id or not job or job["status"] != "running":
         return JSONResponse({"error": "nothing is running for this session"},
                             status_code=404)
     job["buf"].cancelled = True
     return {"cancelled": job_id}
 
 
-@app.post("/api/upload")
+@app.post("/api/upload", response_model=None)
 async def upload(request: Request, file: UploadFile = File(...),
                  x_session_id: str | None = Header(default=None),
-                 x_invite_code: str | None = Header(default=None)):
+                 x_invite_code: str | None = Header(default=None)
+                 ) -> dict[str, Any] | JSONResponse:
     """Upload an existing GPX; it becomes the session's current route, so
     every edit ('avoid that road', 'make it longer', ...) works on it."""
     workdir = session_dir(x_session_id)
@@ -249,7 +265,7 @@ async def upload(request: Request, file: UploadFile = File(...),
 
 
 @app.get("/api/health")
-def health():
+def health() -> JSONResponse:
     """Liveness for load balancers + a one-line answer to "is the router
     up?" — the most common reason a request fails outright."""
     from routes.providers import BRouterProvider, brouter_reachable
@@ -261,8 +277,8 @@ def health():
     return JSONResponse(body, status_code=200 if up else 503)
 
 
-@app.get("/api/geocode")
-def api_geocode(q: str, request: Request):
+@app.get("/api/geocode", response_model=None)
+def api_geocode(q: str, request: Request) -> dict[str, Any] | JSONResponse:
     refusal = limits.check_geocode(client_ip(request))
     if refusal:
         return JSONResponse({"error": refusal}, status_code=429)
@@ -274,25 +290,27 @@ def api_geocode(q: str, request: Request):
         return JSONResponse({"error": f"could not find {q!r}"}, status_code=404)
 
 
-@app.get("/api/job/{job_id}")
-def job(job_id: str):
+@app.get("/api/job/{job_id}", response_model=None)
+def job(job_id: str) -> dict[str, Any] | JSONResponse:
     j = JOBS.get(job_id)
     if j is None:
         return JSONResponse({"error": "no such job"}, status_code=404)
-    out = {"status": j["status"], "log": j["buf"].getvalue()}
+    out: dict[str, Any] = {"status": j["status"],
+                           "log": j["buf"].getvalue()}
     if j["status"] == "done":
-        result = dict(j["result"])
+        result: dict[str, Any] = dict(j["result"] or {})
         result.pop("log", None)
         out["result"] = result
     return out
 
 
-@app.get("/api/gpx")
-def gpx(path: str):
+@app.get("/api/gpx", response_model=None)
+def gpx(path: str) -> FileResponse | JSONResponse:
     # only serve GPX files from our own output tree
     norm = os.path.normpath(path)
-    if norm.startswith("..") or os.path.isabs(norm) \
-            or not norm.startswith("output" + os.sep)             or not norm.endswith(".gpx"):
+    if (norm.startswith("..") or os.path.isabs(norm)
+            or not norm.startswith("output" + os.sep)
+            or not norm.endswith(".gpx")):
         return JSONResponse({"error": "bad path"}, status_code=400)
     if not os.path.exists(norm):
         return JSONResponse({"error": "not found"}, status_code=404)
@@ -300,8 +318,9 @@ def gpx(path: str):
                         filename=os.path.basename(norm))
 
 
-@app.post("/api/current")
-def set_current(body: Ask, x_session_id: str | None = Header(default=None)):
+@app.post("/api/current", response_model=None)
+def set_current(body: Ask, x_session_id: str | None = Header(default=None)
+                ) -> dict[str, str] | JSONResponse:
     workdir = session_dir(x_session_id)
     if workdir is None:
         return JSONResponse({"error": "missing or invalid session id"},
@@ -318,8 +337,9 @@ def set_current(body: Ask, x_session_id: str | None = Header(default=None)):
     return {"current": norm}
 
 
-@app.post("/api/undo")
-def undo(x_session_id: str | None = Header(default=None)):
+@app.post("/api/undo", response_model=None)
+def undo(x_session_id: str | None = Header(default=None)
+         ) -> dict[str, Any] | JSONResponse:
     """Step the session's current route back one version (no LLM call)."""
     workdir = session_dir(x_session_id)
     if workdir is None:
@@ -345,8 +365,9 @@ def undo(x_session_id: str | None = Header(default=None)):
             }]}
 
 
-@app.get("/api/current")
-def get_current(x_session_id: str | None = Header(default=None)):
+@app.get("/api/current", response_model=None)
+def get_current(x_session_id: str | None = Header(default=None)
+                ) -> dict[str, str | None]:
     workdir = session_dir(x_session_id)
     if workdir is None:
         return {"current": None}
@@ -355,19 +376,19 @@ def get_current(x_session_id: str | None = Header(default=None)):
 
 
 @app.get("/")
-def index():
+def index() -> FileResponse:
     return FileResponse(os.path.join("static", "index.html"))
 
 
 # Text pages: every static/pages/<slug>.html is a real URL (/about, ...).
 # Server-rendered static HTML with its own <title>/<meta> — what SEO wants.
 # Adding a future page = dropping one file in that directory.
-PAGES_DIR = os.path.join("static", "pages")
-PAGE_RE = re.compile(r"^[a-z0-9-]{1,40}$")
+PAGES_DIR: str = os.path.join("static", "pages")
+PAGE_RE: re.Pattern[str] = re.compile(r"^[a-z0-9-]{1,40}$")
 
 
-@app.get("/{slug}")
-def text_page(slug: str):
+@app.get("/{slug}", response_model=None)
+def text_page(slug: str) -> FileResponse | JSONResponse:
     if PAGE_RE.match(slug):
         path = os.path.join(PAGES_DIR, f"{slug}.html")
         if os.path.exists(path):

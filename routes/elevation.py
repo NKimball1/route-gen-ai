@@ -11,14 +11,18 @@ Calibration history (each field measurement improved the model):
    ~125 m rolling-mean smooth, 1 m threshold. Flat route: 1,689 ft
    (RWGPS 1,600 / Garmin-derived 1,870); hilly: 2,927 (RWGPS 2,483).
 """
+from typing import Sequence
+
 from routes.despur import _resample
+from routes.spec import Track
 
-SMOOTH_WINDOW_SAMPLES = 5   # x 25 m resample step ~= 125 m
-HYSTERESIS_M = 1.0
+SMOOTH_WINDOW_SAMPLES: int = 5   # x 25 m resample step ~= 125 m
+HYSTERESIS_M: float = 1.0
 
 
-def _smooth(eles, w: int = SMOOTH_WINDOW_SAMPLES):
-    out = []
+def _smooth(eles: Sequence[float | None],
+            w: int = SMOOTH_WINDOW_SAMPLES) -> list[float | None]:
+    out: list[float | None] = []
     for i in range(len(eles)):
         lo, hi = max(0, i - w // 2), min(len(eles), i + w // 2 + 1)
         vals = [e for e in eles[lo:hi] if e is not None]
@@ -26,16 +30,17 @@ def _smooth(eles, w: int = SMOOTH_WINDOW_SAMPLES):
     return out
 
 
-def track_ascent(points, hysteresis_m: float = HYSTERESIS_M) -> float:
+def track_ascent(points: Track, hysteresis_m: float = HYSTERESIS_M) -> float:
     """Total climb in meters over (lat, lon, ele) points."""
     rs = _resample(points)
     eles = _smooth([p[2] for p in rs])
     total = 0.0
-    low = high = None
+    low: float | None = None    # bottom of the rise being tracked
+    high: float | None = None   # its running top
     for e in eles:
         if e is None:
             continue
-        if low is None:
+        if low is None or high is None:
             low = high = e
             continue
         if e > high:
@@ -44,6 +49,6 @@ def track_ascent(points, hysteresis_m: float = HYSTERESIS_M) -> float:
             if high - low >= hysteresis_m:
                 total += high - low
             low = high = e
-    if low is not None and high - low >= hysteresis_m:
+    if low is not None and high is not None and high - low >= hysteresis_m:
         total += high - low
     return total

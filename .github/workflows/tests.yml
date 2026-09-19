@@ -28,3 +28,6 @@ jobs:
       # mocked and the live NL corpus stays skipped without RUN_LLM_TESTS.
       - name: Run tests
         run: python -m pytest tests/ -q
+      # mypy.ini requires every function to be fully annotated
+      - name: Type check
+        run: python -m mypy

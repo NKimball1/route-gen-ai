@@ -12,9 +12,10 @@ import os
 import re
 import sys
 
-from routes.spec import EARTH_RADIUS_M, METERS_PER_FOOT, METERS_PER_MILE
+from routes.spec import (EARTH_RADIUS_M, METERS_PER_FOOT, METERS_PER_MILE,
+                         LatLon, Track)
 
-PAGE = """<!DOCTYPE html><html><head><title>Route candidates</title>
+PAGE: str = """<!DOCTYPE html><html><head><title>Route candidates</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
@@ -45,7 +46,7 @@ ROUTES.forEach(function(r, i) {{
 """
 
 
-def _haversine_m(a: tuple[float, float], b: tuple[float, float]) -> float:
+def _haversine_m(a: LatLon, b: LatLon) -> float:
     phi1, phi2 = math.radians(a[0]), math.radians(b[0])
     dphi = phi2 - phi1
     dlam = math.radians(b[1] - a[1])
@@ -68,13 +69,13 @@ def _num(s: str) -> float | None:
     return v if math.isfinite(v) else None
 
 
-def parse_gpx_text(text: str) -> list[tuple[float, float, float | None]]:
+def parse_gpx_text(text: str) -> Track:
     """Track or route points from GPX text. Tolerant of uploads: accepts
     <trkpt> and <rtept>, missing <ele>, self-closing tags, lat/lon
     attributes in either order and either quote style, and <ele> anywhere
     inside the point. Points with unparseable or impossible coordinates
     are skipped — a bad point must never become a crash or a route."""
-    pts = []
+    pts: Track = []
     opens = list(_PT_OPEN.finditer(text))
     for i, m in enumerate(opens):
         lat, lon = _LAT.search(m.group(1)), _LON.search(m.group(1))
@@ -84,7 +85,7 @@ def parse_gpx_text(text: str) -> list[tuple[float, float, float | None]]:
         # uploads are untrusted: '.', '-', 'nan' and lat=943 all reach here
         if la is None or lo is None or abs(la) > 90 or abs(lo) > 180:
             continue
-        ele = None
+        ele: float | None = None
         if not m.group(2):  # not self-closing: look inside this point only
             end = opens[i + 1].start() if i + 1 < len(opens) else len(text)
             body = text[m.end():end]
@@ -95,15 +96,16 @@ def parse_gpx_text(text: str) -> list[tuple[float, float, float | None]]:
     return pts
 
 
-def _parse_gpx(path: str) -> list[tuple[float, float, float | None]]:
+def _parse_gpx(path: str) -> Track:
     return parse_gpx_text(open(path, encoding="utf-8").read())
 
 
-def _stats(points) -> tuple[float, float]:
+def _stats(points: Track) -> tuple[float, float]:
+    """(distance m, rough ascent m) recomputed from the points."""
     dist = sum(_haversine_m(points[i][:2], points[i + 1][:2])
                for i in range(len(points) - 1))
     ascent, smooth_threshold = 0.0, 2.0  # ignore sub-2m jitter between points
-    last_ele = None
+    last_ele: float | None = None
     for _, _, ele in points:
         if ele is None:
             continue
@@ -120,7 +122,7 @@ def _parse_desc(path: str) -> str | None:
 
 
 def build_preview(gpx_paths: list[str], out_path: str) -> None:
-    routes = []
+    routes: list[dict[str, object]] = []
     for path in gpx_paths:
         points = _parse_gpx(path)
         if not points:

@@ -9,33 +9,45 @@ leg's elevation profile.
 """
 import math
 import re
+from typing import TypedDict
 
 from routes.interruptions import bbox_around, query_overpass
-from routes.spec import METERS_PER_DEG_LAT, METERS_PER_DEG_LON_EQ
+from routes.spec import (METERS_PER_DEG_LAT, METERS_PER_DEG_LON_EQ, ClimbRow,
+                         Router)
+
+
+class Peak(TypedDict):
+    name: str
+    lat: float
+    lon: float
+    ele_m: float
+
 
 # Twin summits of one hill (East/West Blue Mound) merge within this.
-TWIN_SUMMIT_MERGE_M = 2000.0
+TWIN_SUMMIT_MERGE_M: float = 2000.0
 # A harvested climb must top out within this of the peak to count as
 # the summit road.
-CLIMB_TOP_NEAR_PEAK_M = 3000.0
+CLIMB_TOP_NEAR_PEAK_M: float = 3000.0
 
-PEAK_QUERY = """[out:json][timeout:60];
+PEAK_QUERY: str = """[out:json][timeout:60];
 node["natural"="peak"]["ele"]({bbox});
 out;"""
 
 
-def _parse_ele(raw) -> float | None:
+def _parse_ele(raw: object) -> float | None:
+    """OSM ele tags are free text: '488', '488 m', '1,601 ft'..."""
     m = re.search(r"-?\d+(?:\.\d+)?", str(raw).replace(",", ""))
     return float(m.group()) if m else None
 
 
-def fetch_peaks(lat: float, lon: float, radius_m: float, top: int = 3) -> list[dict]:
+def fetch_peaks(lat: float, lon: float, radius_m: float,
+                top: int = 3) -> list[Peak]:
     """Highest peaks within radius: {name, lat, lon, ele_m}. Deduped so twin
     summits of one hill (East/West Blue Mound style) don't both count."""
     data = query_overpass(PEAK_QUERY.format(bbox=bbox_around(lat, lon, radius_m)))
     if data is None:
         return []
-    peaks = []
+    peaks: list[Peak] = []
     for el in data.get("elements", []):
         ele = _parse_ele(el.get("tags", {}).get("ele"))
         if ele is None:
@@ -43,7 +55,7 @@ def fetch_peaks(lat: float, lon: float, radius_m: float, top: int = 3) -> list[d
         peaks.append({"name": el["tags"].get("name", f"peak {ele:.0f}m"),
                       "lat": el["lat"], "lon": el["lon"], "ele_m": ele})
     # dedupe within ~2 km, keep the higher summit
-    merged: list[dict] = []
+    merged: list[Peak] = []
     for p in sorted(peaks, key=lambda p: -p["ele_m"]):
         near = any(
             math.hypot((p["lat"] - q["lat"]) * METERS_PER_DEG_LAT,
@@ -55,7 +67,8 @@ def fetch_peaks(lat: float, lon: float, radius_m: float, top: int = 3) -> list[d
     return merged[:top]
 
 
-def climb_to_peak(start_lat: float, start_lon: float, peak: dict, provider):
+def climb_to_peak(start_lat: float, start_lon: float, peak: Peak,
+                  provider: Router) -> ClimbRow | None:
     """Route toward a peak and extract the climb that ends nearest it.
     Returns a dict like climbs.extract_climbs rows plus the peak name, or
     None when no substantial climb tops out near the peak."""
@@ -66,13 +79,13 @@ def climb_to_peak(start_lat: float, start_lon: float, peak: dict, provider):
     if leg is None:
         return None
     candidates = extract_climbs(_resample(leg["points"]))
-    best, best_d = None, None
+    best: ClimbRow | None = None
     for c in candidates:
         d = math.hypot((c["end"][0] - peak["lat"]) * METERS_PER_DEG_LAT,
                        (c["end"][1] - peak["lon"]) * METERS_PER_DEG_LON_EQ
                        * math.cos(math.radians(peak["lat"])))
         if d <= CLIMB_TOP_NEAR_PEAK_M and (best is None or c["gain_m"] > best["gain_m"]):
-            best, best_d = c, d
+            best = c
     if best is None:
         return None
     best["name"] = f"{peak['name']} ({best['gain_m']:.0f}m @ {best['avg_grade_pct']:.1f}%)"

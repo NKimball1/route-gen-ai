@@ -15,17 +15,18 @@ Both return RouteCandidate lists for the same RouteSpec.
 import math
 import os
 import socket
+from typing import Callable, Sequence
 
 import requests
 
 from routes.despur import corridor_despur, despur
 from routes.elevation import track_ascent
 from routes.spec import (EARTH_RADIUS_M, METERS_PER_DEG_LAT,
-                         METERS_PER_DEG_LON_EQ, METERS_PER_MILE,
-                         RouteCandidate, RouteSpec)
+                         METERS_PER_DEG_LON_EQ, METERS_PER_MILE, Coord, LatLon,
+                         Leg, NoGo, RouteCandidate, RouteSpec, Track)
 
 
-def _bearing(a: tuple[float, float], b: tuple[float, float]) -> float:
+def _bearing(a: Coord, b: Coord) -> float:
     """Initial great-circle bearing from a to b, degrees."""
     phi1, phi2 = math.radians(a[0]), math.radians(b[0])
     dlam = math.radians(b[1] - a[1])
@@ -34,7 +35,8 @@ def _bearing(a: tuple[float, float], b: tuple[float, float]) -> float:
     return (math.degrees(math.atan2(y, x)) + 360.0) % 360.0
 
 
-def _destination(lat: float, lon: float, bearing_deg: float, dist_m: float) -> tuple[float, float]:
+def _destination(lat: float, lon: float, bearing_deg: float,
+                 dist_m: float) -> LatLon:
     """Point reached from (lat, lon) after dist_m along bearing_deg (great circle)."""
     delta = dist_m / EARTH_RADIUS_M
     theta = math.radians(bearing_deg)
@@ -47,7 +49,7 @@ def _destination(lat: float, lon: float, bearing_deg: float, dist_m: float) -> t
 
 
 # Spur trims larger than this get a log line -- smaller are routine.
-NOTABLE_SPUR_M = 400.0
+NOTABLE_SPUR_M: float = 400.0
 
 
 def brouter_reachable(base_url: str, timeout_s: float = 1.0) -> bool:
@@ -65,35 +67,35 @@ def brouter_reachable(base_url: str, timeout_s: float = 1.0) -> bool:
 
 
 class BRouterProvider:
-    name = "brouter"
+    name: str = "brouter"
     # Real roads wander, so a routed loop runs longer than the geometric circle
     # its waypoints sit on; shrink the circle by this factor to compensate.
-    WINDING_FACTOR = 1.35
-    VIA_POINTS = 3
+    WINDING_FACTOR: float = 1.35
+    VIA_POINTS: int = 3
     # Real roads run longer than the straight line to an outback turnaround.
-    DETOUR_FACTOR = 1.3
-    MAX_RESCALES = 2
+    DETOUR_FACTOR: float = 1.3
+    MAX_RESCALES: int = 2
 
-    def __init__(self, profile: str | None = None):
+    def __init__(self, profile: str | None = None) -> None:
         # Self-hosted instance when BROUTER_URL is set (e.g.
         # http://localhost:17777/brouter); public server otherwise.
         # Self-hosting removes rate limits and enables custom profiles.
-        self.base_url = os.environ.get("BROUTER_URL",
-                                       "https://brouter.de/brouter")
+        self.base_url: str = os.environ.get("BROUTER_URL",
+                                            "https://brouter.de/brouter")
         # Default profile: our custom "fastbike-quiet" (county-highway-class
         # roads heavily penalized) on the self-hosted server; the stock
         # "fastbike-lowtraffic" on the public server, which lacks it.
         if profile is None:
             profile = ("fastbike-quiet" if "localhost" in self.base_url
                        else "fastbike-lowtraffic")
-        self.profile = profile
+        self.profile: str = profile
 
-    def route(self, waypoints: list[tuple[float, float]],
-              avoid: list[tuple[float, float, float]] | None = None,
-              protect=None) -> dict | None:
+    def route(self, waypoints: Sequence[LatLon],
+              avoid: Sequence[NoGo] | None = None,
+              protect: Sequence[LatLon] | None = None) -> Leg | None:
         """Point-to-point request. Returns {points, distance_m, ascent_m,
         net_gain_m} with spurs already trimmed, or None on failure."""
-        params = {
+        params: dict[str, str | int] = {
             "lonlats": "|".join(f"{p[1]:.6f},{p[0]:.6f}" for p in waypoints),
             "profile": self.profile,
             "alternativeidx": 0,
@@ -114,8 +116,8 @@ class BRouterProvider:
             print(f"  brouter: request failed ({e})")
             return None
         props = feature["properties"]
-        points = [(c[1], c[0], c[2] if len(c) > 2 else None)
-                  for c in feature["geometry"]["coordinates"]]
+        points: Track = [(c[1], c[0], c[2] if len(c) > 2 else None)
+                         for c in feature["geometry"]["coordinates"]]
         # Road-class accounting from BRouter's per-segment messages: distance
         # ridden on major highways (motorway/trunk/primary, links included).
         # Counted pre-trim, so a trimmed spur on a highway still counts —
@@ -152,9 +154,10 @@ class BRouterProvider:
                    n: int = 6) -> list[RouteCandidate]:
         if spec.via:
             return self._via_candidates(spec, lat, lon, n)
-        out = []
+        out: list[RouteCandidate] = []
         for i in range(n):
             bearing = 360.0 * i / n
+            build: Callable[..., RouteCandidate | None]
             if spec.shape == "outback":
                 build = lambda s=1.0: self._outback(spec, lat, lon, bearing, s)
             else:
@@ -181,10 +184,10 @@ class BRouterProvider:
     # A route "goes through" a via if it passes within this distance of it —
     # towns are areas, and forcing the exact geocoded centroid creates
     # touch-and-retreat tendrils.
-    VIA_NEAR_M = 2000.0
+    VIA_NEAR_M: float = 2000.0
 
     @staticmethod
-    def _passes_near(points, via, radius_m: float) -> bool:
+    def _passes_near(points: Track, via: LatLon, radius_m: float) -> bool:
         for p in points[::4]:
             dy = (p[0] - via[0]) * METERS_PER_DEG_LAT
             dx = (p[1] - via[1]) * METERS_PER_DEG_LON_EQ * math.cos(math.radians(via[0]))
@@ -204,8 +207,8 @@ class BRouterProvider:
         """
         from routes.overlap import repeated_fraction
 
-        vias = [tuple(v) for v in spec.via]
-        out = []
+        vias: list[LatLon] = [(v[0], v[1]) for v in spec.via]
+        out: list[RouteCandidate] = []
 
         # 1: bearing loops aimed at the via centroid
         centroid = (sum(v[0] for v in vias) / len(vias),
@@ -236,7 +239,7 @@ class BRouterProvider:
         orders = [vias] + ([list(reversed(vias))] if len(vias) > 1 else [])
         budget = max(2, n - len(out))
         for order in orders:
-            anchors = [(lat, lon)] + order
+            anchors: list[LatLon] = [(lat, lon)] + order
             base = self.route(anchors + [(lat, lon)], spec.avoid, protect=vias)
             if base is None:
                 continue
@@ -259,7 +262,7 @@ class BRouterProvider:
                 mid = ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)
                 leg_bearing = _bearing(a, b)
                 r = needed / 2 / 1.2
-                cand = None
+                bowed: RouteCandidate | None = None
                 for _ in range(3):
                     ext = _destination(mid[0], mid[1],
                                        leg_bearing + 90 * side, r)
@@ -267,7 +270,7 @@ class BRouterProvider:
                     leg = self.route(wps, spec.avoid, protect=vias)
                     if leg is None:
                         break
-                    cand = RouteCandidate(
+                    bowed = RouteCandidate(
                         provider=self.name,
                         seed=f"via leg={li} side={'+' if side > 0 else '-'} "
                              f"r={r / METERS_PER_MILE:.1f}mi",
@@ -275,13 +278,13 @@ class BRouterProvider:
                         points=leg["points"],
                         overlap_frac=repeated_fraction(leg["points"]),
                         major_m=leg["major_m"])
-                    error = abs(cand.distance_m - spec.distance_m) / spec.distance_m
-                    added = cand.distance_m - base_dist
+                    error = abs(bowed.distance_m - spec.distance_m) / spec.distance_m
+                    added = bowed.distance_m - base_dist
                     if error <= spec.distance_tolerance / 2 or added <= 0:
                         break
                     r *= max(0.25, min(4.0, needed / added))
-                if cand is not None:
-                    out.append(cand)
+                if bowed is not None:
+                    out.append(bowed)
         return out
 
     def _loop(self, spec: RouteSpec, lat: float, lon: float, bearing: float,
@@ -326,11 +329,11 @@ class BRouterProvider:
 
 
 class ORSProvider:
-    name = "ors"
-    BASE_URL = "https://api.openrouteservice.org/v2/directions/cycling-regular/geojson"
+    name: str = "ors"
+    BASE_URL: str = "https://api.openrouteservice.org/v2/directions/cycling-regular/geojson"
 
-    def __init__(self, api_key: str | None = None):
-        self.api_key = api_key or os.environ.get("ORS_API_KEY", "")
+    def __init__(self, api_key: str | None = None) -> None:
+        self.api_key: str = api_key or os.environ.get("ORS_API_KEY", "")
 
     @property
     def available(self) -> bool:
@@ -347,7 +350,7 @@ class ORSProvider:
         if spec.via:
             print("  (ors: round_trip cannot honor via places; skipping)")
             return []
-        out = []
+        out: list[RouteCandidate] = []
         for seed in range(n):
             try:
                 resp = requests.post(
@@ -367,7 +370,7 @@ class ORSProvider:
                 print(f"  ors seed {seed}: failed ({e})")
                 continue
             summary = feature["properties"]["summary"]
-            points = [(c[1], c[0], c[2] if len(c) > 2 else None)
+            points: Track = [(c[1], c[0], c[2] if len(c) > 2 else None)
                       for c in feature["geometry"]["coordinates"]]
             points, spur_dist, spur_ascent = despur(points)
             if spur_dist > NOTABLE_SPUR_M:

@@ -17,12 +17,13 @@ a known upgrade path.
 import math
 from dataclasses import dataclass, field
 
-from routes.spec import EARTH_RADIUS_M, METERS_PER_FOOT, METERS_PER_MILE
+from routes.spec import (EARTH_RADIUS_M, METERS_PER_FOOT, METERS_PER_MILE,
+                         Coord, Point, Router, Sample, Track)
 
 # Speed assumptions for turning rep duration into stretch length.
-FLAT_SPEED_MPH = 20.0      # threshold pace on flat road
-INCLINE_SPEED_MPH = 11.0   # VO2 pace into a grade
-TRAVEL_SPEED_MPH = 15.0    # easy riding out to the spot
+FLAT_SPEED_MPH: float = 20.0      # threshold pace on flat road
+INCLINE_SPEED_MPH: float = 11.0   # VO2 pace into a grade
+TRAVEL_SPEED_MPH: float = 15.0    # easy riding out to the spot
 
 
 @dataclass
@@ -45,7 +46,7 @@ class IntervalSpec:
 
 @dataclass
 class IntervalSpot:
-    points: list = field(repr=False)   # (lat, lon, ele) along the stretch
+    points: Track = field(repr=False)  # the stretch itself
     length_m: float = 0.0
     mean_grade_pct: float = 0.0
     grade_std_pct: float = 0.0
@@ -65,7 +66,7 @@ class IntervalSpot:
         return self.length_m * self.mean_grade_pct / 100.0 / METERS_PER_FOOT
 
 
-def _hav_m(a, b) -> float:
+def _hav_m(a: Coord, b: Coord) -> float:
     phi1, phi2 = math.radians(a[0]), math.radians(b[0])
     dphi = phi2 - phi1
     dlam = math.radians(b[1] - a[1])
@@ -73,7 +74,7 @@ def _hav_m(a, b) -> float:
     return 2 * EARTH_RADIUS_M * math.asin(math.sqrt(h))
 
 
-def _bearing_deg(a, b) -> float:
+def _bearing_deg(a: Coord, b: Coord) -> float:
     phi1, phi2 = math.radians(a[0]), math.radians(b[0])
     dlam = math.radians(b[1] - a[1])
     y = math.sin(dlam) * math.cos(phi2)
@@ -81,17 +82,17 @@ def _bearing_deg(a, b) -> float:
     return (math.degrees(math.atan2(y, x)) + 360.0) % 360.0
 
 
-BIN_M = 100.0  # resample step: kills GPS-style elevation jitter in grades
+BIN_M: float = 100.0  # resample step: kills GPS-style elevation jitter in grades
 # Controls just past a window's ends still interrupt every lap (you
 # turn around there), and mapped positions carry a little noise.
-CONTROL_PAD_M = 150.0
+CONTROL_PAD_M: float = 150.0
 
 
-def _resample(points, step_m: float = BIN_M):
+def _resample(points: Track, step_m: float = BIN_M) -> list[Sample]:
     """Points at ~step_m spacing with cumulative distance: (lat, lon, ele, cum)."""
-    out = []
+    out: list[Sample] = []
     cum = carry = 0.0
-    last = None
+    last: Point | None = None
     for p in points:
         if p[2] is None:
             continue
@@ -108,10 +109,13 @@ def _resample(points, step_m: float = BIN_M):
     return out
 
 
-def _window_stats(rs, i, j):
-    """Stats for resampled slice rs[i..j]."""
+def _window_stats(rs: list[Sample], i: int,
+                  j: int) -> tuple[float, float, float, float]:
+    """Stats for resampled slice rs[i..j]: (length m, mean grade %,
+    grade std %, turns per km)."""
     length = rs[j][3] - rs[i][3]
-    grades, turns = [], 0
+    grades: list[float] = []
+    turns = 0
     for k in range(i, j):
         d = rs[k + 1][3] - rs[k][3]
         if d > 0:
@@ -128,7 +132,8 @@ def _window_stats(rs, i, j):
     return length, mean, math.sqrt(var), turns / max(length / 1000.0, 0.001)
 
 
-def _score(spec: IntervalSpec, length, mean_grade, grade_std, turns_per_km,
+def _score(spec: IntervalSpec, length: float, mean_grade: float,
+           grade_std: float, turns_per_km: float,
            control_wt: float = 0.0) -> float:
     # Longer is better up to the full rep distance (you can lap a shorter
     # stretch, but every turnaround interrupts the effort).
@@ -151,7 +156,7 @@ def _score(spec: IntervalSpec, length, mean_grade, grade_std, turns_per_km,
             + 0.05 * turn_score + 0.35 * control_score)
 
 
-def find_spots(spec: IntervalSpec, lat: float, lon: float, provider,
+def find_spots(spec: IntervalSpec, lat: float, lon: float, provider: Router,
                n_spokes: int = 12, top: int = 3) -> list[IntervalSpot]:
     """Search spokes around the start for the best interval stretches."""
     from bisect import bisect_left, bisect_right
@@ -165,7 +170,7 @@ def find_spots(spec: IntervalSpec, lat: float, lon: float, provider,
           "  warning: no traffic-control data (Overpass down?) — scoring "
           "without interruption counts")
 
-    spots = []
+    spots: list[IntervalSpot] = []
     for i in range(n_spokes):
         bearing = 360.0 * i / n_spokes
         dest = _destination(lat, lon, bearing, spec.travel_radius_m / 1.2)
@@ -183,7 +188,7 @@ def find_spots(spec: IntervalSpec, lat: float, lon: float, provider,
         for _, w in hits:
             hit_wt_cum.append(hit_wt_cum[-1] + w)
         # Slide a window of up to rep_distance along the spoke.
-        best_for_spoke = None
+        best_for_spoke: IntervalSpot | None = None
         for i0 in range(0, len(rs) - 3):
             j = i0
             while j + 1 < len(rs) and rs[j + 1][3] - rs[i0][3] <= spec.rep_distance_m:

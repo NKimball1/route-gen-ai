@@ -25,10 +25,10 @@ load_dotenv()
 
 from routes.geocode import geocode
 from routes.pipeline import build_providers, compose
-from routes.spec import RouteSpec
+from routes.spec import NoGo, RouteSpec
 
 
-def parse_avoid(items: list[str]) -> list[tuple[float, float, float]]:
+def parse_avoid(items: list[str]) -> list[NoGo]:
     zones = []
     for item in items:
         place, _, radius = item.rpartition(":")

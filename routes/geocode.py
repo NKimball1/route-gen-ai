@@ -4,23 +4,26 @@ Nominatim usage policy: identify yourself with a User-Agent and stay
 under 1 request/second. We make one request per compose run.
 """
 import time
+from typing import Any
 
 import requests
 
-NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
-USER_AGENT = "cycling-agentic-flow-route-prototype/0.1"
+from routes.spec import BBox
 
-RETRIES = 3
+NOMINATIM_URL: str = "https://nominatim.openstreetmap.org/search"
+USER_AGENT: str = "cycling-agentic-flow-route-prototype/0.1"
+
+RETRIES: int = 3
 # Grows per attempt (1.5s, 3s); also keeps retries under Nominatim's
 # 1 request/second usage policy.
-RETRY_WAIT_S = 1.5
-RETRYABLE_HTTP = (429, 502, 503, 504)
+RETRY_WAIT_S: float = 1.5
+RETRYABLE_HTTP: tuple[int, ...] = (429, 502, 503, 504)
 
 
-def _nominatim_get(params: dict) -> list:
+def _nominatim_get(params: dict[str, str | int]) -> list[dict[str, Any]]:
     """GET with retries — Nominatim occasionally 429s or times out, and
     one flaky lookup shouldn't kill a whole compose run."""
-    last = None
+    last: Exception | None = None
     for attempt in range(RETRIES):
         if attempt:
             time.sleep(RETRY_WAIT_S * attempt)
@@ -36,7 +39,7 @@ def _nominatim_get(params: dict) -> list:
             return resp.json()
         except (requests.ConnectionError, requests.Timeout) as e:
             last = e
-    raise last
+    raise last or RuntimeError("Nominatim: no attempts were made")
 
 
 def geocode(address: str) -> tuple[float, float, str]:
@@ -48,7 +51,7 @@ def geocode(address: str) -> tuple[float, float, str]:
     return float(hit["lat"]), float(hit["lon"]), hit["display_name"]
 
 
-def _geocode_bounded(query: str, near) -> tuple[float, float, str]:
+def _geocode_bounded(query: str, near: BBox) -> tuple[float, float, str]:
     """Geocode restricted to a (minlat, minlon, maxlat, maxlon) box — so
     'Whitney Way' on a Madison route finds Madison's, not one anywhere."""
     minlat, minlon, maxlat, maxlon = near
@@ -77,7 +80,7 @@ def _query_variants(place: str) -> list[str]:
 
 
 def geocode_flexible(place: str,
-                     near=None) -> tuple[float, float, str]:
+                     near: BBox | None = None) -> tuple[float, float, str]:
     """Geocode with fallbacks: an LLM (or user) may append the wrong city
     to a place name. With `near` (minlat, minlon, maxlat, maxlon), bounded
     lookups run first — and an unbounded hit far outside that box is
@@ -85,7 +88,7 @@ def geocode_flexible(place: str,
     Applebee's in Pittsburgh; a confidently wrong place is worse than a
     clear 'not found')."""
     queries = _query_variants(place)
-    last_error = None
+    last_error: ValueError | None = None
     if near is not None:
         for q in queries:
             try:
@@ -107,4 +110,4 @@ def geocode_flexible(place: str,
             return lat, lon, name
         except ValueError as e:
             last_error = e
-    raise last_error
+    raise last_error or ValueError(f"Could not geocode: {place!r}")

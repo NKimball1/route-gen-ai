@@ -12,35 +12,38 @@ import math
 from dataclasses import dataclass
 
 from routes.intervals import _resample
-from routes.spec import METERS_PER_DEG_LAT, METERS_PER_DEG_LON_EQ, METERS_PER_MILE
+from routes.spec import (METERS_PER_DEG_LAT, METERS_PER_DEG_LON_EQ,
+                         METERS_PER_MILE, ClimbRow, Coord, LatLon, Router,
+                         Sample)
 
 
 # Climb-start dedupe grid: cells per degree (~600 m squares).
-DEDUPE_CELLS_PER_DEG = 180
+DEDUPE_CELLS_PER_DEG: int = 180
 
 
 @dataclass
 class Climb:
     name: str
-    start: tuple  # (lat, lon)
-    end: tuple
+    start: LatLon
+    end: LatLon
     gain_m: float
     length_m: float
     avg_grade_pct: float
-    source: str   # "starred" or "elevation"
+    source: str   # "starred", "peak" or "elevation"
 
 
-def _dist_m(a, b) -> float:
+def _dist_m(a: Coord, b: Coord) -> float:
     dy = (a[0] - b[0]) * METERS_PER_DEG_LAT
     dx = (a[1] - b[1]) * METERS_PER_DEG_LON_EQ * math.cos(math.radians(a[0]))
     return math.hypot(dx, dy)
 
 
-def extract_climbs(rs, min_gain_m: float = 25.0, min_grade_pct: float = 2.5,
-                   max_dip_m: float = 12.0) -> list[dict]:
+def extract_climbs(rs: list[Sample], min_gain_m: float = 25.0,
+                   min_grade_pct: float = 2.5,
+                   max_dip_m: float = 12.0) -> list[ClimbRow]:
     """Sustained ascents in a resampled profile ((lat, lon, ele, cum) rows):
     runs that keep gaining, tolerating dips up to max_dip_m."""
-    climbs = []
+    climbs: list[ClimbRow] = []
     i, n = 0, len(rs)
     while i < n - 1:
         if rs[i][2] is None or rs[i + 1][2] is None or rs[i + 1][2] <= rs[i][2]:
@@ -74,7 +77,7 @@ def extract_climbs(rs, min_gain_m: float = 25.0, min_grade_pct: float = 2.5,
     return climbs
 
 
-def find_climbs(lat: float, lon: float, radius_m: float, provider,
+def find_climbs(lat: float, lon: float, radius_m: float, provider: Router,
                 n_spokes: int = 10, top: int = 3) -> list[Climb]:
     """Best climbs within radius: starred Strava segments first, then our
     own elevation search along routed spokes. Deduped by location."""
@@ -106,12 +109,12 @@ def find_climbs(lat: float, lon: float, radius_m: float, provider,
     # dead-end spurs (a park road up a mound is on no route to anywhere).
     from routes.peaks import climb_to_peak, fetch_peaks
     for peak in fetch_peaks(lat, lon, radius_m):
-        c = climb_to_peak(lat, lon, peak, provider)
-        if c is not None:
+        row = climb_to_peak(lat, lon, peak, provider)
+        if row is not None:
             found.append(Climb(
-                name=c["name"], start=c["start"], end=c["end"],
-                gain_m=c["gain_m"], length_m=c["length_m"],
-                avg_grade_pct=c["avg_grade_pct"], source="peak"))
+                name=row["name"], start=row["start"], end=row["end"],
+                gain_m=row["gain_m"], length_m=row["length_m"],
+                avg_grade_pct=row["avg_grade_pct"], source="peak"))
 
     for i in range(n_spokes):
         bearing = 360.0 * i / n_spokes
@@ -119,17 +122,17 @@ def find_climbs(lat: float, lon: float, radius_m: float, provider,
         leg = provider.route([(lat, lon), dest])
         if leg is None:
             continue
-        for c in extract_climbs(_resample(leg["points"])):
+        for row in extract_climbs(_resample(leg["points"])):
             found.append(Climb(
-                name=f"climb {c['gain_m']:.0f}m @ {c['avg_grade_pct']:.1f}%",
-                start=c["start"], end=c["end"], gain_m=c["gain_m"],
-                length_m=c["length_m"], avg_grade_pct=c["avg_grade_pct"],
+                name=f"climb {row['gain_m']:.0f}m @ {row['avg_grade_pct']:.1f}%",
+                start=row["start"], end=row["end"], gain_m=row["gain_m"],
+                length_m=row["length_m"], avg_grade_pct=row["avg_grade_pct"],
                 source="elevation"))
 
     # Dedupe by start location (~600 m cells): starred > peak > elevation
     # for the same hill, then bigger gain wins.
-    priority = {"starred": 2, "peak": 1, "elevation": 0}
-    best: dict = {}
+    priority: dict[str, int] = {"starred": 2, "peak": 1, "elevation": 0}
+    best: dict[tuple[int, int], Climb] = {}   # dedupe cell -> winner
     for c in found:
         key = (round(c.start[0] * DEDUPE_CELLS_PER_DEG),
                round(c.start[1] * DEDUPE_CELLS_PER_DEG))

@@ -25,15 +25,15 @@ from routes.geocode import geocode_flexible
 from routes.gpx_out import write_track
 from routes.preview import _parse_gpx, build_preview
 from routes.providers import BRouterProvider
-from routes.spec import METERS_PER_FOOT, METERS_PER_MILE
+from routes.spec import METERS_PER_FOOT, METERS_PER_MILE, Outcome
 
-OUT_DIR = os.path.join("output", "routes")
+OUT_DIR: str = os.path.join("output", "routes")
 # Via edits need room to leave and rejoin the route around the target.
-VIA_BUFFER_MIN_M = 1200.0
+VIA_BUFFER_MIN_M: float = 1200.0
 # Place lookups are biased to the route's neighborhood: bbox padded by
 # these degrees (~15 km at Midwest latitudes).
-NEAR_MARGIN_LAT_DEG = 0.15
-NEAR_MARGIN_LON_DEG = 0.2
+NEAR_MARGIN_LAT_DEG: float = 0.15
+NEAR_MARGIN_LON_DEG: float = 0.2
 
 
 def current_route(workdir: str = OUT_DIR) -> str | None:
@@ -51,14 +51,14 @@ def current_route(workdir: str = OUT_DIR) -> str | None:
 # only ever go UP (next free number), so after an undo or a revert-first
 # correction the newest edit's parent is NOT editN-1 — it's whatever was
 # current when the edit ran. Undo must follow real parentage, not numbers.
-LINEAGE_FILE = "lineage.json"
+LINEAGE_FILE: str = "lineage.json"
 
 
 def _lineage_path(route_path: str) -> str:
     return os.path.join(os.path.dirname(route_path), LINEAGE_FILE)
 
 
-def _load_lineage(route_path: str) -> dict:
+def _load_lineage(route_path: str) -> dict[str, str]:
     try:
         with open(_lineage_path(route_path), encoding="utf-8") as f:
             return json.load(f)
@@ -75,7 +75,8 @@ def record_parent(out_path: str, parent_path: str) -> None:
         json.dump(data, f, indent=1)
 
 
-def normalize_places(place: str | None, places: list[str] | None):
+def normalize_places(place: str | None, places: list[str] | None
+                     ) -> tuple[str | None, list[str] | None]:
     """The parser may put a LONE place in the `places` list ('go through
     Olbrich Park' -> places=[...], place=None). One place is one place,
     whichever field it arrived in."""
@@ -89,7 +90,7 @@ def normalize_places(place: str | None, places: list[str] | None):
 # A correction ("that wasn't what I meant...") reverts the last change
 # first — but if the last request FAILED there is nothing of it to
 # revert, and stepping back would destroy an earlier, good change.
-OUTCOME_FILE = "last_edit_outcome.txt"
+OUTCOME_FILE: str = "last_edit_outcome.txt"
 
 
 def note_outcome(workdir: str, changed: bool) -> None:
@@ -134,7 +135,8 @@ def run_edit(route_path: str, place: str | None = None,
              profile: str | None = None, out_dir: str = OUT_DIR,
              miles_delta: float | None = None,
              connect_return: bool = False,
-             places: list[str] | None = None):
+             places: list[str] | None = None
+             ) -> tuple[str | None, str, Outcome]:
     """Edit route_path. Modes: avoid, via, extend, shorten, move_start,
     move_end, anchor, connect. Returns (new GPX path or None, a
     human-readable outcome message, ok: True | "partial" | False).
@@ -257,7 +259,8 @@ def run_edit(route_path: str, place: str | None = None,
                 print(f"Detouring around: {zname} (r={radius_m:.0f} m)")
                 result = detour_around(points, (zlat, zlon, radius_m),
                                        provider)
-            if result is not None and result.detours == 0                     and result.failed_detours > 0:
+            if (result is not None and result.detours == 0
+                    and result.failed_detours > 0):
                 return None, (f"Couldn't avoid {place!r}: "
                               f"{result.fail_reason}. The route is "
                               "unchanged."), False
@@ -296,17 +299,17 @@ def run_edit(route_path: str, place: str | None = None,
     message = (f"Done — {verbs.get(mode, mode)} {place}: now "
                f"{result.distance_m / METERS_PER_MILE:.1f} mi "
                f"({delta / METERS_PER_MILE:+.1f} mi).")
-    ok = True
+    ok: Outcome = True
     if skipped:
         message += f" Couldn't locate and skipped: {', '.join(skipped)}."
         ok = "partial"
-    if getattr(result, "failed_detours", 0):
+    if result.failed_detours:
         message = (f"Partly done — rerouted {result.detours} section(s) "
                    f"around {place}, but {result.failed_detours} couldn't "
                    f"be ({result.fail_reason}). "
                    f"Now {result.distance_m / METERS_PER_MILE:.1f} mi.")
         ok = "partial"
-    if mode == "avoid" and getattr(result, "road_mode", False):
+    if mode == "avoid" and result.road_mode:
         # road mode verified itself by measuring on-road meters
         if ok is True:
             message += " Verified: no longer rides along it."

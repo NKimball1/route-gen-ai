@@ -11,13 +11,17 @@ from routes.gpx_out import write_gpx
 from routes.preview import build_preview
 from routes.providers import BRouterProvider, ORSProvider
 from routes.scoring import rank
-from routes.spec import MAJOR_DISPLAY_MIN_M, METERS_PER_MILE, RouteSpec
+from routes.spec import (MAJOR_DISPLAY_MIN_M, METERS_PER_MILE,
+                         RouteCandidate, RouteSpec)
 
-OUT_DIR = os.path.join("output", "routes")
+Provider = BRouterProvider | ORSProvider
+
+OUT_DIR: str = os.path.join("output", "routes")
 
 
-def build_providers(which: str = "all", profile: str | None = None) -> list:
-    providers = []
+def build_providers(which: str = "all",
+                    profile: str | None = None) -> list[Provider]:
+    providers: list[Provider] = []
     if which in ("brouter", "all"):
         providers.append(BRouterProvider(profile=profile))
     if which in ("ors", "all"):
@@ -32,8 +36,9 @@ def build_providers(which: str = "all", profile: str | None = None) -> list:
     return providers
 
 
-def compose(specs: list[RouteSpec], providers: list, candidates_per: int = 6,
-            out_dir: str = OUT_DIR) -> list:
+def compose(specs: list[RouteSpec], providers: list[Provider],
+            candidates_per: int = 6,
+            out_dir: str = OUT_DIR) -> list[RouteCandidate]:
     """Run the full pipeline. Returns ranked keepers (also writes GPX+preview)."""
     spec = specs[0]
     lat, lon, place = geocode(spec.address)
@@ -43,16 +48,18 @@ def compose(specs: list[RouteSpec], providers: list, candidates_per: int = 6,
     # our own elevation search) and add candidates routed THROUGH them —
     # blind bearing search finds hilly directions but stops short of summits.
     if spec.maximize_ascent and not spec.via:
-        brouter = next((p for p in providers if p.name == "brouter"), None)
+        brouter = next((p for p in providers
+                        if isinstance(p, BRouterProvider)), None)
         if brouter is not None:
             from routes.climbs import find_climbs
             print("Scouting climbs to target...")
-            for c in find_climbs(lat, lon, spec.distance_m / 2 / 1.3, brouter):
+            for climb in find_climbs(lat, lon, spec.distance_m / 2 / 1.3,
+                                     brouter):
                 specs = specs + [replace(spec, shape="loop",
-                                         via=[c.start, c.end],
-                                         via_names=[c.name])]
+                                         via=[climb.start, climb.end],
+                                         via_names=[climb.name])]
 
-    candidates = []
+    candidates: list[RouteCandidate] = []
     for p in providers:
         for s in specs:
             label = s.shape + (f" via '{s.via_names[0]}'" if s.via_names else "")
@@ -71,7 +78,7 @@ def compose(specs: list[RouteSpec], providers: list, candidates_per: int = 6,
     miles = spec.distance_m / METERS_PER_MILE
     goal = ("maxclimb" if spec.maximize_ascent
             else "minclimb" if spec.minimize_ascent else "ride")
-    gpx_paths = []
+    gpx_paths: list[str] = []
     print(f"\n{'rank':<5}{'provider':<9}{'shape':<9}{'miles':>7}{'climb ft':>10}"
           f"{'repeat':>8}{'major':>7}  file")
     for i, c in enumerate(keepers, 1):

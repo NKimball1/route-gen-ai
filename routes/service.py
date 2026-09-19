@@ -8,11 +8,29 @@ import io
 import os
 import sys
 import threading
+from typing import IO, Any, Sequence, TypedDict
 
 from routes.spec import (MAJOR_DISPLAY_MIN_M, METERS_PER_FOOT,
-                         METERS_PER_MILE)
+                         METERS_PER_MILE, Coord, LatLon, Outcome)
 
-HOME_WORDS = ("home", "my house", "my home", "house")
+
+class CandidateOut(TypedDict):
+    """One drawable result row."""
+    label: str
+    gpx: str                     # path, downloadable via /api/gpx
+    latlngs: list[list[float]]   # downsampled [lat, lon] pairs for the map
+
+
+class ServiceResult(TypedDict, total=False):
+    """What every request returns — the contract the frontend reads."""
+    kind: str                    # route | interval_spot | edit | upload | error
+    ok: Outcome
+    summary: str
+    candidates: list[CandidateOut]
+    log: str
+
+
+HOME_WORDS: tuple[str, ...] = ("home", "my house", "my home", "house")
 
 # ---- server-side bounds on parsed numbers ----
 # The parser is an LLM fed user text: schema-VALID output can still carry
@@ -20,7 +38,7 @@ HOME_WORDS = ("home", "my house", "my home", "house")
 # text box is attacker-controlled. A rogue number must not become a giant
 # Overpass bbox or an hours-long compute. Out-of-range values are pulled
 # to the nearest edge, with a log line so the user sees it happened.
-PARSE_BOUNDS = {
+PARSE_BOUNDS: dict[str, dict[str, tuple[float, float]]] = {
     "route": {"distance_miles": (2.0, 150.0),
               "max_climb_ft": (0.0, 20000.0)},
     "interval": {"reps": (1, 20), "rep_minutes": (1.0, 60.0),
@@ -28,10 +46,10 @@ PARSE_BOUNDS = {
     "edit": {"radius_m": (50.0, 5000.0), "miles_delta": (0.0, 50.0),
              "target_miles": (2.0, 150.0)},
 }
-MAX_PLACES = 8  # waypoint/avoid lists longer than this are truncated
+MAX_PLACES: int = 8  # waypoint/avoid lists longer than this are truncated
 
 
-def _clamp_parsed(req: dict) -> None:
+def _clamp_parsed(req: dict[str, Any]) -> None:
     """Bound every number and list the LLM parse produced (in place)."""
     for section, bounds in PARSE_BOUNDS.items():
         obj = req.get(section)
@@ -62,23 +80,23 @@ class _StdoutRouter(io.TextIOBase):
     is installed once; each job thread points its writes at its own buffer,
     everything else falls through to the real stdout."""
 
-    def __init__(self, fallback):
-        self.fallback = fallback
+    def __init__(self, fallback: IO[str]) -> None:
+        self.fallback: IO[str] = fallback
         self._local = threading.local()
 
-    def set_target(self, target):
+    def set_target(self, target: IO[str]) -> None:
         self._local.target = target
 
-    def clear_target(self):
+    def clear_target(self) -> None:
         self._local.target = None
 
-    def _t(self):
+    def _t(self) -> IO[str]:
         return getattr(self._local, "target", None) or self.fallback
 
-    def write(self, s):
+    def write(self, s: str) -> int:
         return self._t().write(s)
 
-    def flush(self):
+    def flush(self) -> None:
         f = getattr(self._t(), "flush", None)
         if f:
             f()
@@ -88,7 +106,8 @@ if not isinstance(sys.stdout, _StdoutRouter):
     sys.stdout = _StdoutRouter(sys.stdout)
 
 
-def _downsample(points, max_pts: int = 800):
+def _downsample(points: Sequence[Coord],
+                max_pts: int = 800) -> list[list[float]]:
     step = max(1, len(points) // max_pts)
     out = [[round(p[0], 5), round(p[1], 5)] for p in points[::step]]
     if points and out[-1] != [round(points[-1][0], 5), round(points[-1][1], 5)]:
@@ -96,9 +115,9 @@ def _downsample(points, max_pts: int = 800):
     return out
 
 
-def handle_request(text: str, log_sink=None,
+def handle_request(text: str, log_sink: IO[str] | None = None,
                    default_address: str | None = None,
-                   workdir: str | None = None) -> dict:
+                   workdir: str | None = None) -> ServiceResult:
     """Run a plain-English request end to end. Returns
     {kind, log, candidates: [{label, gpx, latlngs, stats...}]}.
     `log_sink`: optional file-like that receives progress lines live.
@@ -107,25 +126,28 @@ def handle_request(text: str, log_sink=None,
     `workdir`: this session's workspace — GPX output and the current-route
     pointer live here, so concurrent web sessions never share state.
     Defaults to the CLI's shared output/routes."""
-    buf = log_sink if log_sink is not None else io.StringIO()
+    buf: IO[str] = log_sink if log_sink is not None else io.StringIO()
     if workdir is None:
         workdir = os.path.join("output", "routes")
     os.makedirs(workdir, exist_ok=True)
 
-    router = sys.stdout if isinstance(sys.stdout, _StdoutRouter) else None
-    route_here = router is not None and buf is not router
-    if route_here:
+    # the CLI passes sys.stdout itself as the sink — nothing to re-route
+    out = sys.stdout
+    router: _StdoutRouter | None = (
+        out if isinstance(out, _StdoutRouter) and buf is not out else None)
+    if router is not None:
         router.set_target(buf)
     try:
         result = _dispatch(text, default_address, workdir)
     finally:
-        if route_here:
+        if router is not None:
             router.clear_target()
-    result["log"] = buf.getvalue() if hasattr(buf, "getvalue") else ""
+    result["log"] = buf.getvalue() if isinstance(buf, io.StringIO) else ""
     return result
 
 
-def _dispatch(text: str, default_address: str | None, workdir: str) -> dict:
+def _dispatch(text: str, default_address: str | None,
+              workdir: str) -> ServiceResult:
     from routes.nl import parse_request
     req = parse_request(text)
     usage = req.pop("_usage")
@@ -232,7 +254,7 @@ def _dispatch(text: str, default_address: str | None, workdir: str) -> dict:
         spec = IntervalSpec(address, iv["reps"], iv["rep_minutes"], iv["kind"],
                             iv["max_travel_minutes"])
         spots = run_spot_search(spec, out_dir=workdir)
-        cands = []
+        cands: list[CandidateOut] = []
         for i, s in enumerate(spots, 1):
             path = os.path.join(
                 workdir,
@@ -255,7 +277,8 @@ def _dispatch(text: str, default_address: str | None, workdir: str) -> dict:
     from routes.spec import RouteSpec
     r = req["route"]
     avoid = parse_avoid(r["avoid_places"])
-    via, via_names = [], []
+    via: list[LatLon] = []
+    via_names: list[str] = []
     for place in r["via_places"]:
         vlat, vlon, vname = geocode(place)
         print(f"Via: {vname}")

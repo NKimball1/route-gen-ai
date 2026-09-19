@@ -10,26 +10,28 @@ between those points with a no-go circle over the zone, and splice.
 """
 import math
 from dataclasses import dataclass
+from typing import Sequence
 
 from routes.elevation import track_ascent
 from routes.overlap import repeated_fraction
-from routes.spec import METERS_PER_DEG_LAT, METERS_PER_DEG_LON_EQ, METERS_PER_MILE
+from routes.spec import (METERS_PER_DEG_LAT, METERS_PER_DEG_LON_EQ,
+                         METERS_PER_MILE, Coord, LatLon, NoGo, Router, Track)
 
 
 # A via/waypoint target farther than this from the route is not an
 # edit -- it's a different ride (route_via, chains, road mode agree).
-MAX_TARGET_FROM_ROUTE_M = 8000.0
+MAX_TARGET_FROM_ROUTE_M: float = 8000.0
 # anchor_at skips a connecting leg shorter than this -- the ride
 # effectively already starts/ends there.
-ANCHOR_LEG_SKIP_M = 150.0
+ANCHOR_LEG_SKIP_M: float = 150.0
 # A via chain whose waypoints span more than this fraction of the ride
 # would replace most of it -- refused (ask one at a time instead).
-VIA_CHAIN_MAX_SPAN_FRAC = 0.45
+VIA_CHAIN_MAX_SPAN_FRAC: float = 0.45
 
 
 @dataclass
 class EditResult:
-    points: list
+    points: Track
     distance_m: float
     ascent_m: float
     overlap_frac: float
@@ -38,22 +40,25 @@ class EditResult:
     added_m: float          # detour length spliced in
     failed_detours: int = 0  # sections that could not be rerouted
     fail_reason: str = ""
+    road_mode: bool = False  # avoided a road AS A LINE and self-verified
 
 
-def _dist_m(a, b) -> float:
+def _dist_m(a: Coord, b: Coord) -> float:
     dy = (a[0] - b[0]) * METERS_PER_DEG_LAT
     dx = (a[1] - b[1]) * METERS_PER_DEG_LON_EQ * math.cos(math.radians(a[0]))
     return math.hypot(dx, dy)
 
 
-def _cum(points) -> list[float]:
+def _cum(points: Sequence[Coord]) -> list[float]:
+    """Cumulative distance (m) at each point; _cum(p)[-1] is the length."""
     out = [0.0]
     for k in range(1, len(points)):
         out.append(out[-1] + _dist_m(points[k - 1], points[k]))
     return out
 
 
-def _result(points, removed_m, added_m, detours=1) -> EditResult:
+def _result(points: Track, removed_m: float, added_m: float,
+            detours: int = 1) -> EditResult:
     return EditResult(
         points=points, distance_m=_cum(points)[-1],
         ascent_m=track_ascent(points),
@@ -61,7 +66,7 @@ def _result(points, removed_m, added_m, detours=1) -> EditResult:
         detours=detours, removed_m=removed_m, added_m=added_m)
 
 
-def extend_route(points, add_m: float, provider,
+def extend_route(points: Track, add_m: float, provider: Router,
                  anchor_span_m: float = 1500.0) -> EditResult | None:
     """Make the route ~add_m longer by bowing one section outward — the
     same trick loop synthesis uses, applied to an existing route. Tries a
@@ -70,7 +75,7 @@ def extend_route(points, add_m: float, provider,
 
     cum = _cum(points)
     total = cum[-1]
-    best = None
+    best: tuple[float, EditResult] | None = None  # (distance miss, result)
     for frac, side in ((0.5, 1), (0.5, -1), (0.32, 1), (0.68, -1)):
         i = next(k for k in range(len(points)) if cum[k] >= frac * total)
         a = next(k for k in range(i, -1, -1)
@@ -106,7 +111,8 @@ def extend_route(points, add_m: float, provider,
     return best[1] if best else None
 
 
-def shorten_route(points, cut_m: float, provider) -> EditResult | None:
+def shorten_route(points: Track, cut_m: float,
+                  provider: Router) -> EditResult | None:
     """Make the route ~cut_m shorter by bridging one section directly.
     Samples cut positions along the middle of the route, keeps the bridge
     whose result lands nearest the target length."""
@@ -116,7 +122,7 @@ def shorten_route(points, cut_m: float, provider) -> EditResult | None:
     if target < 3000:
         print("  that would leave almost no ride — not shortening")
         return None
-    best = None
+    best: tuple[float, EditResult] | None = None  # (distance miss, result)
     n = len(points)
     starts = [next(k for k in range(n) if cum[k] >= f * total)
               for f in (0.1, 0.22, 0.34, 0.46, 0.58, 0.7)]
@@ -126,7 +132,8 @@ def shorten_route(points, cut_m: float, provider) -> EditResult | None:
         # "10 miles shorter" on a route that can only lose 6 should yield
         # the 6 with a note, not a refusal
         j = i
-        best_j, best_saved = None, 0.0
+        best_j: int | None = None
+        best_saved = 0.0
         while j < n - 1 and cum[j] < 0.9 * total:
             j += 1
             saved = (cum[j] - cum[i]) - 1.25 * _dist_m(points[i], points[j])
@@ -158,11 +165,11 @@ def shorten_route(points, cut_m: float, provider) -> EditResult | None:
     return best[1]
 
 
-def _is_loop(points, tolerance_m: float = 250.0) -> bool:
+def _is_loop(points: Track, tolerance_m: float = 250.0) -> bool:
     return _dist_m(points[0], points[-1]) <= tolerance_m
 
 
-def move_endpoint(points, target, provider,
+def move_endpoint(points: Track, target: LatLon, provider: Router,
                   at: str = "end") -> EditResult | None:
     """Make the ride start or end at target.
 
@@ -211,7 +218,8 @@ def move_endpoint(points, target, provider,
                    leg["distance_m"])
 
 
-def route_via_chain(points, targets, provider,
+def route_via_chain(points: Track, targets: Sequence[LatLon],
+                    provider: Router,
                     buffer_m: float = 1500.0) -> EditResult | None:
     """Reroute one section through SEVERAL waypoints ('through Greentree,
     past Exact Sciences, take the tunnel'): find where each target sits
@@ -222,7 +230,7 @@ def route_via_chain(points, targets, provider,
     cum = _cum(points)
     total = cum[-1]
 
-    def passes(t):
+    def passes(t: LatLon) -> list[float]:
         """Every place the route comes near t (a ride can pass a spot
         twice — out and back): (cum_position, distance) per pass."""
         d = [_dist_m(p, t) for p in points]
@@ -230,7 +238,8 @@ def route_via_chain(points, targets, provider,
         if mind > MAX_TARGET_FROM_ROUTE_M:
             return []
         thresh = max(mind * 1.5, mind + 400.0)
-        out, run = [], []
+        out: list[float] = []
+        run: list[int] = []
         for k in range(len(points)):
             if d[k] <= thresh:
                 run.append(k)
@@ -242,7 +251,7 @@ def route_via_chain(points, targets, provider,
             out.append(cum[min(run, key=lambda k: d[k])])
         return out
 
-    per_target = []
+    per_target: list[tuple[LatLon, list[float]]] = []
     for t in targets:
         p = passes(t)
         if not p:
@@ -257,11 +266,13 @@ def route_via_chain(points, targets, provider,
     # waypoints to opposite passes of an out-and-back once replaced 49 mi
     # of a ride with a 5 mi shortcut
     from itertools import product
-    best_combo, best_span = None, None
+    best_combo: tuple[float, ...] | None = None
+    best_span: float | None = None
     for combo in product(*(p for _, p in per_target)):
         span = max(combo) - min(combo)
         if best_span is None or span < best_span:
             best_combo, best_span = combo, span
+    assert best_combo is not None and best_span is not None  # per_target is non-empty
     if best_span > VIA_CHAIN_MAX_SPAN_FRAC * total:
         print(f"  those places span {best_span / total:.0%} of the ride — "
               "that edit would replace most of the route. Ask for them one "
@@ -287,7 +298,8 @@ def route_via_chain(points, targets, provider,
                    detours=len(ordered))
 
 
-def anchor_at(points, target, provider) -> EditResult | None:
+def anchor_at(points: Track, target: LatLon,
+              provider: Router) -> EditResult | None:
     """Make the ride a round trip from target: start AND end there.
 
     Born from a field test where 'start from X and end at X' could only be
@@ -331,7 +343,7 @@ def anchor_at(points, target, provider) -> EditResult | None:
     return _result(body, removed, added, detours=2)
 
 
-def connect_from(points, addr, provider,
+def connect_from(points: Track, addr: LatLon, provider: Router,
                  with_return: bool = False) -> EditResult | None:
     """Prepend a leg from addr to the route's start ('ride there from my
     place'); optionally also append the leg home from the route's end."""
@@ -350,7 +362,7 @@ def connect_from(points, addr, provider,
     return _result(new_pts, 0.0, added, detours=2 if with_return else 1)
 
 
-def route_via(points, target, provider,
+def route_via(points: Track, target: LatLon, provider: Router,
               buffer_m: float = 1500.0) -> EditResult | None:
     """Reroute the section of `points` nearest to `target` (lat, lon) so it
     passes THROUGH the target — 'go down the commuter path instead'. The
@@ -388,7 +400,7 @@ def route_via(points, target, provider,
     )
 
 
-def detour_around(points, zone, provider,
+def detour_around(points: Track, zone: NoGo, provider: Router,
                   buffer_m: float = 700.0) -> EditResult | None:
     """Reroute every part of `points` that enters `zone` (lat, lon, radius_m).
     Returns None when the route never touches the zone."""
@@ -399,28 +411,28 @@ def detour_around(points, zone, provider,
         return None
 
     # contiguous contact runs, then widen each by the buffer and merge overlaps
-    runs = []
-    s = None
+    runs: list[tuple[int, int]] = []   # (first, last) index inside the zone
+    s: int | None = None
     for i, flag in enumerate(inside + [False]):
         if flag and s is None:
             s = i
         elif not flag and s is not None:
             runs.append((s, i - 1))
             s = None
-    gaps = []
-    for s, e in runs:
-        a = s
-        while a > 0 and cum[s] - cum[a] < buffer_m:
+    gaps: list[tuple[int, int]] = []   # runs widened by the buffer, merged
+    for first, last in runs:
+        a = first
+        while a > 0 and cum[first] - cum[a] < buffer_m:
             a -= 1
-        b = e
-        while b < len(points) - 1 and cum[b] - cum[e] < buffer_m:
+        b = last
+        while b < len(points) - 1 and cum[b] - cum[last] < buffer_m:
             b += 1
         if gaps and a <= gaps[-1][1]:
             gaps[-1] = (gaps[-1][0], b)
         else:
             gaps.append((a, b))
 
-    new_points = []
+    new_points: Track = []
     cursor = 0
     removed = added = 0.0
     failed = 0

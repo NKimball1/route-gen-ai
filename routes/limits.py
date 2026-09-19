@@ -10,25 +10,27 @@ import os
 import threading
 import time
 from collections import defaultdict, deque
+from typing import Any
 
 LOCK = threading.Lock()
-_WINDOWS: dict = defaultdict(deque)
+# limiter key, e.g. ("ask_ip", "203.0.113.7") -> timestamps of recent hits
+_WINDOWS: dict[tuple[str, ...], deque[float]] = defaultdict(deque)
 
-HOUR_S = 3600
-DAY_S = 86400
+HOUR_S: int = 3600
+DAY_S: int = 86400
 
 
 class Limits:
     """Env-tunable knobs (defaults sized for a friendly beta)."""
-    ASK_PER_SESSION_HOUR = int(os.environ.get("RATE_ASK_SESSION_HOUR", 12))
-    ASK_PER_IP_HOUR = int(os.environ.get("RATE_ASK_IP_HOUR", 20))
-    ASK_GLOBAL_DAY = int(os.environ.get("RATE_ASK_GLOBAL_DAY", 400))
-    GEOCODE_PER_IP_HOUR = int(os.environ.get("RATE_GEOCODE_IP_HOUR", 30))
-    UPLOAD_PER_IP_HOUR = int(os.environ.get("RATE_UPLOAD_IP_HOUR", 20))
-    JOBS_CONCURRENT = int(os.environ.get("RATE_JOBS_CONCURRENT", 3))
+    ASK_PER_SESSION_HOUR: int = int(os.environ.get("RATE_ASK_SESSION_HOUR", 12))
+    ASK_PER_IP_HOUR: int = int(os.environ.get("RATE_ASK_IP_HOUR", 20))
+    ASK_GLOBAL_DAY: int = int(os.environ.get("RATE_ASK_GLOBAL_DAY", 400))
+    GEOCODE_PER_IP_HOUR: int = int(os.environ.get("RATE_GEOCODE_IP_HOUR", 30))
+    UPLOAD_PER_IP_HOUR: int = int(os.environ.get("RATE_UPLOAD_IP_HOUR", 20))
+    JOBS_CONCURRENT: int = int(os.environ.get("RATE_JOBS_CONCURRENT", 3))
 
 
-def allow(key, limit: int, period_s: float, now: float | None = None) -> bool:
+def allow(key: tuple[str, ...], limit: int, period_s: float, now: float | None = None) -> bool:
     """Sliding-window check: True and records the hit if under limit."""
     now = time.time() if now is None else now
     with LOCK:
@@ -60,20 +62,20 @@ def check_geocode(ip: str) -> str | None:
 
 # ---- usage log: one JSON line per event, greppable, gitignored ----
 
-USAGE_LOG = os.path.join("output", "usage.jsonl")
-LOG_TEXT = os.environ.get("ROUTEGEN_LOG_TEXT", "1") == "1"
+USAGE_LOG: str = os.path.join("output", "usage.jsonl")
+LOG_TEXT: bool = os.environ.get("ROUTEGEN_LOG_TEXT", "1") == "1"
 # IPs are pseudonymized before they touch disk: a salted hash still lets
 # you count distinct visitors and spot one abuser, without keeping a
 # list of who they were. Set a secret salt in production; with the
 # empty default, IPv4 hashes are brute-forceable (4 billion inputs).
-IP_SALT = os.environ.get("ROUTEGEN_IP_SALT", "")
+IP_SALT: str = os.environ.get("ROUTEGEN_IP_SALT", "")
 
 
 def pseudonymize_ip(ip: str) -> str:
     return hashlib.sha256((IP_SALT + ip).encode()).hexdigest()[:16]
 
 
-def log_event(event: str, **fields) -> None:
+def log_event(event: str, **fields: Any) -> None:
     """Append a usage event. Never raises — logging must not break serving."""
     try:
         if not LOG_TEXT:

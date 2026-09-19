@@ -1,16 +1,16 @@
 """Write a RouteCandidate as a Garmin-importable GPX 1.1 track."""
 from xml.sax.saxutils import escape
 
-from routes.spec import RouteCandidate
+from routes.spec import RouteCandidate, Track
 
-GPX_HEADER = (
+GPX_HEADER: str = (
     '<?xml version="1.0" encoding="UTF-8"?>\n'
     '<gpx version="1.1" creator="cycling-agentic-flow route composer" '
     'xmlns="http://www.topografix.com/GPX/1/1">\n'
 )
 
 
-def write_track(points, name: str, desc: str, path: str) -> None:
+def write_track(points: Track, name: str, desc: str, path: str) -> None:
     lines = [GPX_HEADER,
              f"  <trk><name>{escape(name)}</name><desc>{escape(desc)}</desc>\n"
              "    <trkseg>\n"]

@@ -9,20 +9,24 @@ down the road's shape, and verify by measuring on-road meters afterward.
 """
 import math
 import re
+from typing import Sequence
 
 from routes.interruptions import bbox_around, query_overpass
+from routes.editing import EditResult
 from routes.spec import (METERS_PER_DEG_LAT, METERS_PER_DEG_LON_EQ,
-                         METERS_PER_MILE)
+                         METERS_PER_MILE, Coord, LatLon, NoGo, Router, Track)
 
-ROAD_QUERY = """[out:json][timeout:60];
+Way = list[LatLon]   # one OSM way's centerline
+
+ROAD_QUERY: str = """[out:json][timeout:60];
 way["highway"]["name"~"{name}",i]({bbox});
 out geom;"""
 
-ON_ROAD_M = 28.0  # within this of the centerline counts as riding the road
+ON_ROAD_M: float = 28.0  # within this of the centerline counts as riding the road
 # shorter on-road stretches are mere crossings, not riding the road
-MIN_RIDING_RUN_M = 60.0
+MIN_RIDING_RUN_M: float = 60.0
 
-ROAD_WORDS = re.compile(
+ROAD_WORDS: re.Pattern[str] = re.compile(
     r"\b(road|rd|street|st|way|avenue|ave|drive|dr|lane|ln|"
     r"boulevard|blvd|parkway|pkwy|highway|hwy|route|pike|path|"
     r"trail|court|ct|circle|cir|terrace|ter|place|pl)\b", re.I)
@@ -35,7 +39,7 @@ def looks_like_road(name: str) -> bool:
 
 
 def fetch_road(name: str, lat: float, lon: float,
-               radius_m: float) -> list[list[tuple[float, float]]]:
+               radius_m: float) -> list[Way]:
     """Geometry of every way whose name matches (matches 'Whitney Way' to
     North/South Whitney Way too). Returns a list of polylines."""
     safe = re.sub(r"[^\w\s'-]", "", name).strip()
@@ -45,7 +49,7 @@ def fetch_road(name: str, lat: float, lon: float,
         name=safe, bbox=bbox_around(lat, lon, radius_m)))
     if data is None:
         return []
-    ways = []
+    ways: list[Way] = []
     for el in data.get("elements", []):
         geom = [(g["lat"], g["lon"]) for g in el.get("geometry", [])]
         if len(geom) >= 2:
@@ -53,7 +57,7 @@ def fetch_road(name: str, lat: float, lon: float,
     return ways
 
 
-def _seg_dist_m(p, a, b) -> float:
+def _seg_dist_m(p: Coord, a: LatLon, b: LatLon) -> float:
     """Meters from point p to segment a-b (local equirectangular)."""
     kx = METERS_PER_DEG_LON_EQ * math.cos(math.radians(a[0]))
     px, py = (p[1] - a[1]) * kx, (p[0] - a[0]) * METERS_PER_DEG_LAT
@@ -63,7 +67,7 @@ def _seg_dist_m(p, a, b) -> float:
     return math.hypot(px - t * bx, py - t * by)
 
 
-def dist_to_road(p, ways) -> float:
+def dist_to_road(p: Coord, ways: Sequence[Way]) -> float:
     best = float("inf")
     for way in ways:
         for a, b in zip(way, way[1:]):
@@ -76,7 +80,7 @@ def dist_to_road(p, ways) -> float:
     return best
 
 
-def on_road_meters(points, ways) -> float:
+def on_road_meters(points: Track, ways: Sequence[Way]) -> float:
     """How much of the route rides along the road."""
     from routes.editing import _dist_m
     total = 0.0
@@ -87,13 +91,13 @@ def on_road_meters(points, ways) -> float:
     return total
 
 
-def road_nogos(ways, center, span_m: float,
-               keep_clear: list, r_m: float = 110.0,
-               cap: int = 36) -> list[tuple[float, float, float]]:
+def road_nogos(ways: Sequence[Way], center: LatLon, span_m: float,
+               keep_clear: Sequence[LatLon], r_m: float = 110.0,
+               cap: int = 36) -> list[NoGo]:
     """No-go circles chained along the road near `center`, skipping any
     that would swallow a keep_clear point (the leg's own endpoints)."""
     from routes.editing import _dist_m
-    nogos = []
+    nogos: list[NoGo] = []
     for way in ways:
         for pt in way:
             if _dist_m(pt, center) > span_m:
@@ -108,8 +112,8 @@ def road_nogos(ways, center, span_m: float,
     return nogos
 
 
-def detour_around_road(points, ways, provider,
-                       buffer_m: float = 700.0):
+def detour_around_road(points: Track, ways: Sequence[Way], provider: Router,
+                       buffer_m: float = 700.0) -> EditResult | None:
     """Reroute every stretch where the route rides along the road.
     Returns an EditResult (failed sections counted) or None when the
     route never rides the road."""
@@ -120,7 +124,8 @@ def detour_around_road(points, ways, provider,
     if not any(riding):
         return None
 
-    runs, s = [], None
+    runs: list[tuple[int, int]] = []   # (first, last) index riding the road
+    s: int | None = None
     for i, flag in enumerate(riding + [False]):
         if flag and s is None:
             s = i
@@ -131,20 +136,20 @@ def detour_around_road(points, ways, provider,
     if not runs:
         return None
 
-    gaps = []
-    for s, e in runs:
-        a = s
-        while a > 0 and cum[s] - cum[a] < buffer_m:
+    gaps: list[tuple[int, int]] = []   # runs widened by the buffer, merged
+    for first, last in runs:
+        a = first
+        while a > 0 and cum[first] - cum[a] < buffer_m:
             a -= 1
-        b = e
-        while b < len(points) - 1 and cum[b] - cum[e] < buffer_m:
+        b = last
+        while b < len(points) - 1 and cum[b] - cum[last] < buffer_m:
             b += 1
         if gaps and a <= gaps[-1][1]:
             gaps[-1] = (gaps[-1][0], b)
         else:
             gaps.append((a, b))
 
-    new_points = []
+    new_points: Track = []
     cursor = 0
     removed = added = 0.0
     failed = 0

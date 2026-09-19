@@ -9,14 +9,16 @@ the junction point, so the track stays continuous.
 Provider-agnostic on purpose: works on any polyline, not just BRouter's.
 """
 import math
-from routes.spec import EARTH_RADIUS_M
+from typing import Sequence
+
+from routes.spec import EARTH_RADIUS_M, Coord, LatLon, Point, Track
 
 # Uniform spacing for resampled tracks. The elevation model and FIT
 # comparison (compare_ride.py) assume this spacing — change together.
-RESAMPLE_STEP_M = 25.0
+RESAMPLE_STEP_M: float = 25.0
 
 
-def _hav_m(a, b) -> float:
+def _hav_m(a: Coord, b: Coord) -> float:
     phi1, phi2 = math.radians(a[0]), math.radians(b[0])
     dphi = phi2 - phi1
     dlam = math.radians(b[1] - a[1])
@@ -24,11 +26,11 @@ def _hav_m(a, b) -> float:
     return 2 * EARTH_RADIUS_M * math.asin(math.sqrt(h))
 
 
-def _leg_len(points) -> float:
+def _leg_len(points: Sequence[Coord]) -> float:
     return sum(_hav_m(points[i], points[i + 1]) for i in range(len(points) - 1))
 
 
-def _naive_ascent(points) -> float:
+def _naive_ascent(points: Track) -> float:
     ascent = 0.0
     for i in range(len(points) - 1):
         e0, e1 = points[i][2], points[i + 1][2]
@@ -37,8 +39,9 @@ def _naive_ascent(points) -> float:
     return ascent
 
 
-def despur(points, tolerance_m: float = 10.0, min_spur_m: float = 40.0,
-           protect=None) -> tuple[list, float, float]:
+def despur(points: Track, tolerance_m: float = 10.0, min_spur_m: float = 40.0,
+           protect: Sequence[LatLon] | None = None
+           ) -> tuple[Track, float, float]:
     """Return (cleaned points, removed distance m, removed ascent m).
 
     `protect`: (lat, lon) points whose out-and-backs are DELIBERATE — a spur
@@ -68,10 +71,11 @@ def despur(points, tolerance_m: float = 10.0, min_spur_m: float = 40.0,
     return pts, removed_dist, removed_ascent
 
 
-def _resample(points, step_m: float = RESAMPLE_STEP_M) -> list:
+def _resample(points: Track, step_m: float = RESAMPLE_STEP_M) -> Track:
     """Uniformly spaced copy of the polyline (linear interpolation)."""
-    out = [tuple(points[0][:3])]
-    prev = points[0]
+    first, final = points[0], points[-1]
+    out: Track = [(first[0], first[1], first[2])]
+    prev: Point = first
     carry = 0.0
     for p in points[1:]:
         seg = _hav_m(prev, p)
@@ -81,20 +85,22 @@ def _resample(points, step_m: float = RESAMPLE_STEP_M) -> list:
             lon = prev[1] + (p[1] - prev[1]) * t
             ele = (prev[2] + (p[2] - prev[2]) * t
                    if prev[2] is not None and p[2] is not None else None)
-            newp = (lat, lon, ele)
+            newp: Point = (lat, lon, ele)
             out.append(newp)
             seg -= step_m - carry
             carry = 0.0
             prev = newp
         carry += seg
         prev = p
-    if out[-1][:2] != tuple(points[-1][:2]):
-        out.append(tuple(points[-1][:3]))
+    if out[-1][:2] != (final[0], final[1]):
+        out.append((final[0], final[1], final[2]))
     return out
 
 
-def corridor_despur(points, tolerance_m: float = 32.0, min_spur_m: float = 200.0,
-                    protect=None) -> tuple[list, float, float]:
+def corridor_despur(points: Track, tolerance_m: float = 32.0,
+                    min_spur_m: float = 200.0,
+                    protect: Sequence[LatLon] | None = None
+                    ) -> tuple[Track, float, float]:
     """Catch tendrils the exact pass misses: the route goes out and comes
     back within ~tolerance of the same corridor, but on not-quite-identical
     geometry (parallel path, offset lanes). Works on a uniformly resampled

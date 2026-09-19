@@ -6,14 +6,17 @@ contiguous-mirror detector can see. Used to reject loop candidates that
 pretend to be loops.
 """
 import math
-from routes.spec import EARTH_RADIUS_M, METERS_PER_DEG_LAT, METERS_PER_DEG_LON_EQ
+from typing import Sequence
 
-CELL_M = 35.0        # grid cell size: two passes on one road share cells
-STEP_M = 60.0        # sampling step along the route
-MIN_SEPARATION = 8   # samples apart before a revisit counts (not just slow curves)
+from routes.spec import (EARTH_RADIUS_M, METERS_PER_DEG_LAT,
+                         METERS_PER_DEG_LON_EQ, Coord)
+
+CELL_M: float = 35.0        # grid cell size: two passes on one road share cells
+STEP_M: float = 60.0        # sampling step along the route
+MIN_SEPARATION: int = 8   # samples apart before a revisit counts (not just slow curves)
 
 
-def _hav_m(a, b) -> float:
+def _hav_m(a: Coord, b: Coord) -> float:
     phi1, phi2 = math.radians(a[0]), math.radians(b[0])
     dphi = phi2 - phi1
     dlam = math.radians(b[1] - a[1])
@@ -21,13 +24,13 @@ def _hav_m(a, b) -> float:
     return 2 * EARTH_RADIUS_M * math.asin(math.sqrt(h))
 
 
-def repeated_fraction(points) -> float:
+def repeated_fraction(points: Sequence[Coord]) -> float:
     """Fraction of the route's length spent on cells already visited earlier
     (ignoring the immediate neighborhood). points are (lat, lon, ...)."""
     if len(points) < 3:
         return 0.0
     # resample to ~STEP_M spacing
-    samples = [points[0]]
+    samples: list[Coord] = [points[0]]
     carry = 0.0
     for k in range(1, len(points)):
         carry += _hav_m(points[k - 1], points[k])
@@ -40,15 +43,15 @@ def repeated_fraction(points) -> float:
     lat0 = samples[0][0]
     kx = METERS_PER_DEG_LON_EQ * math.cos(math.radians(lat0))
 
-    def cell(p):
+    def cell(p: Coord) -> tuple[int, int]:
         return (int(p[0] * METERS_PER_DEG_LAT / CELL_M), int(p[1] * kx / CELL_M))
 
-    seen: dict = {}   # cell -> first sample index
+    seen: dict[tuple[int, int], int] = {}   # cell -> first sample index
     repeated = 0
     for i, p in enumerate(samples):
         # a pass covers its cell and neighbors (tolerates GPS-scale offsets)
         c = cell(p)
-        hit = None
+        hit: int | None = None
         for dx in (-1, 0, 1):
             for dy in (-1, 0, 1):
                 j = seen.get((c[0] + dx, c[1] + dy))

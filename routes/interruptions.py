@@ -9,24 +9,30 @@ tolerance of our road and count against us. That errs toward quieter spots,
 which is the right direction for interval hunting.
 """
 import math
+from typing import Callable, Sequence
 
 import requests
 from routes.spec import METERS_PER_DEG_LAT, METERS_PER_DEG_LON_EQ
 
-OVERPASS_URLS = [
+# (lat, lon, weight): one traffic control and how badly it breaks an effort
+Control = tuple[float, float, float]
+# (meters along the polyline, weight): a control mapped onto a route
+ControlHit = tuple[float, float]
+
+OVERPASS_URLS: list[str] = [
     "https://overpass-api.de/api/interpreter",
     "https://overpass.kumi.systems/api/interpreter",
 ]
 
 # How badly each control type breaks an interval effort.
-WEIGHTS = {
+WEIGHTS: dict[str, float] = {
     "traffic_signals": 1.5,
     "stop": 1.0,
     "level_crossing": 1.0,
     "give_way": 0.4,
 }
 
-QUERY = """[out:json][timeout:60];
+QUERY: str = """[out:json][timeout:60];
 (
   node["highway"~"^(stop|give_way|traffic_signals)$"]({bbox});
   node["railway"="level_crossing"]({bbox});
@@ -55,27 +61,28 @@ def query_overpass(query: str) -> dict | None:
     return None
 
 
-def fetch_controls(lat: float, lon: float, radius_m: float) -> list:
+def fetch_controls(lat: float, lon: float, radius_m: float) -> list[Control]:
     """All traffic controls within radius of (lat, lon): (lat, lon, weight)."""
     data = query_overpass(QUERY.format(bbox=bbox_around(lat, lon, radius_m)))
     if data is None:
         return []
-    controls = []
+    controls: list[Control] = []
     for el in data.get("elements", []):
         tags = el.get("tags", {})
         kind = tags.get("highway") or ("level_crossing"
                                        if tags.get("railway") == "level_crossing"
                                        else None)
-        weight = WEIGHTS.get(kind)
+        weight = WEIGHTS.get(kind) if kind else None
         if weight:
             controls.append((el["lat"], el["lon"], weight))
     return _cluster(controls)
 
 
-def _cluster(controls, radius_m: float = 35.0) -> list:
+def _cluster(controls: Sequence[Control],
+             radius_m: float = 35.0) -> list[Control]:
     """Merge control nodes within radius into one (a signalized intersection
     is typically mapped as one node per corner — that's one light, not four)."""
-    merged = []
+    merged: list[Control] = []
     for lat, lon, weight in controls:
         for i, (mlat, mlon, mweight) in enumerate(merged):
             dy = (lat - mlat) * METERS_PER_DEG_LAT
@@ -88,16 +95,19 @@ def _cluster(controls, radius_m: float = 35.0) -> list:
     return merged
 
 
-def _project(lat0: float, lon0: float):
+def _project(lat0: float,
+             lon0: float) -> Callable[[float, float], tuple[float, float]]:
     """Local equirectangular meters projection around (lat0, lon0)."""
     kx = METERS_PER_DEG_LON_EQ * math.cos(math.radians(lat0))
 
-    def to_xy(lat, lon):
+    def to_xy(lat: float, lon: float) -> tuple[float, float]:
         return (lon - lon0) * kx, (lat - lat0) * METERS_PER_DEG_LAT
     return to_xy
 
 
-def controls_along(points, controls, tolerance_m: float = 40.0) -> list:
+def controls_along(points: Sequence[tuple[float, ...]],
+                   controls: Sequence[Control],
+                   tolerance_m: float = 40.0) -> list[ControlHit]:
     """Map controls onto a polyline: sorted (cum_distance_m, weight) for each
     control within tolerance of the line. `points` are (lat, lon, ...); when a
     4th element is present it is taken as that point's cumulative road
@@ -114,10 +124,11 @@ def controls_along(points, controls, tolerance_m: float = 40.0) -> list:
         for k in range(1, len(xy)):
             cum.append(cum[-1] + math.dist(xy[k - 1], xy[k]))
 
-    hits = []
+    hits: list[ControlHit] = []
     for clat, clon, weight in controls:
         cx, cy = to_xy(clat, clon)
-        best_d, best_pos = None, 0.0
+        best_d: float | None = None
+        best_pos = 0.0
         for k in range(len(xy) - 1):
             ax, ay = xy[k]
             bx, by = xy[k + 1]
