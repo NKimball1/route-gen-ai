@@ -325,7 +325,7 @@ def undo(x_session_id: str | None = Header(default=None)):
     if workdir is None:
         return JSONResponse({"error": "missing or invalid session id"},
                             status_code=400)
-    from edit_route import current_route, predecessor
+    from edit_route import current_route, note_outcome, predecessor
     from routes.preview import _parse_desc, _parse_gpx
     from routes.service import _downsample
     cur = current_route(workdir)
@@ -336,6 +336,7 @@ def undo(x_session_id: str | None = Header(default=None)):
                                      "earliest version.", "candidates": []})
     with open(os.path.join(workdir, "latest.txt"), "w") as f:
         f.write(prev)
+    note_outcome(workdir, False)  # already stepped back once
     limits.log_event("undo", sid=x_session_id, to=os.path.basename(prev))
     return {"ok": True, "summary": f"Undone — back to {os.path.basename(prev)}.",
             "candidates": [{

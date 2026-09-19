@@ -246,7 +246,7 @@ def route_via_chain(points, targets, provider,
     for t in targets:
         p = passes(t)
         if not p:
-            print(f"  a waypoint is too far from the route — skipping it")
+            print("  a waypoint is too far from the route — skipping it")
             continue
         per_target.append((t, p))
     if not per_target:
@@ -297,10 +297,14 @@ def anchor_at(points, target, provider) -> EditResult | None:
     stub before/after the joins)."""
     cum = _cum(points)
     total = cum[-1]
+    rotated = False
     if _is_loop(points):
         j = min(range(len(points)), key=lambda k: _dist_m(points[k], target))
         body = points[j:] + points[1:j + 1]
         removed = 0.0
+        # a loop that passes the target needs no new legs, but moving its
+        # start there is still the change the rider asked for
+        rotated = _dist_m(points[0], target) > ANCHOR_LEG_SKIP_M
     else:
         half = next(k for k in range(len(points)) if cum[k] >= 0.5 * total)
         j1 = min(range(half + 1), key=lambda k: _dist_m(points[k], target))
@@ -321,7 +325,7 @@ def anchor_at(points, target, provider) -> EditResult | None:
             return None
         body = body + leg["points"]
         added += leg["distance_m"]
-    if added == 0.0 and removed == 0.0:
+    if added == 0.0 and removed == 0.0 and not rotated:
         print("  the ride already starts and ends there — nothing to change")
         return None
     return _result(body, removed, added, detours=2)

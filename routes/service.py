@@ -137,7 +137,7 @@ def _dispatch(text: str, default_address: str | None, workdir: str) -> dict:
     _clamp_parsed(req)
 
     if req["request_type"] == "undo":
-        from edit_route import current_route, predecessor
+        from edit_route import current_route, note_outcome, predecessor
         from routes.preview import _parse_desc, _parse_gpx
         cur = current_route(workdir)
         prev = cur and predecessor(cur)
@@ -148,6 +148,7 @@ def _dispatch(text: str, default_address: str | None, workdir: str) -> dict:
                     "summary": msg}
         with open(os.path.join(workdir, "latest.txt"), "w") as f:
             f.write(prev)
+        note_outcome(workdir, False)  # already stepped back once
         msg = f"Undone — back to {os.path.basename(prev)}."
         print(msg)
         return {"kind": "edit", "ok": True, "summary": msg, "candidates": [{
@@ -156,7 +157,8 @@ def _dispatch(text: str, default_address: str | None, workdir: str) -> dict:
         }]}
 
     if req["request_type"] == "edit_route":
-        from edit_route import current_route, predecessor, run_edit
+        from edit_route import (current_route, last_edit_changed,
+                                note_outcome, predecessor, run_edit)
         from routes.preview import _parse_desc, _parse_gpx
         route_path = current_route(workdir)
         if route_path is None:
@@ -165,7 +167,10 @@ def _dispatch(text: str, default_address: str | None, workdir: str) -> dict:
             return {"kind": "error", "candidates": [], "ok": False,
                     "summary": msg}
         e = req["edit"]
-        if e.get("revert_first"):
+        if e.get("revert_first") and not last_edit_changed(workdir):
+            print("The last request didn't change the route — nothing to "
+                  "revert; applying this to the current version.")
+        elif e.get("revert_first"):
             prev = predecessor(route_path)
             if prev:
                 print(f"Reverting the last change first "
@@ -189,6 +194,7 @@ def _dispatch(text: str, default_address: str | None, workdir: str) -> dict:
             connect_return=e.get("connect_return", False),
             places=e.get("places"))
         print(message)
+        note_outcome(workdir, out is not None)
         if out is None:
             # keep the unchanged route on screen — a failed edit must never
             # leave the user staring at an empty map

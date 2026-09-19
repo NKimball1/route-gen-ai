@@ -53,21 +53,45 @@ def _haversine_m(a: tuple[float, float], b: tuple[float, float]) -> float:
     return 2 * EARTH_RADIUS_M * math.asin(math.sqrt(h))
 
 
+_PT_OPEN = re.compile(r'<(?:trkpt|rtept)\s+([^>]*?)\s*(/?)>')
+_PT_CLOSE = re.compile(r'</(?:trkpt|rtept)>')
+_LAT = re.compile(r'''\blat=["']([^"']*)["']''')
+_LON = re.compile(r'''\blon=["']([^"']*)["']''')
+_ELE = re.compile(r'<ele>\s*([^<\s]+)\s*</ele>')
+
+
+def _num(s: str) -> float | None:
+    try:
+        v = float(s)
+    except ValueError:
+        return None
+    return v if math.isfinite(v) else None
+
+
 def parse_gpx_text(text: str) -> list[tuple[float, float, float | None]]:
     """Track or route points from GPX text. Tolerant of uploads: accepts
-    <trkpt> and <rtept>, missing <ele>, self-closing tags, and lat/lon
-    attributes in either order (XML doesn't promise an order; ours writes
-    lat first but a foreign exporter may not)."""
+    <trkpt> and <rtept>, missing <ele>, self-closing tags, lat/lon
+    attributes in either order and either quote style, and <ele> anywhere
+    inside the point. Points with unparseable or impossible coordinates
+    are skipped — a bad point must never become a crash or a route."""
     pts = []
-    for m in re.finditer(
-            r'<(?:trkpt|rtept)\s+([^>]*?)\s*'
-            r'(?:/>|>(?:\s*<ele>([\-0-9.]+)</ele>)?)', text):
-        attrs, ele = m.group(1), m.group(2)
-        lat = re.search(r'\blat="([\-0-9.]+)"', attrs)
-        lon = re.search(r'\blon="([\-0-9.]+)"', attrs)
-        if lat and lon:
-            pts.append((float(lat.group(1)), float(lon.group(1)),
-                        float(ele) if ele else None))
+    opens = list(_PT_OPEN.finditer(text))
+    for i, m in enumerate(opens):
+        lat, lon = _LAT.search(m.group(1)), _LON.search(m.group(1))
+        if not lat or not lon:
+            continue
+        la, lo = _num(lat.group(1)), _num(lon.group(1))
+        # uploads are untrusted: '.', '-', 'nan' and lat=943 all reach here
+        if la is None or lo is None or abs(la) > 90 or abs(lo) > 180:
+            continue
+        ele = None
+        if not m.group(2):  # not self-closing: look inside this point only
+            end = opens[i + 1].start() if i + 1 < len(opens) else len(text)
+            body = text[m.end():end]
+            close = _PT_CLOSE.search(body)
+            e = _ELE.search(body[:close.start()] if close else body)
+            ele = _num(e.group(1)) if e else None
+        pts.append((la, lo, ele))
     return pts
 
 

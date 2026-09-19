@@ -75,6 +75,36 @@ def record_parent(out_path: str, parent_path: str) -> None:
         json.dump(data, f, indent=1)
 
 
+def normalize_places(place: str | None, places: list[str] | None):
+    """The parser may put a LONE place in the `places` list ('go through
+    Olbrich Park' -> places=[...], place=None). One place is one place,
+    whichever field it arrived in."""
+    places = [p for p in (places or []) if p and p.strip()]
+    if not place and len(places) == 1:
+        return places[0], None
+    return place, (places or None)
+
+
+# Whether the session's last edit request actually changed the route.
+# A correction ("that wasn't what I meant...") reverts the last change
+# first — but if the last request FAILED there is nothing of it to
+# revert, and stepping back would destroy an earlier, good change.
+OUTCOME_FILE = "last_edit_outcome.txt"
+
+
+def note_outcome(workdir: str, changed: bool) -> None:
+    with open(os.path.join(workdir, OUTCOME_FILE), "w") as f:
+        f.write("changed" if changed else "unchanged")
+
+
+def last_edit_changed(workdir: str) -> bool:
+    try:
+        with open(os.path.join(workdir, OUTCOME_FILE)) as f:
+            return f.read().strip() != "unchanged"
+    except OSError:
+        return True
+
+
 def predecessor(route_path: str) -> str | None:
     """The version this edit was built on. Edit files persist in the
     workdir, so undo is just a pointer move. Recorded parentage wins;
@@ -110,6 +140,7 @@ def run_edit(route_path: str, place: str | None = None,
     human-readable outcome message, ok: True | "partial" | False).
     Avoid edits VERIFY the outcome: the final route is measured against
     the zone rather than trusting that every section rerouted."""
+    place, places = normalize_places(place, places)
     points = _parse_gpx(route_path)
     if not points:
         return None, f"Couldn't read the route file ({route_path}).", False
