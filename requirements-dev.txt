@@ -1,2 +1,3 @@
 -r requirements.txt
 pytest>=8.0
+pyflakes>=3.2  # tests/test_static.py: undefined names are bugs the other tests can't see

@@ -24,6 +24,7 @@ from routes.gpx_out import write_track
 from routes.intervals import IntervalSpec, find_spots
 from routes.preview import build_preview
 from routes.providers import BRouterProvider
+from routes.spec import METERS_PER_MILE
 
 OUT_DIR = os.path.join("output", "spots")
 
