@@ -821,6 +821,53 @@ any issue) — the post-deploy smoke test. 112 tests.
 Lesson worth keeping: "all tests pass" and "every module imports" are
 both statements about code that RAN. Bug #1 lived precisely in the gap.
 
+## Phase 35 — Type hints everywhere, and what they surfaced (2026-09-19)
+
+Annotated the whole codebase: 160 of 160 functions fully typed (it was
+65), every module constant, every dataclass field, and the locals a
+checker can't infer (empty containers). Deliberately NOT every local —
+`total: float = 0.0` is noise a type checker infers for free; the rule
+was signatures, constants, attributes, and ambiguous locals.
+
+The part that made it readable was naming the domain instead of
+spelling tuples: routes/spec.py now defines `LatLon`, `Point`, `Track`,
+`Coord`, `NoGo`, `BBox`, `Sample`, plus TypedDicts for the shapes that
+had been anonymous dicts (`Leg` — what a router returns; `ClimbRow`;
+`ServiceResult`/`CandidateOut` — the contract the frontend reads; `Job`)
+and a `Router` Protocol, so the editing operations declare "anything
+that can route" instead of taking an untyped `provider`. A signature
+went from `def detour_around(points, zone, provider, buffer_m=700.0)`
+to `(points: Track, zone: NoGo, provider: Router, buffer_m: float)`.
+
+Hints that aren't checked can lie, so mypy verified all of it: 37
+errors at the start, 0 at the end, in a mode where an unannotated
+function is itself an error (mypy.ini, `disallow_untyped_defs`). It
+runs in CI next to the tests, so new code can't quietly opt out.
+
+What the checker found along the way — small, but all real:
+- geocode.py ended with `raise last_error` where `last_error` could be
+  None: with no query variants it would have raised a baffling
+  "exceptions must derive from BaseException" instead of "not found".
+- edit_route.py set an attribute that didn't exist on a dataclass
+  (`result.road_mode = True`, read back with getattr). Now a declared
+  field.
+- One loop variable `c` meant a Climb, then a dict row, then a
+  RouteCandidate in the same function. Renamed; the code reads better.
+- The `ok` flag was `True | "partial" | False` by convention only. Now
+  `Outcome = bool | Literal["partial"]`, and the checker enforces it.
+- Two line-continuations that an old heredoc had collapsed into
+  100-column lines, invisible until I read every signature.
+- The simulator's monkeypatched invite header couldn't be typed — a
+  fair objection. Replaced with a requests.Session carrying the header.
+
+One framework gotcha worth remembering: FastAPI treats a return
+annotation as a response model, and `dict | JSONResponse` is not one —
+annotated endpoints need `response_model=None` or the app won't start.
+
+Verified the honest way: 112 tests, mypy strict, pyflakes, then the
+full end-to-end simulator against the restarted server — six stages,
+zero issues.
+
 ## Testing & verification practices that emerged
 
 - 112 offline tests (no API keys, mocked HTTP): despurring, interval
