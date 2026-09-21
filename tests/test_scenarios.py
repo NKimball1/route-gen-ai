@@ -2,7 +2,7 @@
 
 Each block name references the devlog phase where the original bug bit.
 """
-from routes.editing import (_cum, _dist_m, anchor_at, connect_from,
+from routes.editing import (_dist_m, anchor_at, connect_from,
                             detour_around, extend_route, move_endpoint,
                             route_via_chain, shorten_route)
 from tests.test_editing import FakeProvider, road

@@ -1,6 +1,5 @@
 """Deterministic candidate filtering and ranking (no LLM judgment — ADR 0004)."""
-from routes.spec import (MAJOR_DISPLAY_MIN_M, METERS_PER_MILE,
-                         RouteCandidate, RouteSpec)
+from routes.spec import METERS_PER_MILE, RouteCandidate, RouteSpec
 
 
 def rank(spec: RouteSpec, candidates: list[RouteCandidate]

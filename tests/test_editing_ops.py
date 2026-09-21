@@ -146,7 +146,6 @@ def test_via_chain_picks_same_pass_on_out_and_back():
     back_leg = [(43.0 + (199 - k) * step, turn[-1][1], 300.0)
                 for k in range(200)]
     pts = out_leg + turn + back_leg
-    base = sum(1 for _ in pts)
     t1 = (pts[40][0], pts[40][1] + 0.001)    # near mile ~0.7 outbound
     t2 = (pts[80][0], pts[80][1] + 0.001)    # near mile ~1.4 outbound
     result = route_via_chain(pts, [t1, t2], FakeProvider())

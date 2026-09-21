@@ -18,6 +18,24 @@ pytest.importorskip("pyflakes")
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
+def _pyflakes(files: list[str]) -> list[str]:
+    out = subprocess.run([sys.executable, "-m", "pyflakes", *files],
+                         capture_output=True, text=True).stdout
+    return out.splitlines()
+
+
+def test_app_code_is_lint_clean():
+    """Unused imports and dead assignments are how the undefined-name bug
+    started: a refactor moved a name and nobody noticed the leftovers.
+    Keep the shipped code at zero warnings so a new one stands out."""
+    files = (glob.glob(os.path.join(ROOT, "*.py"))
+             + glob.glob(os.path.join(ROOT, "routes", "*.py"))
+             + glob.glob(os.path.join(ROOT, "scripts", "*.py")))
+    assert len(files) > 15
+    warnings = _pyflakes(files)
+    assert warnings == [], "\n".join(warnings)
+
+
 def test_no_undefined_names_anywhere():
     files = (glob.glob(os.path.join(ROOT, "*.py"))
              + glob.glob(os.path.join(ROOT, "routes", "*.py"))

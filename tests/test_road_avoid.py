@@ -1,4 +1,3 @@
-from routes.editing import _cum
 from routes.road_avoid import (detour_around_road, dist_to_road,
                                on_road_meters, road_nogos)
 from tests.test_editing import FakeProvider
