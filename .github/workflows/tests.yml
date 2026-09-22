@@ -31,3 +31,17 @@ jobs:
       # mypy.ini requires every function to be fully annotated
       - name: Type check
         run: python -m mypy
+
+  audit:
+    # Fails the build when a declared dependency has a published advisory.
+    # A separate job so it runs once, not once per Python version.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Audit dependencies for known vulnerabilities
+        run: |
+          pip install -q pip-audit
+          pip-audit -r requirements.txt -r requirements-dev.txt --desc off

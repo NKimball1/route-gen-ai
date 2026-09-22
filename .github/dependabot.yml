@@ -1,0 +1,18 @@
+# Weekly PRs for dependency updates. Security fixes arrive as their own PRs
+# as soon as an advisory is published; routine bumps are batched so the
+# inbox gets one PR a week, not one per package.
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      python-deps:
+        patterns: ["*"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
