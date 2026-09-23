@@ -1,14 +1,14 @@
 # HTTP client for Nominatim geocoding and the routing providers (BRouter, ORS).
-requests>=2.31
+requests>=2.34.2
 
 # Claude API for the natural-language request parser (routes/nl.py).
-anthropic>=1.0
+anthropic>=1.7.0
 
 # Loads ANTHROPIC_API_KEY (and ROUTEGEN_* settings) from a local .env file.
-python-dotenv>=1.0
+python-dotenv>=1.2.3
 fitparse>=1.2  # parse ridden .fit files for ride-vs-route calibration (compare_ride.py)
 
 # Web frontend (api.py + static/index.html).
-fastapi>=0.100
-uvicorn>=0.23
-python-multipart>=0.0.9  # GPX upload endpoint (api.py)
+fastapi>=0.141.1
+uvicorn>=0.53.0
+python-multipart>=0.0.32  # GPX upload endpoint (api.py)
