@@ -12,6 +12,7 @@ Writes each top spot as a GPX stretch to output/spots/ plus a map preview.
 For plain-English requests, use ask.py instead.
 """
 import argparse
+import math
 import os
 import sys
 
@@ -22,6 +23,7 @@ load_dotenv()
 from routes.geocode import geocode
 from routes.gpx_out import write_track
 from routes.intervals import IntervalSpec, find_spots
+from routes.power import mmss
 from routes.preview import build_preview
 from routes.providers import BRouterProvider
 from routes.spec import METERS_PER_MILE
@@ -33,8 +35,10 @@ def run_spot_search(spec: IntervalSpec, profile: str | None = None,
                     out_dir: str = OUT_DIR) -> list:
     lat, lon, place = geocode(spec.address)
     print(f"Start: {place} ({lat:.5f}, {lon:.5f})")
+    sized = (f" at {spec.watts:.0f} W" if spec.watts else "")
     print(f"Looking for a {spec.kind} stretch ~{spec.rep_distance_m / METERS_PER_MILE:.1f} mi "
-          f"long within ~{spec.travel_radius_m / METERS_PER_MILE:.0f} mi "
+          f"long ({spec.rep_minutes:.0f} min{sized}) within "
+          f"~{spec.travel_radius_m / METERS_PER_MILE:.0f} mi "
           f"({spec.max_travel_minutes:.0f} min easy riding)...")
 
     provider = BRouterProvider(profile=profile)
@@ -45,8 +49,9 @@ def run_spot_search(spec: IntervalSpec, profile: str | None = None,
 
     os.makedirs(out_dir, exist_ok=True)
     gpx_paths = []
+    at_w = f"{'@' + format(spec.watts, '.0f') + 'W':>8}" if spec.watts else ""
     print(f"\n{'rank':<5}{'len mi':>7}{'grade %':>9}{'±%':>6}{'turns/km':>10}"
-          f"{'stops':>7}{'ride out mi':>13}  file")
+          f"{'stops':>7}{'ride out mi':>13}{at_w}  file")
     for i, s in enumerate(spots, 1):
         fname = f"spot_{spec.kind}_{spec.reps}x{spec.rep_minutes:.0f}_{i}.gpx"
         path = os.path.join(out_dir, fname)
@@ -57,17 +62,29 @@ def run_spot_search(spec: IntervalSpec, profile: str | None = None,
         write_track(s.points, f"{spec.kind} spot #{i} ({spec.reps}x{spec.rep_minutes:.0f})",
                     desc, path)
         gpx_paths.append(path)
+        t_w = (f"{mmss(s.seconds_at(spec.watts, spec.total_kg)):>8}"
+               if spec.watts else "")
         print(f"{i:<5}{s.length_mi:>7.1f}{s.mean_grade_pct:>9.1f}"
               f"{s.grade_std_pct:>6.1f}{s.turns_per_km:>10.1f}"
-              f"{s.n_controls:>7}{s.dist_from_start_m / METERS_PER_MILE:>13.1f}  {path}")
+              f"{s.n_controls:>7}{s.dist_from_start_m / METERS_PER_MILE:>13.1f}"
+              f"{t_w}  {path}")
 
     build_preview(gpx_paths, os.path.join(out_dir, "preview.html"))
 
     best = spots[0]
-    laps = max(1, round(spec.rep_distance_m / best.length_m + 0.49))
+    if spec.watts:
+        # laps from TIME at the stretch's real grade, not from the
+        # search window's assumed one
+        one_pass = best.seconds_at(spec.watts, spec.total_kg)
+        laps = max(1, math.ceil(spec.rep_minutes * 60.0 / one_pass - 0.05))
+        timing = (f"; one pass takes {mmss(one_pass)} at {spec.watts:.0f} W "
+                  f"({spec.total_kg:.0f} kg rider+bike)")
+    else:
+        laps = max(1, round(spec.rep_distance_m / best.length_m + 0.49))
+        timing = ""
     note = "" if laps == 1 else f" (~{laps} laps per rep — expect turnarounds)"
     print(f"\nBest: {best.length_mi:.1f} mi at {best.mean_grade_pct:+.1f}%, "
-          f"{best.dist_from_start_m / METERS_PER_MILE:.1f} mi ride out{note}")
+          f"{best.dist_from_start_m / METERS_PER_MILE:.1f} mi ride out{timing}{note}")
     return spots
 
 
@@ -79,11 +96,18 @@ def main() -> int:
     ap.add_argument("--rep-minutes", type=float, required=True)
     ap.add_argument("--kind", choices=["flat", "incline"], required=True)
     ap.add_argument("--max-travel-minutes", type=float, default=30.0)
+    ap.add_argument("--watts", type=float, default=None,
+                    help="target power: size reps by physics, and report "
+                         "how long each stretch takes at that power")
+    ap.add_argument("--total-kg", type=float, default=None,
+                    help="rider + bike mass for the physics (default: "
+                         "ROUTEGEN_TOTAL_KG or 84)")
     ap.add_argument("--profile", default=None)
     args = ap.parse_args()
 
     spec = IntervalSpec(args.address, args.reps, args.rep_minutes, args.kind,
-                        args.max_travel_minutes)
+                        args.max_travel_minutes, watts=args.watts,
+                        **({"total_kg": args.total_kg} if args.total_kg else {}))
     return 0 if run_spot_search(spec, args.profile) else 1
 
 

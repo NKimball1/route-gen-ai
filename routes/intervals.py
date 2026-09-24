@@ -17,13 +17,19 @@ a known upgrade path.
 import math
 from dataclasses import dataclass, field
 
+from routes.power import DEFAULT_TOTAL_KG, seconds_for, speed_mps
 from routes.spec import (EARTH_RADIUS_M, METERS_PER_FOOT, METERS_PER_MILE,
                          Coord, Point, Router, Sample, Track)
 
-# Speed assumptions for turning rep duration into stretch length.
+# Speed assumptions for turning rep duration into stretch length when
+# the rider gives no power figure. With watts, physics decides instead.
 FLAT_SPEED_MPH: float = 20.0      # threshold pace on flat road
 INCLINE_SPEED_MPH: float = 11.0   # VO2 pace into a grade
 TRAVEL_SPEED_MPH: float = 15.0    # easy riding out to the spot
+# Grade the power model assumes while SIZING the search window (the
+# scorer's own ideal for each kind); each found stretch is then timed
+# at its real grade.
+ASSUMED_GRADE_PCT: dict[str, float] = {"flat": 0.0, "incline": 4.0}
 
 
 @dataclass
@@ -33,11 +39,27 @@ class IntervalSpec:
     rep_minutes: float
     kind: str                      # "flat" or "incline"
     max_travel_minutes: float = 30.0
+    watts: float | None = None     # target power; sizes reps by physics
+    total_kg: float = DEFAULT_TOTAL_KG   # rider + bike, for the physics
 
     @property
     def rep_distance_m(self) -> float:
+        if self.watts:
+            v = speed_mps(self.watts, ASSUMED_GRADE_PCT[self.kind],
+                          self.total_kg)
+            return v * self.rep_minutes * 60.0
         mph = FLAT_SPEED_MPH if self.kind == "flat" else INCLINE_SPEED_MPH
         return self.rep_minutes * mph / 60.0 * METERS_PER_MILE
+
+    def rep_fits(self, length_m: float, grade_pct: float) -> bool:
+        """Is a stretch of this length and grade still within one rep?
+        With watts, the answer is TIME at the stretch's own grade — the
+        search window can then grow past the assumed-grade distance on a
+        gentler road, or stop short on a steeper one."""
+        if self.watts:
+            return (seconds_for(length_m, grade_pct, self.watts, self.total_kg)
+                    <= self.rep_minutes * 60.0)
+        return length_m <= self.rep_distance_m
 
     @property
     def travel_radius_m(self) -> float:
@@ -64,6 +86,13 @@ class IntervalSpot:
     @property
     def climb_ft(self) -> float:
         return self.length_m * self.mean_grade_pct / 100.0 / METERS_PER_FOOT
+
+    def seconds_at(self, watts: float,
+                   total_kg: float = DEFAULT_TOTAL_KG) -> float:
+        """How long one pass of this stretch takes at `watts`, using the
+        stretch's own mean grade — the number a rider plans a rep around."""
+        return seconds_for(self.length_m, self.mean_grade_pct, watts,
+                           total_kg)
 
 
 def _hav_m(a: Coord, b: Coord) -> float:
@@ -191,7 +220,9 @@ def find_spots(spec: IntervalSpec, lat: float, lon: float, provider: Router,
         best_for_spoke: IntervalSpot | None = None
         for i0 in range(0, len(rs) - 3):
             j = i0
-            while j + 1 < len(rs) and rs[j + 1][3] - rs[i0][3] <= spec.rep_distance_m:
+            while j + 1 < len(rs) and spec.rep_fits(
+                    rs[j + 1][3] - rs[i0][3],
+                    (rs[j + 1][2] - rs[i0][2]) / max(rs[j + 1][3] - rs[i0][3], 1.0) * 100.0):
                 j += 1
             length, mean, std, tpk = _window_stats(rs, i0, j)
             if length < 0.35 * spec.rep_distance_m or length < 400:
