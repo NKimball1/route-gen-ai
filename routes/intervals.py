@@ -29,7 +29,8 @@ TRAVEL_SPEED_MPH: float = 15.0    # easy riding out to the spot
 # Grade the power model assumes while SIZING the search window (the
 # scorer's own ideal for each kind); each found stretch is then timed
 # at its real grade.
-ASSUMED_GRADE_PCT: dict[str, float] = {"flat": 0.0, "incline": 4.0}
+ASSUMED_GRADE_PCT: dict[str, float] = {"flat": 0.0, "incline": 4.0,
+                                       "any": 0.0}
 
 
 @dataclass
@@ -37,7 +38,10 @@ class IntervalSpec:
     address: str
     reps: int
     rep_minutes: float
-    kind: str                      # "flat" or "incline"
+    kind: str                      # "flat", "incline", or "any"
+    # "any": grade is not a goal; what matters is that the stretch works
+    # ridden in EITHER direction (out-and-back reps), so it is scored on
+    # how evenly the two directions take the rep time.
     max_travel_minutes: float = 30.0
     watts: float | None = None     # target power; sizes reps by physics
     total_kg: float = DEFAULT_TOTAL_KG   # rider + bike, for the physics
@@ -57,6 +61,10 @@ class IntervalSpec:
         search window can then grow past the assumed-grade distance on a
         gentler road, or stop short on a steeper one."""
         if self.watts:
+            if self.kind == "any":
+                # both directions get ridden: grow until even the faster
+                # (downhill) pass fills the rep
+                grade_pct = -abs(grade_pct)
             return (seconds_for(length_m, grade_pct, self.watts, self.total_kg)
                     <= self.rep_minutes * 60.0)
         return length_m <= self.rep_distance_m
@@ -88,11 +96,13 @@ class IntervalSpot:
         return self.length_m * self.mean_grade_pct / 100.0 / METERS_PER_FOOT
 
     def seconds_at(self, watts: float,
-                   total_kg: float = DEFAULT_TOTAL_KG) -> float:
+                   total_kg: float = DEFAULT_TOTAL_KG,
+                   reverse: bool = False) -> float:
         """How long one pass of this stretch takes at `watts`, using the
-        stretch's own mean grade — the number a rider plans a rep around."""
-        return seconds_for(self.length_m, self.mean_grade_pct, watts,
-                           total_kg)
+        stretch's own mean grade — the number a rider plans a rep around.
+        `reverse`: ridden the other way (grade sign flipped)."""
+        grade = -self.mean_grade_pct if reverse else self.mean_grade_pct
+        return seconds_for(self.length_m, grade, watts, total_kg)
 
 
 def _hav_m(a: Coord, b: Coord) -> float:
@@ -170,6 +180,19 @@ def _score(spec: IntervalSpec, length: float, mean_grade: float,
     if spec.kind == "flat":
         grade_score = max(0.0, 1.0 - abs(mean_grade) / 1.5)      # 0 at 1.5%
         steady_score = max(0.0, 1.0 - grade_std / 3.0)
+    elif spec.kind == "any":
+        # symmetry: how evenly the two directions take the rep. With
+        # watts this is the ratio of pass times (1.0 on the flat, ~0.8
+        # at 1.5%, ~0.6 at 3%); without, a gentler grade penalty than
+        # "flat" -- rolling is fine, a hill is not.
+        if spec.watts:
+            up = seconds_for(length, abs(mean_grade), spec.watts, spec.total_kg)
+            down = seconds_for(length, -abs(mean_grade), spec.watts,
+                               spec.total_kg)
+            grade_score = down / up if up > 0 else 0.0
+        else:
+            grade_score = max(0.0, 1.0 - abs(mean_grade) / 4.0)
+        steady_score = max(0.0, 1.0 - grade_std / 4.0)
     else:
         grade_score = max(0.0, 1.0 - abs(abs(mean_grade) - 4.0) / 3.0)  # peak at 4%
         steady_score = max(0.0, 1.0 - grade_std / 4.0)

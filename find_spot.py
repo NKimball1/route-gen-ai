@@ -50,6 +50,8 @@ def run_spot_search(spec: IntervalSpec, profile: str | None = None,
     os.makedirs(out_dir, exist_ok=True)
     gpx_paths = []
     at_w = f"{'@' + format(spec.watts, '.0f') + 'W':>8}" if spec.watts else ""
+    if spec.watts and spec.kind == "any":
+        at_w += f"{'back':>8}"   # the same stretch ridden the other way
     print(f"\n{'rank':<5}{'len mi':>7}{'grade %':>9}{'±%':>6}{'turns/km':>10}"
           f"{'stops':>7}{'ride out mi':>13}{at_w}  file")
     for i, s in enumerate(spots, 1):
@@ -64,6 +66,8 @@ def run_spot_search(spec: IntervalSpec, profile: str | None = None,
         gpx_paths.append(path)
         t_w = (f"{mmss(s.seconds_at(spec.watts, spec.total_kg)):>8}"
                if spec.watts else "")
+        if spec.watts and spec.kind == "any":
+            t_w += f"{mmss(s.seconds_at(spec.watts, spec.total_kg, reverse=True)):>8}"
         print(f"{i:<5}{s.length_mi:>7.1f}{s.mean_grade_pct:>9.1f}"
               f"{s.grade_std_pct:>6.1f}{s.turns_per_km:>10.1f}"
               f"{s.n_controls:>7}{s.dist_from_start_m / METERS_PER_MILE:>13.1f}"
@@ -94,7 +98,9 @@ def main() -> int:
     ap.add_argument("--address", required=True)
     ap.add_argument("--reps", type=int, required=True)
     ap.add_argument("--rep-minutes", type=float, required=True)
-    ap.add_argument("--kind", choices=["flat", "incline"], required=True)
+    ap.add_argument("--kind", choices=["flat", "incline", "any"], required=True,
+                    help="any: grade doesn't matter, but the stretch must "
+                         "work ridden in either direction (out-and-back reps)")
     ap.add_argument("--max-travel-minutes", type=float, default=30.0)
     ap.add_argument("--watts", type=float, default=None,
                     help="target power: size reps by physics, and report "

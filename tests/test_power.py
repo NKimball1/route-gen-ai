@@ -70,3 +70,28 @@ def test_window_grows_by_time_on_a_gentler_road():
     guess = IntervalSpec("x", 4, 4.0, "incline")
     assert guess.rep_fits(guess.rep_distance_m, 8.0)   # no watts: distance only
     assert not guess.rep_fits(guess.rep_distance_m + 1, 0.0)
+
+
+def test_kind_any_prefers_a_stretch_that_works_both_ways():
+    from routes.intervals import _score
+    spec = IntervalSpec("x", 4, 4.0, "any", watts=285)
+    L = spec.rep_distance_m
+    flat = _score(spec, L, 0.0, 0.5, 0.0)
+    rolling = _score(spec, L, 1.5, 0.5, 0.0)
+    hill = _score(spec, L, 4.0, 0.5, 0.0)
+    assert flat > rolling > hill
+    # a 4% hill is the INCLINE ideal, but for "either way" it is a poor spot
+    assert flat - hill > 0.08
+
+
+def test_kind_any_window_fills_the_rep_in_the_faster_direction():
+    spec = IntervalSpec("x", 4, 4.0, "any", watts=285)
+    L = spec.rep_distance_m            # sized at 0%
+    assert spec.rep_fits(L, 0.0)
+    assert not spec.rep_fits(L * 1.2, 0.0)
+    # on a 2% road the descent is the faster pass, so a LONGER stretch still
+    # fits one rep -- the window keeps growing until the descent fills it
+    assert spec.rep_fits(L * 1.2, 2.0)
+    assert spec.rep_fits(L * 1.2, -2.0)   # sign of the grade doesn't matter
+    spot = IntervalSpot(points=[], length_m=L, mean_grade_pct=2.0)
+    assert spot.seconds_at(285, reverse=True) < spot.seconds_at(285)
