@@ -32,8 +32,14 @@ ROUTES.forEach(function(r, i) {{
   cell.innerHTML = '<div class="label">' + r.label + '</div>';
   document.getElementById('grid').appendChild(cell);
   var m = L.map(cell, {{fadeAnimation: false, zoomAnimation: false}});
-  L.tileLayer('https://tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png',
-              {{attribution: '&copy; OpenStreetMap'}}).addTo(m);
+  // CyclOSM, not tile.openstreetmap.org: this page opens from file://, so
+  // the browser sends no Referer, and OSM's tile policy answers anonymous
+  // requests with an 'Access blocked' tile. CyclOSM serves them, and its
+  // contours and bike infrastructure are what you want when judging a
+  // route or an interval stretch anyway.
+  L.tileLayer('https://{{s}}.tile-cyclosm.openstreetmap.fr/cyclosm/{{z}}/{{x}}/{{y}}.png',
+              {{maxZoom: 19, attribution: '<a href="https://www.cyclosm.org">CyclOSM</a> | '
+               + '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}}).addTo(m);
   var line = L.polyline(r.points, {{color: 'red', weight: 3}}).addTo(m);
   L.circleMarker(r.points[0], {{radius: 6, color: 'green'}}).addTo(m);
   var fit = function() {{ m.invalidateSize(); m.fitBounds(line.getBounds(), {{animate: false}}); }};
