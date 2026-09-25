@@ -61,11 +61,14 @@ def query_overpass(query: str) -> dict | None:
     return None
 
 
-def fetch_controls(lat: float, lon: float, radius_m: float) -> list[Control]:
-    """All traffic controls within radius of (lat, lon): (lat, lon, weight)."""
+def fetch_controls(lat: float, lon: float,
+                   radius_m: float) -> list[Control] | None:
+    """All traffic controls within radius of (lat, lon): (lat, lon, weight).
+    None when Overpass did not answer -- 'no data' and 'no controls' are
+    different facts, and a result table must not show the first as 0."""
     data = query_overpass(QUERY.format(bbox=bbox_around(lat, lon, radius_m)))
     if data is None:
-        return []
+        return None
     controls: list[Control] = []
     for el in data.get("elements", []):
         tags = el.get("tags", {})

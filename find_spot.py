@@ -59,7 +59,7 @@ def run_spot_search(spec: IntervalSpec, profile: str | None = None,
         path = os.path.join(out_dir, fname)
         desc = (f"{s.length_mi:.1f} mi @ {s.mean_grade_pct:+.1f}% "
                 f"(±{s.grade_std_pct:.1f}), {s.turns_per_km:.1f} turns/km, "
-                f"{s.n_controls} stops/signals, "
+                f"{s.n_controls if s.controls_known else '?'} stops/signals, "
                 f"{s.dist_from_start_m / METERS_PER_MILE:.1f} mi from start")
         write_track(s.points, f"{spec.kind} spot #{i} ({spec.reps}x{spec.rep_minutes:.0f})",
                     desc, path)
@@ -70,7 +70,8 @@ def run_spot_search(spec: IntervalSpec, profile: str | None = None,
             t_w += f"{mmss(s.seconds_at(spec.watts, spec.total_kg, reverse=True)):>8}"
         print(f"{i:<5}{s.length_mi:>7.1f}{s.mean_grade_pct:>9.1f}"
               f"{s.grade_std_pct:>6.1f}{s.turns_per_km:>10.1f}"
-              f"{s.n_controls:>7}{s.dist_from_start_m / METERS_PER_MILE:>13.1f}"
+              f"{(str(s.n_controls) if s.controls_known else '?'):>7}"
+              f"{s.dist_from_start_m / METERS_PER_MILE:>13.1f}"
               f"{t_w}  {path}")
 
     build_preview(gpx_paths, os.path.join(out_dir, "preview.html"))
@@ -87,6 +88,8 @@ def run_spot_search(spec: IntervalSpec, profile: str | None = None,
         laps = max(1, round(spec.rep_distance_m / best.length_m + 0.49))
         timing = ""
     note = "" if laps == 1 else f" (~{laps} laps per rep — expect turnarounds)"
+    if not best.controls_known:
+        note += " — stop/signal counts UNKNOWN this run (Overpass was down)"
     print(f"\nBest: {best.length_mi:.1f} mi at {best.mean_grade_pct:+.1f}%, "
           f"{best.dist_from_start_m / METERS_PER_MILE:.1f} mi ride out{timing}{note}")
     return spots

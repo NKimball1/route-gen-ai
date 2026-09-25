@@ -82,6 +82,7 @@ class IntervalSpot:
     grade_std_pct: float = 0.0
     turns_per_km: float = 0.0
     n_controls: int = 0                # stop signs/signals/etc. on the stretch
+    controls_known: bool = True        # False: Overpass was down; count is unknown
     control_wt_per_km: float = 0.0     # severity-weighted interruptions per km
     dist_from_start_m: float = 0.0     # riding distance out to the stretch
     bearing: float = 0.0
@@ -216,11 +217,13 @@ def find_spots(spec: IntervalSpec, lat: float, lon: float, provider: Router,
     from routes.interruptions import controls_along, fetch_controls
     from routes.providers import _destination
 
-    controls = fetch_controls(lat, lon, spec.travel_radius_m + 2000)
+    fetched = fetch_controls(lat, lon, spec.travel_radius_m + 2000)
+    controls_known = fetched is not None
+    controls = fetched or []
     print(f"  {len(controls)} traffic controls (stops/signals/crossings) in area"
-          if controls else
+          if controls_known else
           "  warning: no traffic-control data (Overpass down?) — scoring "
-          "without interruption counts")
+          "without interruption counts; stop counts will read '?'")
 
     spots: list[IntervalSpot] = []
     for i in range(n_spokes):
@@ -261,6 +264,7 @@ def find_spots(spec: IntervalSpec, lat: float, lon: float, provider: Router,
                 points=[p[:3] for p in rs[i0:j + 1]],
                 length_m=length, mean_grade_pct=mean, grade_std_pct=std,
                 turns_per_km=tpk, n_controls=b - a, control_wt_per_km=wt_per_km,
+                controls_known=controls_known,
                 dist_from_start_m=rs[i0][3],
                 bearing=bearing, score=score,
             )
@@ -276,4 +280,22 @@ def find_spots(spec: IntervalSpec, lat: float, lon: float, provider: Router,
             s.points = list(reversed(s.points))
             s.mean_grade_pct = -s.mean_grade_pct
     spots.sort(key=lambda s: s.score, reverse=True)
-    return spots[:top]
+    return _dedupe(spots)[:top]
+
+
+# Two spokes a few degrees apart often share their first miles of road,
+# so the same stretch came back as #1, #2 and #3. Stretches whose
+# midpoints sit within this of each other are one spot.
+DUPLICATE_SPOT_M: float = 400.0
+
+
+def _dedupe(spots: list[IntervalSpot]) -> list[IntervalSpot]:
+    """Drop stretches that are the same road as a better-scored one.
+    `spots` must already be sorted best-first."""
+    kept: list[IntervalSpot] = []
+    for s in spots:
+        mid = s.points[len(s.points) // 2]
+        if all(_hav_m(mid, k.points[len(k.points) // 2]) > DUPLICATE_SPOT_M
+               for k in kept):
+            kept.append(s)
+    return kept
