@@ -57,3 +57,45 @@ def test_overpass_up_but_empty_is_a_real_zero(monkeypatch):
     spec = IntervalSpec("x", 2, 20.0, "flat", 20.0)
     spots = find_spots(spec, 43.0, -89.5, DenseProvider(), n_spokes=4, top=3)
     assert spots and all(s.controls_known for s in spots)
+
+
+class WindingProvider(DenseProvider):
+    """A road three times longer than the crow flies: out along the spoke,
+    back along a parallel lane 100 m over, and out again on a third. Ride-out
+    distance runs far past the travel budget while every point stays
+    inside the spoke's crow-flies reach."""
+    def route(self, waypoints, avoid=None, protect=None):
+        a, b = waypoints[0], waypoints[-1]
+        from routes.editing import _cum
+        n, lane = 200, 0.0012   # ~100 m of longitude at 43 N
+
+        def line(p, q, off):
+            return [(p[0] + (q[0] - p[0]) * k / n,
+                     p[1] + (q[1] - p[1]) * k / n + off, 300.0)
+                    for k in range(n + 1)]
+        pts = line(a, b, 0.0) + line(b, a, lane)[1:] + line(a, b, 2 * lane)[1:]
+        return {"points": pts, "distance_m": _cum(pts)[-1], "ascent_m": 0.0,
+                "major_m": 0.0}
+
+
+def test_within_the_travel_budget_means_riding_distance(monkeypatch):
+    """Stop signs along the first 8 km of every spoke make the far end the
+    best-scoring window -- and on a winding road the far end is beyond the
+    riding budget even though the spoke's endpoint is not."""
+    import routes.interruptions as interruptions
+    from routes.editing import _cum
+    from routes.providers import _destination
+
+    spec = IntervalSpec("x", 2, 8.0, "flat", 20.0)   # 20 min ~ 8 km budget
+    provider = WindingProvider()
+    controls = []
+    for bearing in (0.0, 90.0, 180.0, 270.0):
+        dest = _destination(43.0, -89.5, bearing, spec.travel_radius_m / 1.2)
+        pts = provider.route([(43.0, -89.5), dest])["points"]
+        cum = _cum(pts)
+        controls += [(p[0], p[1], 1.5) for p, c in zip(pts, cum)
+                     if c <= spec.travel_radius_m + 1000]
+    monkeypatch.setattr(interruptions, "fetch_controls", lambda *a, **k: controls)
+    spots = find_spots(spec, 43.0, -89.5, provider, n_spokes=4, top=3)
+    assert spots
+    assert all(s.dist_from_start_m <= spec.travel_radius_m for s in spots),         [round(s.dist_from_start_m) for s in spots]

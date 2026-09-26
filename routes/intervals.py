@@ -245,6 +245,11 @@ def find_spots(spec: IntervalSpec, lat: float, lon: float, provider: Router,
         # Slide a window of up to rep_distance along the spoke.
         best_for_spoke: IntervalSpot | None = None
         for i0 in range(0, len(rs) - 3):
+            # "within N minutes" is riding distance, not the crow-flies reach
+            # of the spoke: a winding road runs past the budget before the
+            # spoke's endpoint does (a 10 mi ask once returned 12.5 mi out)
+            if rs[i0][3] > spec.travel_radius_m:
+                break
             j = i0
             while j + 1 < len(rs) and spec.rep_fits(
                     rs[j + 1][3] - rs[i0][3],
