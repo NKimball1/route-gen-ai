@@ -8,6 +8,10 @@ Examples:
   # 4x5 VO2: a steady slight climb close to home
   python find_spot.py --address "123 Main St, Madison WI" --reps 4 --rep-minutes 5 --kind incline --max-travel-minutes 20
 
+  # 4x4 at 285 W, grade doesn't matter, ridden out-and-back: sized by
+  # physics, and each result shows the time in both directions
+  python find_spot.py --address "123 Main St, Madison WI" --reps 4 --rep-minutes 4 --kind any --watts 285
+
 Writes each top spot as a GPX stretch to output/spots/ plus a map preview.
 For plain-English requests, use ask.py instead.
 """
@@ -22,7 +26,7 @@ load_dotenv()
 
 from routes.geocode import geocode
 from routes.gpx_out import write_track
-from routes.intervals import IntervalSpec, find_spots
+from routes.intervals import IntervalSpec, IntervalSpot, find_spots
 from routes.power import mmss
 from routes.preview import build_preview
 from routes.providers import BRouterProvider
@@ -76,23 +80,36 @@ def run_spot_search(spec: IntervalSpec, profile: str | None = None,
 
     build_preview(gpx_paths, os.path.join(out_dir, "preview.html"))
 
-    best = spots[0]
+    print("\n" + best_summary(spec, spots[0]))
+    return spots
+
+
+def best_summary(spec: IntervalSpec, best: IntervalSpot) -> str:
+    """The one line a rider plans around: where, how long a pass takes,
+    and how many laps a rep needs."""
     if spec.watts:
         # laps from TIME at the stretch's real grade, not from the
         # search window's assumed one
         one_pass = best.seconds_at(spec.watts, spec.total_kg)
+        if spec.kind == "any":
+            # out-and-back: the slower direction decides whether a pass
+            # fills the rep, and the rider needs both numbers
+            back = best.seconds_at(spec.watts, spec.total_kg, reverse=True)
+            timing = (f"; one pass takes {mmss(one_pass)} out / {mmss(back)} "
+                      f"back at {spec.watts:.0f} W")
+            one_pass = min(one_pass, back)
+        else:
+            timing = f"; one pass takes {mmss(one_pass)} at {spec.watts:.0f} W"
+        timing += f" ({spec.total_kg:.0f} kg rider+bike)"
         laps = max(1, math.ceil(spec.rep_minutes * 60.0 / one_pass - 0.05))
-        timing = (f"; one pass takes {mmss(one_pass)} at {spec.watts:.0f} W "
-                  f"({spec.total_kg:.0f} kg rider+bike)")
     else:
         laps = max(1, round(spec.rep_distance_m / best.length_m + 0.49))
         timing = ""
     note = "" if laps == 1 else f" (~{laps} laps per rep — expect turnarounds)"
     if not best.controls_known:
         note += " — stop/signal counts UNKNOWN this run (Overpass was down)"
-    print(f"\nBest: {best.length_mi:.1f} mi at {best.mean_grade_pct:+.1f}%, "
-          f"{best.dist_from_start_m / METERS_PER_MILE:.1f} mi ride out{timing}{note}")
-    return spots
+    return (f"Best: {best.length_mi:.1f} mi at {best.mean_grade_pct:+.1f}%, "
+            f"{best.dist_from_start_m / METERS_PER_MILE:.1f} mi ride out{timing}{note}")
 
 
 def main() -> int:
