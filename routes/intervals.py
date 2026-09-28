@@ -172,14 +172,30 @@ def _window_stats(rs: list[Sample], i: int,
     return length, mean, math.sqrt(var), turns / max(length / 1000.0, 0.001)
 
 
+# Climbing per km at which a "flat" stretch has no flatness credit left
+# (~80 ft/mi). Average grade alone can't see rollers: a road that climbs
+# and descends 30 m averages 0% (Paulson Rd ranked as the flattest 2x20
+# stretch with 370 ft of climbing). Paved-trail flat is ~2.5 m/km.
+ROLLING_ZERO_M_PER_KM: float = 15.0
+
+
+def _window_climb(rs: list[Sample], i: int, j: int) -> float:
+    """Meters of climbing per km across resampled slice rs[i..j]."""
+    climb = sum(max(0.0, rs[k + 1][2] - rs[k][2]) for k in range(i, j))
+    return climb / max((rs[j][3] - rs[i][3]) / 1000.0, 0.001)
+
+
 def _score(spec: IntervalSpec, length: float, mean_grade: float,
            grade_std: float, turns_per_km: float,
-           control_wt: float = 0.0) -> float:
+           control_wt: float = 0.0,
+           climb_m_per_km: float = 0.0) -> float:
     # Longer is better up to the full rep distance (you can lap a shorter
     # stretch, but every turnaround interrupts the effort).
     len_score = min(length / spec.rep_distance_m, 1.0)
+    rolling_score = max(0.0, 1.0 - climb_m_per_km / ROLLING_ZERO_M_PER_KM)
     if spec.kind == "flat":
-        grade_score = max(0.0, 1.0 - abs(mean_grade) / 1.5)      # 0 at 1.5%
+        grade_score = min(max(0.0, 1.0 - abs(mean_grade) / 1.5),  # 0 at 1.5%
+                          rolling_score)
         steady_score = max(0.0, 1.0 - grade_std / 3.0)
     elif spec.kind == "any":
         # symmetry: how evenly the two directions take the rep. With
@@ -193,6 +209,9 @@ def _score(spec: IntervalSpec, length: float, mean_grade: float,
             grade_score = down / up if up > 0 else 0.0
         else:
             grade_score = max(0.0, 1.0 - abs(mean_grade) / 4.0)
+        # symmetric pass times don't make rollers smooth: hold power over
+        # them and it spikes on every rise
+        grade_score = min(grade_score, rolling_score)
         steady_score = max(0.0, 1.0 - grade_std / 4.0)
     else:
         grade_score = max(0.0, 1.0 - abs(abs(mean_grade) - 4.0) / 3.0)  # peak at 4%
@@ -264,7 +283,8 @@ def find_spots(spec: IntervalSpec, lat: float, lon: float, provider: Router,
             b = bisect_right(hit_pos, rs[j][3] + CONTROL_PAD_M)
             wt = hit_wt_cum[b] - hit_wt_cum[a]
             wt_per_km = wt / max(length / 1000.0, 0.001)
-            score = _score(spec, length, mean, std, tpk, wt)
+            score = _score(spec, length, mean, std, tpk, wt,
+                           climb_m_per_km=_window_climb(rs, i0, j))
             spot = IntervalSpot(
                 points=[p[:3] for p in rs[i0:j + 1]],
                 length_m=length, mean_grade_pct=mean, grade_std_pct=std,
