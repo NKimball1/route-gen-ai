@@ -8,8 +8,13 @@ Known over-count: a control tagged for the CROSS street can sit within
 tolerance of our road and count against us. That errs toward quieter spots,
 which is the right direction for interval hunting.
 """
+import glob
+import hashlib
+import json
 import math
-from typing import Callable, Sequence
+import os
+import time
+from typing import Any, Callable, Sequence
 
 import requests
 from routes.spec import METERS_PER_DEG_LAT, METERS_PER_DEG_LON_EQ
@@ -46,7 +51,44 @@ def bbox_around(lat: float, lon: float, radius_m: float) -> str:
     return f"{lat - dlat},{lon - dlon},{lat + dlat},{lon + dlon}"
 
 
-def query_overpass(query: str) -> dict | None:
+# ---- disk cache ----
+# The public Overpass servers time out often (four searches in one week lost
+# their stop counts to it), and stop signs change on a scale of years, not
+# days. Answers are kept on disk: reused while fresh, and when every mirror
+# is down the last good copy -- of any age -- beats "unknown".
+CACHE_DIR: str = os.environ.get("ROUTEGEN_OVERPASS_CACHE",
+                                os.path.join("output", "cache", "overpass"))
+CACHE_FRESH_S: float = 7 * 86400.0
+
+BBox4 = tuple[float, float, float, float]   # (south, west, north, east)
+
+
+def _read_cache(path: str) -> dict[str, Any] | None:
+    try:
+        with open(path, encoding="utf-8") as f:
+            entry = json.load(f)
+        return entry if isinstance(entry, dict) and "ts" in entry else None
+    except (OSError, ValueError):
+        return None
+
+
+def _write_cache(path: str, entry: dict[str, Any]) -> None:
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        tmp = path + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(entry, f)
+        os.replace(tmp, path)   # never leave a half-written cache file
+    except OSError:
+        pass   # a cache that can't be written is just a cache miss
+
+
+def _age(entry: dict[str, Any]) -> str:
+    days = (time.time() - float(entry["ts"])) / 86400.0
+    return f"{days * 24:.0f} h" if days < 1 else f"{days:.0f} days"
+
+
+def _post_overpass(query: str) -> dict[str, Any] | None:
     """POST an Overpass QL query, trying mirrors. None if all fail."""
     for url in OVERPASS_URLS:
         try:
@@ -55,19 +97,76 @@ def query_overpass(query: str) -> dict | None:
                 headers={"User-Agent": "route-gen-ai/0.1"},
                 timeout=90)
             resp.raise_for_status()
-            return resp.json()
+            data: dict[str, Any] = resp.json()
+            return data
         except (requests.RequestException, ValueError) as e:
             print(f"  overpass {url.split('/')[2]}: failed ({e})")
     return None
 
 
+def query_overpass(query: str) -> dict | None:
+    """Run an Overpass query through the disk cache: a fresh cached answer
+    skips the network; if every mirror fails, a stale one is used."""
+    key = hashlib.sha256(query.encode()).hexdigest()[:24]
+    path = os.path.join(CACHE_DIR, f"q_{key}.json")
+    cached = _read_cache(path)
+    if cached is not None and time.time() - float(cached["ts"]) < CACHE_FRESH_S:
+        return cached["data"]
+    data = _post_overpass(query)
+    if data is not None:
+        _write_cache(path, {"ts": time.time(), "data": data})
+        return data
+    if cached is not None:
+        print(f"  overpass down -- using cached map data from {_age(cached)} ago")
+        return cached["data"]
+    return None
+
+
+def _bbox4(lat: float, lon: float, radius_m: float) -> BBox4:
+    s, w, n, e = (float(v) for v in bbox_around(lat, lon, radius_m).split(","))
+    return s, w, n, e
+
+
+def _covering_controls(want: BBox4, fresh_only: bool) -> tuple[list[Control], dict[str, Any]] | None:
+    """Controls from any cached fetch whose area contains `want` (freshest
+    first), trimmed to `want`. Searches ask for slightly different areas
+    every time; one big fetch around home should answer all of them."""
+    best: dict[str, Any] | None = None
+    for path in glob.glob(os.path.join(CACHE_DIR, "controls_*.json")):
+        entry = _read_cache(path)
+        if entry is None or "bbox" not in entry:
+            continue
+        s, w, n, e = entry["bbox"]
+        if not (s <= want[0] and w <= want[1] and n >= want[2] and e >= want[3]):
+            continue
+        if fresh_only and time.time() - float(entry["ts"]) >= CACHE_FRESH_S:
+            continue
+        if best is None or float(entry["ts"]) > float(best["ts"]):
+            best = entry
+    if best is None:
+        return None
+    inside = [(la, lo, wt) for la, lo, wt in best["controls"]
+              if want[0] <= la <= want[2] and want[1] <= lo <= want[3]]
+    return inside, best
+
+
 def fetch_controls(lat: float, lon: float,
                    radius_m: float) -> list[Control] | None:
     """All traffic controls within radius of (lat, lon): (lat, lon, weight).
-    None when Overpass did not answer -- 'no data' and 'no controls' are
-    different facts, and a result table must not show the first as 0."""
+    None when Overpass did not answer and nothing cached covers the area --
+    'no data' and 'no controls' are different facts, and a result table
+    must not show the first as 0."""
+    want = _bbox4(lat, lon, radius_m)
+    hit = _covering_controls(want, fresh_only=True)
+    if hit is not None:
+        return hit[0]
     data = query_overpass(QUERY.format(bbox=bbox_around(lat, lon, radius_m)))
     if data is None:
+        stale = _covering_controls(want, fresh_only=False)
+        if stale is not None:
+            print(f"  overpass down -- using traffic controls cached "
+                  f"{_age(stale[1])} ago")
+            return stale[0]
         return None
     controls: list[Control] = []
     for el in data.get("elements", []):
@@ -78,7 +177,11 @@ def fetch_controls(lat: float, lon: float,
         weight = WEIGHTS.get(kind) if kind else None
         if weight:
             controls.append((el["lat"], el["lon"], weight))
-    return _cluster(controls)
+    clustered = _cluster(controls)
+    key = hashlib.sha256(repr(want).encode()).hexdigest()[:24]
+    _write_cache(os.path.join(CACHE_DIR, f"controls_{key}.json"),
+                 {"ts": time.time(), "bbox": list(want), "controls": clustered})
+    return clustered
 
 
 def _cluster(controls: Sequence[Control],
