@@ -308,10 +308,24 @@ def find_spots(spec: IntervalSpec, lat: float, lon: float, provider: Router,
     return _dedupe(spots)[:top]
 
 
-# Two spokes a few degrees apart often share their first miles of road,
-# so the same stretch came back as #1, #2 and #3. Stretches whose
-# midpoints sit within this of each other are one spot.
-DUPLICATE_SPOT_M: float = 400.0
+# Two spokes a few degrees apart often share their first miles of road, so
+# the same stretch came back as #1, #2 and #3. Comparing midpoints missed a
+# piece sitting inside a longer stretch (Highway 12 Path, listed twice) and
+# half-overlapping sections of one trail -- and merged parallel roads that
+# are genuinely different spots. Two stretches are one spot when at least
+# DUPLICATE_OVERLAP of the shorter lies within ON_SAME_ROAD_M of the other.
+ON_SAME_ROAD_M: float = 40.0
+DUPLICATE_OVERLAP: float = 0.5
+
+
+def _overlap(a: IntervalSpot, b: IntervalSpot) -> float:
+    """Fraction of the shorter stretch lying on the other's road."""
+    from routes.road_avoid import dist_to_road
+    short, long_ = (a, b) if a.length_m <= b.length_m else (b, a)
+    way = [[(p[0], p[1]) for p in long_.points]]
+    pts = short.points
+    on = sum(1 for p in pts if dist_to_road(p, way) <= ON_SAME_ROAD_M)
+    return on / len(pts) if pts else 0.0
 
 
 def _dedupe(spots: list[IntervalSpot]) -> list[IntervalSpot]:
@@ -319,8 +333,6 @@ def _dedupe(spots: list[IntervalSpot]) -> list[IntervalSpot]:
     `spots` must already be sorted best-first."""
     kept: list[IntervalSpot] = []
     for s in spots:
-        mid = s.points[len(s.points) // 2]
-        if all(_hav_m(mid, k.points[len(k.points) // 2]) > DUPLICATE_SPOT_M
-               for k in kept):
+        if all(_overlap(s, k) < DUPLICATE_OVERLAP for k in kept):
             kept.append(s)
     return kept

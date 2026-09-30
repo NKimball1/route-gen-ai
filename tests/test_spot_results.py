@@ -41,6 +41,39 @@ def test_dedupe_keeps_the_better_scored_copy():
     assert _dedupe([better, worse]) == [better]
 
 
+def along(lat0: float, lon0: float, first: int, last: int) -> IntervalSpot:
+    """Points first..last of one straight road heading north from lat0."""
+    pts = [(lat0 + k * LAT_STEP, lon0, 300.0) for k in range(first, last + 1)]
+    return IntervalSpot(points=pts, length_m=(last - first) * 28.0)
+
+
+def test_a_stretch_inside_a_longer_one_is_the_same_spot():
+    """Field case 9/27: the Highway 12 Path came back as a 3.8 mi stretch AND
+    a 1.9 mi piece of it, because their midpoints were ~1 km apart."""
+    whole = along(43.0, -89.5, 0, 100)          # 2.8 km, midpoint at point 50
+    whole.score = 0.9
+    piece = along(43.0, -89.5, 70, 100)         # the last 0.85 km of it
+    piece.score = 0.8
+    assert _dedupe([whole, piece]) == [whole]
+
+
+def test_half_overlapping_sections_of_one_trail_are_the_same_spot():
+    """Field case 9/27: two sections of the Badger State Trail, #1 and #2."""
+    south = along(43.0, -89.5, 0, 60)
+    south.score = 0.9
+    north = along(43.0, -89.5, 30, 90)          # shares half of its length
+    north.score = 0.85
+    assert _dedupe([south, north]) == [south]
+
+
+def test_parallel_roads_are_different_spots():
+    a = along(43.0, -89.5, 0, 60)
+    a.score = 0.9
+    b = along(43.0, -89.4988, 0, 60)            # ~100 m east, same direction
+    b.score = 0.85
+    assert _dedupe([a, b]) == [a, b]
+
+
 def test_overpass_down_marks_counts_unknown_not_zero(monkeypatch):
     import routes.interruptions as interruptions
     monkeypatch.setattr(interruptions, "fetch_controls", lambda *a, **k: None)
