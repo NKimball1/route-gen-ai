@@ -14,12 +14,13 @@ Both return RouteCandidate lists for the same RouteSpec.
 """
 import math
 import os
+import re
 import socket
 from typing import Callable, Sequence
 
 import requests
 
-from routes.despur import corridor_despur, despur
+from routes.despur import _hav_m, corridor_despur, despur
 from routes.elevation import track_ascent
 from routes.spec import (EARTH_RADIUS_M, METERS_PER_DEG_LAT,
                          METERS_PER_DEG_LON_EQ, METERS_PER_MILE, Coord, LatLon,
@@ -50,6 +51,39 @@ def _destination(lat: float, lon: float, bearing_deg: float,
 
 # Spur trims larger than this get a log line -- smaller are routine.
 NOTABLE_SPUR_M: float = 400.0
+
+# OSM surface values a road bike at threshold power shouldn't be on.
+UNPAVED_SURFACES: frozenset[str] = frozenset({
+    "unpaved", "gravel", "fine_gravel", "compacted", "dirt", "earth", "ground",
+    "grass", "sand", "mud", "pebblestone", "woodchips", "rock"})
+PAVED_SURFACES: frozenset[str] = frozenset({
+    "asphalt", "paved", "concrete", "concrete:plates", "paving_stones", "chipseal"})
+
+
+def is_unpaved(way_tags: str) -> bool:
+    """From a BRouter WayTags string. A farm track with no paved surface tag
+    counts as unpaved; an untagged road or path does not (most are paved)."""
+    m = re.search(r"surface=(\S+)", way_tags)
+    surface = m.group(1) if m else None
+    if surface in UNPAVED_SURFACES:
+        return True
+    return "highway=track" in way_tags and surface not in PAVED_SURFACES
+
+
+def _runs_to_polylines(points: Track,
+                       runs: Sequence[tuple[float, float]]) -> list[list[LatLon]]:
+    """Distance ranges along `points` -> the polylines they cover."""
+    if not runs:
+        return []
+    cum = [0.0]
+    for a, b in zip(points, points[1:]):
+        cum.append(cum[-1] + _hav_m(a, b))
+    out: list[list[LatLon]] = []
+    for lo, hi in runs:
+        piece = [(p[0], p[1]) for p, c in zip(points, cum) if lo - 1.0 <= c <= hi + 1.0]
+        if len(piece) >= 2:
+            out.append(piece)
+    return out
 
 
 def brouter_reachable(base_url: str, timeout_s: float = 1.0) -> bool:
@@ -123,10 +157,20 @@ class BRouterProvider:
         # Counted pre-trim, so a trimmed spur on a highway still counts —
         # conservative in the right direction.
         major_m = 0.0
+        # Each message row covers the stretch ENDING at its coordinate
+        # (verified against the geometry: running Distance matches); keep
+        # the unpaved ones as polylines so interval search can see surface.
+        unpaved_runs: list[tuple[float, float]] = []
+        pos = 0.0
         for row in props.get("messages", [])[1:]:
+            d = float(row[3])
             if len(row) > 9 and any(f"highway={h}" in row[9]
                                     for h in ("motorway", "trunk", "primary")):
-                major_m += float(row[3])
+                major_m += d
+            if len(row) > 9 and is_unpaved(row[9]):
+                unpaved_runs.append((pos, pos + d))
+            pos += d
+        unpaved = _runs_to_polylines(points, unpaved_runs)
         # Cut out-and-back spur artifacts BEFORE distance/climb accounting, so
         # rescaling and ranking see the route as it would be ridden. The naive
         # spur-ascent estimate can overshoot the provider's filtered figure,
@@ -148,6 +192,7 @@ class BRouterProvider:
             # and immune to spur-subtraction artifacts.
             "ascent_m": track_ascent(points),
             "major_m": major_m,
+            "unpaved": unpaved,
         }
 
     def candidates(self, spec: RouteSpec, lat: float, lon: float,

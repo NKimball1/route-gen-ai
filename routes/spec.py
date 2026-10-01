@@ -28,6 +28,9 @@ class Leg(TypedDict):
     distance_m: float
     ascent_m: float
     major_m: float      # meters on motorway/trunk/primary roads
+    # unpaved stretches (gravel, compacted, dirt, ...) as polylines along
+    # the leg; routers that can't tell surfaces simply leave it out
+    unpaved: NotRequired[list[list[LatLon]]]
 
 
 class ClimbRow(TypedDict):
