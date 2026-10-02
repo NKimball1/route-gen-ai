@@ -45,6 +45,10 @@ class IntervalSpec:
     max_travel_minutes: float = 30.0
     watts: float | None = None     # target power; sizes reps by physics
     total_kg: float = DEFAULT_TOTAL_KG   # rider + bike, for the physics
+    # Hard limit on stops/signals per stretch. The scorer already prefers
+    # fewer, but "no interruptions" is a requirement, not a preference.
+    # Can't be enforced when Overpass is down (counts unknown).
+    max_stops: int | None = None
 
     @property
     def rep_distance_m(self) -> float:
@@ -301,6 +305,9 @@ def find_spots(spec: IntervalSpec, lat: float, lon: float, provider: Router,
             # every lap, and mapped positions carry a little noise.
             a = bisect_left(hit_pos, rs[i0][3] - CONTROL_PAD_M)
             b = bisect_right(hit_pos, rs[j][3] + CONTROL_PAD_M)
+            if (spec.max_stops is not None and controls_known
+                    and b - a > spec.max_stops):
+                continue
             wt = hit_wt_cum[b] - hit_wt_cum[a]
             wt_per_km = wt / max(length / 1000.0, 0.001)
             score = _score(spec, length, mean, std, tpk, wt,
