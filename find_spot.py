@@ -16,8 +16,8 @@ Examples:
   python find_spot.py --address "123 Main St, Madison WI" --reps 4 --rep-minutes 10 --kind flat --watts 250 --max-stops 0
 
 Each result is named by road ("Hope Road (Femrite Drive -> Nora Road)";
---no-names skips the lookups) and shows climbing per mile and the share
-that's unpaved. Writes each top spot as a GPX stretch to output/spots/
+--no-names skips the lookups) and shows climbing per mile and the shares
+that are unpaved and on busy (secondary-or-bigger) roads. Writes each top spot as a GPX stretch to output/spots/
 plus a map preview.
 For plain-English requests, use ask.py instead.
 """
@@ -83,7 +83,7 @@ def run_spot_search(spec: IntervalSpec, profile: str | None = None,
     if spec.watts and spec.kind == "any":
         at_w += f"{'back':>8}"   # the same stretch ridden the other way
     print(f"\n{'rank':<5}{'len mi':>7}{'grade %':>9}{'ft/mi':>7}{'±%':>6}{'turns/km':>10}"
-          f"{'stops':>7}{'unpaved':>9}{'ride out mi':>13}{at_w}  file")
+          f"{'stops':>7}{'unpaved':>9}{'busy':>6}{'ride out mi':>13}{at_w}  file")
     for i, s in enumerate(spots, 1):
         fname = f"spot_{spec.kind}_{spec.reps}x{spec.rep_minutes:.0f}_{i}.gpx"
         path = os.path.join(out_dir, fname)
@@ -102,7 +102,7 @@ def run_spot_search(spec: IntervalSpec, profile: str | None = None,
               f"{climb_ft_per_mile(s):>7.0f}"
               f"{s.grade_std_pct:>6.1f}{s.turns_per_km:>10.1f}"
               f"{(str(s.n_controls) if s.controls_known else '?'):>7}"
-              f"{s.unpaved_frac:>9.0%}"
+              f"{s.unpaved_frac:>9.0%}{s.busy_frac:>6.0%}"
               f"{s.dist_from_start_m / METERS_PER_MILE:>13.1f}"
               f"{t_w}  {path}")
 

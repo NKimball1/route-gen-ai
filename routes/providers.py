@@ -70,6 +70,18 @@ def is_unpaved(way_tags: str) -> bool:
     return "highway=track" in way_tags and surface not in PAVED_SURFACES
 
 
+# Road classes that carry real traffic. Tertiary (collectors) and smaller
+# stay quiet enough for intervals; county highways tagged secondary don't.
+BUSY_HIGHWAYS: frozenset[str] = frozenset({
+    "secondary", "secondary_link", "primary", "primary_link",
+    "trunk", "trunk_link", "motorway", "motorway_link"})
+
+
+def is_busy(way_tags: str) -> bool:
+    m = re.search(r"highway=(\S+)", way_tags)
+    return m is not None and m.group(1) in BUSY_HIGHWAYS
+
+
 def _runs_to_polylines(points: Track,
                        runs: Sequence[tuple[float, float]]) -> list[list[LatLon]]:
     """Distance ranges along `points` -> the polylines they cover."""
@@ -161,6 +173,7 @@ class BRouterProvider:
         # (verified against the geometry: running Distance matches); keep
         # the unpaved ones as polylines so interval search can see surface.
         unpaved_runs: list[tuple[float, float]] = []
+        busy_runs: list[tuple[float, float]] = []
         pos = 0.0
         for row in props.get("messages", [])[1:]:
             d = float(row[3])
@@ -169,8 +182,11 @@ class BRouterProvider:
                 major_m += d
             if len(row) > 9 and is_unpaved(row[9]):
                 unpaved_runs.append((pos, pos + d))
+            if len(row) > 9 and is_busy(row[9]):
+                busy_runs.append((pos, pos + d))
             pos += d
         unpaved = _runs_to_polylines(points, unpaved_runs)
+        busy = _runs_to_polylines(points, busy_runs)
         # Cut out-and-back spur artifacts BEFORE distance/climb accounting, so
         # rescaling and ranking see the route as it would be ridden. The naive
         # spur-ascent estimate can overshoot the provider's filtered figure,
@@ -193,6 +209,7 @@ class BRouterProvider:
             "ascent_m": track_ascent(points),
             "major_m": major_m,
             "unpaved": unpaved,
+            "busy": busy,
         }
 
     def candidates(self, spec: RouteSpec, lat: float, lon: float,

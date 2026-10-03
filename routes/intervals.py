@@ -88,6 +88,7 @@ class IntervalSpot:
     n_controls: int = 0                # stop signs/signals/etc. on the stretch
     controls_known: bool = True        # False: Overpass was down; count is unknown
     unpaved_frac: float = 0.0          # share of the stretch on gravel/compacted/dirt
+    busy_frac: float = 0.0             # share on secondary-or-bigger roads
     control_wt_per_km: float = 0.0     # severity-weighted interruptions per km
     dist_from_start_m: float = 0.0     # riding distance out to the stretch
     bearing: float = 0.0
@@ -189,6 +190,18 @@ MAX_UNPAVED_FRAC: float = 0.10
 ON_UNPAVED_M: float = 15.0   # a resampled point this close to an unpaved way is on it
 
 
+def _on_ways_cum(rs: list[Sample], ways: list[list[tuple[float, float]]]) -> list[int]:
+    """Prefix counts of resampled points lying on `ways` (within ON_UNPAVED_M):
+    points on ways in rs[i..j] = cum[j + 1] - cum[i]."""
+    if not ways:
+        return [0] * (len(rs) + 1)
+    from routes.road_avoid import dist_to_road
+    cum = [0]
+    for p in rs:
+        cum.append(cum[-1] + int(dist_to_road((p[0], p[1]), ways) <= ON_UNPAVED_M))
+    return cum
+
+
 def _window_climb(rs: list[Sample], i: int, j: int) -> float:
     """Meters of climbing per km across resampled slice rs[i..j]."""
     climb = sum(max(0.0, rs[k + 1][2] - rs[k][2]) for k in range(i, j))
@@ -264,17 +277,15 @@ def find_spots(spec: IntervalSpec, lat: float, lon: float, provider: Router,
         rs = _resample(leg["points"])
         if len(rs) < 5:
             continue
-        # Surface: flag every resampled point on an unpaved stretch once,
-        # then each window reads its unpaved share from a prefix sum.
-        unpaved_ways = leg.get("unpaved", [])
-        if unpaved_ways:
-            from routes.road_avoid import dist_to_road
-            flags = [dist_to_road((p[0], p[1]), unpaved_ways) <= ON_UNPAVED_M for p in rs]
-        else:
-            flags = [False] * len(rs)
-        unpaved_cum = [0]
-        for f in flags:
-            unpaved_cum.append(unpaved_cum[-1] + int(f))
+        # Surface and road class: flag each resampled point once, then every
+        # window reads its unpaved / busy share from a prefix sum.
+        unpaved_cum = _on_ways_cum(rs, leg.get("unpaved", []))
+        busy_cum = _on_ways_cum(rs, leg.get("busy", []))
+        # bad_next[k]: first index >= k that is busy or unpaved (len(rs) if none)
+        bad_next = [len(rs)] * (len(rs) + 1)
+        for k in range(len(rs) - 1, -1, -1):
+            bad = (busy_cum[k + 1] > busy_cum[k]) or (unpaved_cum[k + 1] > unpaved_cum[k])
+            bad_next[k] = k if bad else bad_next[k + 1]
         # Map every control onto this spoke once; windows then count hits in
         # their distance range with two bisects.
         hits = controls_along(rs, controls)
@@ -290,38 +301,52 @@ def find_spots(spec: IntervalSpec, lat: float, lon: float, provider: Router,
             # spoke's endpoint does (a 10 mi ask once returned 12.5 mi out)
             if rs[i0][3] > spec.travel_radius_m:
                 break
-            j = i0
-            while j + 1 < len(rs) and spec.rep_fits(
-                    rs[j + 1][3] - rs[i0][3],
-                    (rs[j + 1][2] - rs[i0][2]) / max(rs[j + 1][3] - rs[i0][3], 1.0) * 100.0):
-                j += 1
-            length, mean, std, tpk = _window_stats(rs, i0, j)
-            if length < 0.35 * spec.rep_distance_m or length < 400:
-                continue
-            unpaved_frac = (unpaved_cum[j + 1] - unpaved_cum[i0]) / (j - i0 + 1)
-            if unpaved_frac > MAX_UNPAVED_FRAC:
-                continue
-            # Pad the range: a light AT the turnaround point still interrupts
-            # every lap, and mapped positions carry a little noise.
-            a = bisect_left(hit_pos, rs[i0][3] - CONTROL_PAD_M)
-            b = bisect_right(hit_pos, rs[j][3] + CONTROL_PAD_M)
-            if (spec.max_stops is not None and controls_known
-                    and b - a > spec.max_stops):
-                continue
-            wt = hit_wt_cum[b] - hit_wt_cum[a]
-            wt_per_km = wt / max(length / 1000.0, 0.001)
-            score = _score(spec, length, mean, std, tpk, wt,
-                           climb_m_per_km=_window_climb(rs, i0, j))
-            spot = IntervalSpot(
-                points=[p[:3] for p in rs[i0:j + 1]],
-                length_m=length, mean_grade_pct=mean, grade_std_pct=std,
-                turns_per_km=tpk, n_controls=b - a, control_wt_per_km=wt_per_km,
-                controls_known=controls_known, unpaved_frac=unpaved_frac,
-                dist_from_start_m=rs[i0][3],
-                bearing=bearing, score=score,
-            )
-            if best_for_spoke is None or spot.score > best_for_spoke.score:
-                best_for_spoke = spot
+            j_full = i0
+            while j_full + 1 < len(rs) and spec.rep_fits(
+                    rs[j_full + 1][3] - rs[i0][3],
+                    (rs[j_full + 1][2] - rs[i0][2])
+                    / max(rs[j_full + 1][3] - rs[i0][3], 1.0) * 100.0):
+                j_full += 1
+            # Also try the window cut off just before the first busy or
+            # unpaved point: a full-length window is no use if its last
+            # kilometer is on a county highway, and stopping short (then
+            # lapping) is exactly how a rider would use that road.
+            candidates = [j_full]
+            k_bad = bad_next[i0]
+            if i0 < k_bad - 1 < j_full:
+                candidates.append(k_bad - 1)
+            for j in candidates:
+                length, mean, std, tpk = _window_stats(rs, i0, j)
+                if length < 0.35 * spec.rep_distance_m or length < 400:
+                    continue
+                unpaved_frac = (unpaved_cum[j + 1] - unpaved_cum[i0]) / (j - i0 + 1)
+                if unpaved_frac > MAX_UNPAVED_FRAC:
+                    continue
+                # Pad the range: a light AT the turnaround point still
+                # interrupts every lap, and mapped positions carry noise.
+                a = bisect_left(hit_pos, rs[i0][3] - CONTROL_PAD_M)
+                b = bisect_right(hit_pos, rs[j][3] + CONTROL_PAD_M)
+                if (spec.max_stops is not None and controls_known
+                        and b - a > spec.max_stops):
+                    continue
+                wt = hit_wt_cum[b] - hit_wt_cum[a]
+                wt_per_km = wt / max(length / 1000.0, 0.001)
+                busy_frac = (busy_cum[j + 1] - busy_cum[i0]) / (j - i0 + 1)
+                # each share of the stretch on a busy road costs that share
+                # of the score
+                score = _score(spec, length, mean, std, tpk, wt,
+                               climb_m_per_km=_window_climb(rs, i0, j)) * (1.0 - busy_frac)
+                spot = IntervalSpot(
+                    points=[p[:3] for p in rs[i0:j + 1]],
+                    length_m=length, mean_grade_pct=mean, grade_std_pct=std,
+                    turns_per_km=tpk, n_controls=b - a, control_wt_per_km=wt_per_km,
+                    controls_known=controls_known, unpaved_frac=unpaved_frac,
+                    busy_frac=busy_frac,
+                    dist_from_start_m=rs[i0][3],
+                    bearing=bearing, score=score,
+                )
+                if best_for_spoke is None or spot.score > best_for_spoke.score:
+                    best_for_spoke = spot
         if best_for_spoke is not None:
             spots.append(best_for_spoke)
 

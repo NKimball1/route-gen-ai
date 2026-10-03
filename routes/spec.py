@@ -31,6 +31,8 @@ class Leg(TypedDict):
     # unpaved stretches (gravel, compacted, dirt, ...) as polylines along
     # the leg; routers that can't tell surfaces simply leave it out
     unpaved: NotRequired[list[list[LatLon]]]
+    # stretches on busy roads (secondary and bigger), same shape
+    busy: NotRequired[list[list[LatLon]]]
 
 
 class ClimbRow(TypedDict):
