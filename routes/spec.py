@@ -7,6 +7,8 @@ from dataclasses import dataclass, field
 import math
 from typing import Literal, NotRequired, Protocol, Sequence, TypedDict
 
+from routes.policy import WAYPOINT_TOLERANCE_M
+
 # ---- shared geometry types: signatures read as cycling, not tuple soup ----
 LatLon = tuple[float, float]                # (lat, lon), degrees
 Point = tuple[float, float, float | None]   # (lat, lon, elevation m or None)
@@ -71,6 +73,12 @@ MAJOR_DISPLAY_MIN_M: float = 50.0
 
 
 @dataclass
+class AvoidRoad:
+    name: str
+    ways: list[list[LatLon]]
+
+
+@dataclass
 class RouteSpec:
     address: str
     distance_m: float
@@ -82,6 +90,11 @@ class RouteSpec:
     avoid: list[NoGo] = field(default_factory=list)   # no-go circles
     via: list[LatLon] = field(default_factory=list)   # places to pass through
     via_names: list[str] = field(default_factory=list)
+    # per via: how close counts as passing through it (see policy); vias
+    # without an entry are exact points
+    via_tolerance_m: list[float] = field(default_factory=list)
+    avoid_roads: list[AvoidRoad] = field(default_factory=list)
+    avoid_areas: list[NoGo] | None = None  # None: legacy avoid circles are all areas
     use_strava: bool = False  # explicit personal CLI opt-in; never enabled by web
 
     def __post_init__(self) -> None:
@@ -95,6 +108,12 @@ class RouteSpec:
             raise ValueError("Choose either maximum or minimum climbing.")
         if self.shape not in {"loop", "outback", "both"}:
             raise ValueError("Unsupported route shape.")
+
+    def via_tolerances(self) -> list[float]:
+        """How close counts as passing through each via."""
+        given = self.via_tolerance_m
+        return [given[i] if i < len(given) else WAYPOINT_TOLERANCE_M
+                for i in range(len(self.via))]
 
     @classmethod
     def from_imperial(cls, address: str, miles: float,
@@ -128,7 +147,7 @@ class RouteCandidate:
     shape: str = "loop"
     overlap_frac: float = 0.0  # fraction riding the same road twice (loops)
     natural: bool = False      # passes through vias organically, not anchored
-    major_m: float = 0.0       # distance on motorway/trunk/primary roads
+    major_m: float | None = 0.0  # None means this provider cannot measure it
     points: Track = field(repr=False, default_factory=list)
     gpx_path: str | None = None
     warnings: list[str] = field(default_factory=list)

@@ -23,8 +23,8 @@ import requests
 from routes.despur import _hav_m, corridor_despur, despur
 from routes.elevation import track_ascent
 from routes.execution import checkpoint
-from routes.spec import (EARTH_RADIUS_M, METERS_PER_DEG_LAT,
-                         METERS_PER_DEG_LON_EQ, METERS_PER_MILE, Coord, LatLon,
+from routes.geometry import waypoints_in_order
+from routes.spec import (EARTH_RADIUS_M, METERS_PER_MILE, Coord, LatLon,
                          Leg, NoGo, RouteCandidate, RouteSpec, Track)
 
 
@@ -223,6 +223,14 @@ class BRouterProvider:
     def candidates(self, spec: RouteSpec, lat: float, lon: float,
                    n: int = 6) -> list[RouteCandidate]:
         if spec.via:
+            if spec.shape == "outback":
+                leg = self.route([(lat, lon)] + spec.via, spec.avoid, protect=spec.via)
+                if leg is None:
+                    return []
+                points = leg["points"] + leg["points"][-2::-1]
+                return [RouteCandidate(self.name, "via outback", leg["distance_m"] * 2,
+                                       track_ascent(points), shape="outback", points=points,
+                                       major_m=leg["major_m"] * 2)]
             return self._via_candidates(spec, lat, lon, n)
         out: list[RouteCandidate] = []
         for i in range(n):
@@ -251,27 +259,14 @@ class BRouterProvider:
                 out.append(cand)
         return out
 
-    # A route "goes through" a via if it passes within this distance of it —
-    # towns are areas, and forcing the exact geocoded centroid creates
-    # touch-and-retreat tendrils.
-    VIA_NEAR_M: float = 2000.0
-
-    @staticmethod
-    def _passes_near(points: Track, via: LatLon, radius_m: float) -> bool:
-        for p in points[::4]:
-            dy = (p[0] - via[0]) * METERS_PER_DEG_LAT
-            dx = (p[1] - via[1]) * METERS_PER_DEG_LON_EQ * math.cos(math.radians(via[0]))
-            if dx * dx + dy * dy <= radius_m * radius_m:
-                return True
-        return False
-
     def _via_candidates(self, spec: RouteSpec, lat: float, lon: float,
                         n: int) -> list[RouteCandidate]:
         """Loops through user-required places, two ways:
 
         1. Plain bearing loops swept toward the vias — the most natural
-           shapes; kept only when they pass within VIA_NEAR_M of every via.
-        2. Anchored cycles (start -> vias -> start, both via orders) with one
+           shapes; kept only when they pass through every via (each
+           within its own tolerance: a town is an area, a cafe a point).
+        2. Anchored cycles (start -> ordered vias -> start) with one
            leg bowed outward to reach the target distance — guaranteed to
            hit the vias, used when the natural loops don't.
         """
@@ -296,8 +291,7 @@ class BRouterProvider:
                                    scale=spec.distance_m / cand.distance_m)
                 if retry is not None:
                     cand = retry
-            if all(self._passes_near(cand.points, v, self.VIA_NEAR_M)
-                   for v in vias):
+            if waypoints_in_order(cand.points, vias, spec.via_tolerances()):
                 cand.seed = f"sweep {cand.seed}"
                 cand.overlap_frac = repeated_fraction(cand.points)
                 cand.natural = True
@@ -306,7 +300,7 @@ class BRouterProvider:
             print(f"  {len(out)} natural loop(s) pass through all via places")
 
         # 2: anchored cycles with an adaptive extension bow
-        orders = [vias] + ([list(reversed(vias))] if len(vias) > 1 else [])
+        orders = [vias]
         budget = max(2, n - len(out))
         for order in orders:
             anchors: list[LatLon] = [(lat, lon)] + order
@@ -446,9 +440,12 @@ class ORSProvider:
             if spur_dist > NOTABLE_SPUR_M:
                 print(f"  ors seed {seed}: trimmed "
                       f"{spur_dist / METERS_PER_MILE:.1f} mi of out-and-back spurs")
+            from routes.overlap import repeated_fraction
             out.append(RouteCandidate(
                 provider=self.name,
                 seed=f"seed={seed}",
+                overlap_frac=repeated_fraction(points),
+                major_m=None,
                 distance_m=float(summary["distance"]) - spur_dist,
                 ascent_m=track_ascent(points),
                 points=points,

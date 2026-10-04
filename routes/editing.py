@@ -260,8 +260,8 @@ def route_via_chain(points: Track, targets: Sequence[LatLon],
     for t in targets:
         p = passes(t)
         if not p:
-            print("  a waypoint is too far from the route — skipping it")
-            continue
+            print("  a requested waypoint is too far from the route — route unchanged")
+            return None
         per_target.append((t, p))
     if not per_target:
         print("  none of those places are near the route")
@@ -283,8 +283,7 @@ def route_via_chain(points: Track, targets: Sequence[LatLon],
               "that edit would replace most of the route. Ask for them one "
               "at a time instead.")
         return None
-    idx = sorted(zip(best_combo, (t for t, _ in per_target)))
-    lo_cum, hi_cum = idx[0][0], idx[-1][0]
+    lo_cum, hi_cum = min(best_combo), max(best_combo)
     a = max(0, next(k for k in range(len(points)) if cum[k] >= lo_cum) - 1)
     while a > 0 and lo_cum - cum[a] < buffer_m:
         a -= 1
@@ -292,7 +291,7 @@ def route_via_chain(points: Track, targets: Sequence[LatLon],
             next(k for k in range(len(points)) if cum[k] >= hi_cum))
     while b < len(points) - 1 and cum[b] - hi_cum < buffer_m:
         b += 1
-    ordered = [t for _, t in idx]
+    ordered = [t for t, _ in per_target]  # preserve the rider's stated order
     leg = provider.route([points[a][:2]] + ordered + [points[b][:2]],
                          protect=ordered)
     if leg is None:

@@ -1,7 +1,24 @@
 """Named product tolerances. Distances are metres unless stated otherwise."""
 
+WAYPOINT_TOLERANCE_M = 150.0  # an exact point: router snapping only
+# A place a new route goes "through" is an area: passing within half its
+# narrowest width of the geocoded center counts (a cafe stays at the 150 m
+# floor; a loop sweeping through town need not touch the town hall). Capped
+# so a sprawling county-sized match cannot excuse missing it entirely.
+VIA_PLACE_MAX_TOLERANCE_M = 3000.0
+
+
+def via_place_tolerance_m(extent_m: float | None) -> float:
+    if extent_m is None:
+        return WAYPOINT_TOLERANCE_M
+    return max(WAYPOINT_TOLERANCE_M, min(extent_m / 2, VIA_PLACE_MAX_TOLERANCE_M))
+AVOID_ROAD_TOLERANCE_M = 30.0  # crossing a road is allowed; riding it is not
+DEFAULT_AVOID_RADIUS_M = 800.0
 MIN_AVOID_RADIUS_M = 50.0
 MAX_AVOID_RADIUS_M = 5000.0
+ROAD_LOOKUP_RADIUS_M = 12000.0
+MAX_LOOP_REPEAT_FRACTION = 0.25
+MAX_MAJOR_ROAD_M = 800.0
 EDIT_DISTANCE_TOLERANCE = 0.15
 REP_FIT_TOLERANCE = 0.05
 MAX_PLACES = 8

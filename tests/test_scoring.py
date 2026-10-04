@@ -26,8 +26,43 @@ def test_via_prefers_natural_loops():
     anchored = cand(49.9, 1000, "anchored")          # closer to target
     natural = cand(57.0, 950, "sweep")               # organic but longer
     natural.natural = True
+    anchored.points = natural.points = [(42.99, -89.5, 0), (43.01, -89.5, 0)]
     keepers, _ = rank(spec, [anchored, natural])
     assert keepers[0].seed == "sweep"
+
+
+def test_via_place_is_an_area_not_a_point():
+    """'Through Verona' is satisfied by a loop that sweeps through town
+    without touching the geocoded center; 'via the cafe' still is not."""
+    from routes.policy import via_place_tolerance_m
+    through_town = cand(50, 900, "through")
+    through_town.points = [(42.99, -89.482, 0), (43.01, -89.482, 0)]  # ~1.5 km east
+    misses = cand(50, 900, "misses")
+    misses.points = [(42.99, -89.44, 0), (43.01, -89.44, 0)]          # ~5 km east
+    town = RouteSpec("x", distance_m=50 * 1609.344, via=[(43.0, -89.5)],
+                     via_tolerance_m=[via_place_tolerance_m(5000)])   # 5 km-wide town
+    keepers, rejects = rank(town, [through_town, misses])
+    assert [k.seed for k in keepers] == ["through"]
+    assert rejects[0][0].seed == "misses" and "waypoint" in rejects[0][1]
+
+    cafe = RouteSpec("x", distance_m=50 * 1609.344, via=[(43.0, -89.5)],
+                     via_tolerance_m=[via_place_tolerance_m(20)])     # a building
+    assert not rank(cafe, [through_town])[0]
+
+
+def test_via_tolerance_comes_from_the_geocoded_extent(monkeypatch):
+    from routes import geocode
+    from routes.policy import via_place_tolerance_m
+    town = {"lat": "42.99", "lon": "-89.53", "display_name": "Verona",
+            "boundingbox": ["42.96", "43.02", "-89.58", "-89.49"]}
+    cafe = {"lat": "43.07", "lon": "-89.40", "display_name": "Cafe",
+            "boundingbox": ["43.0699", "43.0701", "-89.4001", "-89.3999"]}
+    for hit in (town, cafe):
+        monkeypatch.setattr(geocode, "_nominatim_get", lambda params, hit=hit: [hit])
+        geocode.geocode(hit["display_name"])
+    assert 2500 < via_place_tolerance_m(geocode.place_extent_m(42.99, -89.53)) <= 3000
+    assert via_place_tolerance_m(geocode.place_extent_m(43.07, -89.40)) == 150
+    assert via_place_tolerance_m(geocode.place_extent_m(1.0, 2.0)) == 150  # unknown
 
 
 def test_overlap_rejected():

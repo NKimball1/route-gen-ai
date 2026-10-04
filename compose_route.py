@@ -26,22 +26,14 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from routes.geocode import geocode
+from routes.constraints import resolve_avoid
 from routes.pipeline import build_providers, compose
 from routes.spec import NoGo, RouteSpec
 
 
 def parse_avoid(items: list[str]) -> list[NoGo]:
-    zones = []
-    for item in items:
-        place, _, radius = item.rpartition(":")
-        if place and radius.replace(".", "").isdigit():
-            radius_m = float(radius)
-        else:
-            place, radius_m = item, 800.0
-        lat, lon, name = geocode(place)
-        print(f"Avoiding: {name} (r={radius_m:.0f} m)")
-        zones.append((lat, lon, radius_m))
-    return zones
+    """Compatibility helper; application callers also retain road constraints."""
+    return resolve_avoid(items).routing_zones
 
 
 def main() -> int:
@@ -71,24 +63,23 @@ def main() -> int:
                     help="include your explicitly configured personal Strava starred climbs")
     args = ap.parse_args()
 
-    avoid = parse_avoid(args.avoid)
+    avoidance = resolve_avoid(args.avoid)
     via, via_names = [], []
     for place in args.via:
         vlat, vlon, vname = geocode(place)
         print(f"Via: {vname}")
         via.append((vlat, vlon))
         via_names.append(place)
-    if via and args.shape != "loop":
-        print("(via places imply a loop; ignoring --shape)")
-        args.shape = "loop"
     shapes = ["loop", "outback"] if args.shape == "both" else [args.shape]
     specs = [RouteSpec.from_imperial(args.address, args.miles, args.max_climb_ft,
-                                     args.maximize_climb, shape=s, avoid=avoid,
+                                     args.maximize_climb, shape=s, avoid=avoidance.routing_zones,
                                      minimize_climb=args.minimize_climb,
                                      via=via, via_names=via_names)
              for s in shapes]
 
     for spec in specs:
+        spec.avoid_roads = avoidance.roads
+        spec.avoid_areas = avoidance.areas
         spec.use_strava = args.use_strava
 
     providers = build_providers(args.provider, args.profile)

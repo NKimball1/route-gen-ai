@@ -170,3 +170,21 @@ def test_resource_limits_are_disclosed_in_the_result(tmp_path, monkeypatch):
     assert "999 to 150" in result["summary"]
     assert "first 8 of 9" in result["summary"]
 
+
+def test_avoiding_a_road_the_route_only_crosses_says_so(tmp_path, monkeypatch):
+    """The ride crosses Cross Street at one intersection: that is not riding
+    it, so the answer is 'nothing to avoid', not 'no detour found'."""
+    from routes.gpx_out import write_track
+    base = storage.artifact_path(str(tmp_path), "ride")
+    # due north along lon -89, a point every ~50 m like routed geometry
+    write_track([(43.0 + i * 0.00045, -89.0, 0) for i in range(23)], "ride", "test", base)
+    cross_street = [[(43.005, -89.01), (43.005, -88.99)]]  # east-west through it
+    monkeypatch.setattr(edit_service, "BRouterProvider", lambda **kw: object())
+    monkeypatch.setattr(edit_service, "geocode_flexible",
+                        lambda *a, **kw: (43.005, -89.0, "Cross Street"))
+    monkeypatch.setattr("routes.road_avoid.fetch_road", lambda *a, **kw: cross_street)
+    out, message, ok = edit_service.run_edit(base, "Cross Street", mode="avoid",
+                                             out_dir=str(tmp_path))
+    assert out is None and ok is False
+    assert "only crosses" in message
+    assert "Could not find" not in message

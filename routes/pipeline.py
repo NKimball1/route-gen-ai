@@ -52,13 +52,14 @@ def _compose(specs: list[RouteSpec], providers: list[Provider],
     if candidates_per < 1:
         raise ValueError("Request at least one routing candidate.")
     spec = specs[0]
+    allowed_shapes = {s.shape for s in specs}
     lat, lon, place = geocode(spec.address)
     print(f"Start: {place} ({lat:.5f}, {lon:.5f})")
 
     # For max-climb requests, scout real climbs (starred Strava segments +
     # our own elevation search) and add candidates routed THROUGH them —
     # blind bearing search finds hilly directions but stops short of summits.
-    if spec.maximize_ascent and not spec.via:
+    if spec.maximize_ascent and not spec.via and "loop" in allowed_shapes:
         brouter = next((p for p in providers
                         if isinstance(p, BRouterProvider)), None)
         if brouter is not None:
@@ -77,7 +78,7 @@ def _compose(specs: list[RouteSpec], providers: list[Provider],
             print(f"Generating {candidates_per} {label} candidates via {p.name}...")
             candidates.extend(p.candidates(s, lat, lon, n=candidates_per))
 
-    keepers, rejects = rank(spec, candidates)
+    keepers, rejects = rank(spec, candidates, allowed_shapes=allowed_shapes)
     for c, reason in rejects:
         print(f"  reject [{c.provider} {c.seed}]: {reason}")
     if not keepers:
@@ -109,7 +110,7 @@ def _compose(specs: list[RouteSpec], providers: list[Provider],
         if parent:
             record_parent(path, parent)
         repeat = "n/a" if c.shape == "outback" else f"{c.overlap_frac:.0%}"
-        major = "0" if c.major_m < MAJOR_DISPLAY_MIN_M else f"{c.major_m / METERS_PER_MILE:.1f}mi"
+        major = "?" if c.major_m is None else "0" if c.major_m < MAJOR_DISPLAY_MIN_M else f"{c.major_m / METERS_PER_MILE:.1f}mi"
         print(f"{i:<5}{c.provider:<9}{c.shape:<9}{c.distance_mi:>7.1f}"
               f"{c.ascent_ft:>10.0f}{repeat:>8}{major:>7}  {path}")
 

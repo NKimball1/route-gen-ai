@@ -8,6 +8,9 @@ from routes.preview import _parse_gpx, build_preview
 from routes.providers import BRouterProvider
 from routes.spec import METERS_PER_FOOT, METERS_PER_MILE, Outcome
 from routes.storage import artifact_path, record_parent, select_route, transaction, note_outcome
+from routes.geometry import waypoints_in_order, segment_projection
+from routes.policy import (WAYPOINT_TOLERANCE_M, ROAD_LOOKUP_RADIUS_M,
+                           AVOID_ROAD_TOLERANCE_M)
 
 OUT_DIR: str = os.path.join("output", "routes")
 # Via edits need room to leave and rejoin the route around the target.
@@ -141,16 +144,22 @@ def _run_edit(route_path: str, place: str | None = None,
         else:
             # a named ROAD is a line — try its real OSM geometry first, so
             # 'avoid Whitney Way' guards the road, not one point on it
-            from routes.road_avoid import (detour_around_road, fetch_road,
-                                           looks_like_road, on_road_meters)
+            from routes.road_avoid import (MIN_RIDING_RUN_M, detour_around_road,
+                                           fetch_road, looks_like_road,
+                                           on_road_meters)
             # only road-like names get road mode: 'Pheasant Branch
             # Conservancy' must not match 'Pheasant Branch Road' by regex
-            road_ways = (fetch_road(place.split(",")[0], zlat, zlon, 12000)
+            road_ways = (fetch_road(place.split(",")[0], zlat, zlon, ROAD_LOOKUP_RADIUS_M)
                          if looks_like_road(place) else [])
+            if looks_like_road(place) and not road_ways:
+                return None, f"Cannot verify avoidance of {place!r}: road geometry is unavailable. The route is unchanged.", False
             road_result = None
+            before_m = 0.0
             if road_ways:
                 before_m = on_road_meters(points, road_ways)
-                if before_m >= 60.0:
+                # under MIN_RIDING_RUN_M is an intersection crossing, which
+                # can measure ~2x the centerline band; riding it is more
+                if before_m >= MIN_RIDING_RUN_M:
                     print(f"Avoiding the road itself: {zname} "
                           f"(riding {before_m / METERS_PER_MILE:.1f} mi along it)")
                     road_result = detour_around_road(points, road_ways,
@@ -160,12 +169,18 @@ def _run_edit(route_path: str, place: str | None = None,
                 result.road_mode = True
                 after_m = on_road_meters(result.points, road_ways)
                 result.fail_reason = result.fail_reason or ""
-                if after_m <= 30.0:
+                if after_m <= AVOID_ROAD_TOLERANCE_M:
                     print("  verified: no longer rides along it")
                 else:
                     result.failed_detours = max(result.failed_detours, 1)
                     result.fail_reason = (f"still rides "
                                           f"{after_m / METERS_PER_MILE:.1f} mi of it")
+            elif road_ways and before_m < MIN_RIDING_RUN_M:
+                return None, (f"The route only crosses {place!r}; it doesn't "
+                              "ride along it, so there is nothing to avoid. "
+                              "The route is unchanged."), False
+            elif road_ways:
+                return None, f"Could not find a verified road detour around {place!r}; the route is unchanged.", False
             else:
                 print(f"Detouring around: {zname} (r={radius_m:.0f} m)")
                 result = detour_around(points, (zlat, zlon, radius_m),
@@ -183,6 +198,10 @@ def _run_edit(route_path: str, place: str | None = None,
     base = os.path.basename(route_path).rsplit(".", 1)[0]
     base = base.split("_edit")[0]
     out_path = artifact_path(out_dir, f"{base}_edit")
+    if mode == "via":
+        requested = targets if places and len(places) > 1 else [(zlat, zlon)]
+        if not waypoints_in_order(result.points, requested, WAYPOINT_TOLERANCE_M):
+            result.warnings.append("The routed geometry did not visit every requested waypoint in order.")
 
     verbs = {"via": "via", "avoid": "around", "extend": "",
              "shorten": "", "move_start": "start at",
@@ -223,8 +242,8 @@ def _run_edit(route_path: str, place: str | None = None,
             message += " Verified: no longer rides along it."
     elif mode == "avoid":
         # verify the OUTCOME: does the final route actually clear the zone?
-        from routes.editing import _dist_m
-        min_d = min(_dist_m(p, (zlat, zlon)) for p in result.points)
+        min_d = min(segment_projection((zlat, zlon), a, b)[0]
+                    for a, b in zip(result.points, result.points[1:]))
         if min_d >= radius_m:
             if ok is True:
                 message += " Verified clear of the area."

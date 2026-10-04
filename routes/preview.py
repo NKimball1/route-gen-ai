@@ -12,6 +12,8 @@ import os
 import re
 import sys
 
+from routes.gpx_in import parse_gpx_text as parse_gpx_text
+
 from routes.spec import (EARTH_RADIUS_M, METERS_PER_FOOT, METERS_PER_MILE,
                          LatLon, Track)
 
@@ -59,48 +61,6 @@ def _haversine_m(a: LatLon, b: LatLon) -> float:
     dlam = math.radians(b[1] - a[1])
     h = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlam / 2) ** 2
     return 2 * EARTH_RADIUS_M * math.asin(math.sqrt(h))
-
-
-_PT_OPEN = re.compile(r'<(?:trkpt|rtept)\s+([^>]*?)\s*(/?)>')
-_PT_CLOSE = re.compile(r'</(?:trkpt|rtept)>')
-_LAT = re.compile(r'''\blat=["']([^"']*)["']''')
-_LON = re.compile(r'''\blon=["']([^"']*)["']''')
-_ELE = re.compile(r'<ele>\s*([^<\s]+)\s*</ele>')
-
-
-def _num(s: str) -> float | None:
-    try:
-        v = float(s)
-    except ValueError:
-        return None
-    return v if math.isfinite(v) else None
-
-
-def parse_gpx_text(text: str) -> Track:
-    """Track or route points from GPX text. Tolerant of uploads: accepts
-    <trkpt> and <rtept>, missing <ele>, self-closing tags, lat/lon
-    attributes in either order and either quote style, and <ele> anywhere
-    inside the point. Points with unparseable or impossible coordinates
-    are skipped — a bad point must never become a crash or a route."""
-    pts: Track = []
-    opens = list(_PT_OPEN.finditer(text))
-    for i, m in enumerate(opens):
-        lat, lon = _LAT.search(m.group(1)), _LON.search(m.group(1))
-        if not lat or not lon:
-            continue
-        la, lo = _num(lat.group(1)), _num(lon.group(1))
-        # uploads are untrusted: '.', '-', 'nan' and lat=943 all reach here
-        if la is None or lo is None or abs(la) > 90 or abs(lo) > 180:
-            continue
-        ele: float | None = None
-        if not m.group(2):  # not self-closing: look inside this point only
-            end = opens[i + 1].start() if i + 1 < len(opens) else len(text)
-            body = text[m.end():end]
-            close = _PT_CLOSE.search(body)
-            e = _ELE.search(body[:close.start()] if close else body)
-            ele = _num(e.group(1)) if e else None
-        pts.append((la, lo, ele))
-    return pts
 
 
 def _parse_gpx(path: str) -> Track:

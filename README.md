@@ -16,7 +16,8 @@ candidates draw on a map with GPX downloads; edits chain against the
 current route. Same brain as the CLI below (routes/service.py).
 Sessions are per-browser (concurrent users never share state), requests
 are rate-limited (env-tunable `RATE_*`), and setting `ROUTEGEN_INVITE_CODE`
-gates the expensive endpoints for a public deploy. Text pages like
+gates all session API reads and writes. Run one Uvicorn worker; jobs and
+rate limits are process-local. Session IDs are bearer credentials, not accounts. Text pages like
 [/about](static/pages/about.html) are drop-in files in `static/pages/`.
 
 CLI:
@@ -36,7 +37,8 @@ owns the search and the judgment, and routing engines are swappable backends.
 1. **Parse** (`routes/nl.py`): one small Claude call (claude-haiku-4-5 by
    default, ~$0.002/request — structured outputs, so responses are
    schema-valid with no retry loop) turns the request into a typed spec:
-   either a route request or an interval-spot request.
+   a new route, edit, interval search, undo, or clarification. Current route
+   length and configured home are context; runtime validation follows parsing.
 2. **Generate**:
    - Routes (`routes/providers.py` + `routes/pipeline.py`): via-points on a
      circle through the start make loops out of point-to-point routing;
@@ -50,14 +52,16 @@ owns the search and the judgment, and routing engines are swappable backends.
 3. **Validate & rank** (`routes/scoring.py`): distance tolerance, climb caps,
    climb maximization — all computed, never judged by the LLM.
 4. **Output**: GPX tracks (`output/routes/`, `output/spots/`) importable to
-   Garmin Connect as courses, plus a Leaflet map preview (`preview.html`).
+   Garmin Connect as courses, plus a Leaflet preview beside each GPX.
+   UUID filenames preserve previous artifacts. `routes/storage.py` commits
+   selection and parent history atomically; cancellation cannot commit late.
 
 Routing backends: **BRouter** — self-hosted (see docs/DEVLOG.md phase 5 for setup)
 (start with `start_brouter.cmd`, port 17777; `BROUTER_URL` in `.env` points
 there, comment it out to fall back to the public brouter.de server, which
-rate-limits) — and **OpenRouteService** (activates when `ORS_API_KEY` is
-set). Geocoding is OSM Nominatim (free). Avoid-zones ("not Verona Rd") ride
-along as BRouter `nogos`.
+rate-limits). **OpenRouteService** is an explicit experimental CLI option
+(`--provider ors` or `all`, plus `ORS_API_KEY`), not an automatic fallback. Geocoding is OSM Nominatim (free). Named-road exclusions use OSM way geometry and are verified after routing;
+area exclusions use circles. Missing road geometry causes a clear refusal.
 
 Profiles: **`fastbike-quiet`** (custom, default when self-hosted)
 penalizes primary/secondary/tertiary — i.e. county-highway-class — roads
@@ -89,10 +93,14 @@ python -m venv .venv
 copy .env.example .env   # or edit .env: API key, home address
 ```
 
-`ask.py` needs `ANTHROPIC_API_KEY`; everything else runs keyless.
+Natural-language requests in `ask.py` and the web app need `ANTHROPIC_API_KEY`.
+Direct BRouter CLIs need no LLM key.
 Dev: `pip install -r requirements-dev.txt` then `python -m pytest tests/`
-and `python -m mypy` (the codebase is fully type-hinted; `mypy.ini` makes an
+and `python -m mypy`; frontend checks: `node --test tests/frontend.test.cjs` (the codebase is fully type-hinted; `mypy.ini` makes an
 unannotated function an error).
+Behind a reverse proxy, run uvicorn with `--proxy-headers --forwarded-allow-ips <proxy IP>`;
+the app no longer reads `X-Forwarded-For` itself (a client could spoof it),
+so without those flags every visitor shares the proxy's rate limit.
 End-to-end smoke test against a running server (local or deployed):
 `python scripts/simulate.py hostile route edits upload cancel spot`.
 
@@ -100,7 +108,7 @@ MIT licensed — see [LICENSE](LICENSE).
 
 ## Editing (generated or uploaded routes)
 
-Upload any GPX (button in the app) or use a generated route, then ask in
+Upload a GPX track or route of one ride (button in the app) or use a generated route, then ask in
 plain English — edits chain, with an undo button and a green/amber/red
 outcome banner that verifies results instead of narrating them:
 
@@ -114,16 +122,29 @@ outcome banner that verifies results instead of narrating them:
   approach), "end at Olbrich Park", "route me from ADDR to the start
   and back at the end"
 - corrective phrasing ("that wasn't what I meant — use Struck St")
-  automatically reverts the bad change before applying the fix
+  builds the correction from the predecessor; failed corrections retain the
+  current route
 
-## Known limits / next steps
+## Reliability and limits
 
-- "Both out and back" edits change one pass of a corridor at a time.
-- Uploaded GPX without elevation data reads low on climbing until edits
-  splice in routed legs.
-- Interval rep sizing assumes fixed speeds; power-based sizing (rider
-  watts + weight) is designed but not built.
-- Strava starred segments feed climb targeting; segment-explore requires
-  Strava's Extended Access tier (application pending a public launch).
-- ORS provider skips out-and-backs, avoid-zones, and via routing
-  (BRouter covers all three).
+The [review fixes and test record](docs/REVIEW_FIXES.md) explain the current
+architecture and coverage. Use the operation selector to explicitly choose a
+new ride, edit, or interval search when the wording is ambiguous.
+
+- Unknown stop counts stay unknown. A hard stop cap requires available OSM
+  control data. Data availability does not guarantee every real-world stop is mapped.
+- Interval power sizing, rider+bike mass, either-direction searches, road names,
+  and stop caps work through natural language as well as the direct CLI.
+- Uploaded GPX may have missing elevation; results disclose that limitation.
+  Segments split at pauses or dropouts (gaps up to 2 km) are joined; separate
+  rides in one file are refused rather than bridged with a straight line.
+- BRouter is the supported default. ORS lacks outbacks, avoid/via support and
+  major-road metadata; unknown metadata is disclosed.
+- Strava starred climbs require personal CLI `--use-strava` and project-local
+  credentials. They are disabled in shared web requests.
+- Job execution and rate limits are single-process. Restarting loses active
+  jobs; committed route history survives. Independent CLI processes must not
+  edit the same session concurrently.
+- Map data, access restrictions, weather and elevation estimates still need
+  rider judgment. The app verifies defined constraints against available data;
+  it cannot certify a route's real-world safety.

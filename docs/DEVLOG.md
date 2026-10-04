@@ -900,3 +900,24 @@ zero issues.
   Overpass) for interval spots.
 - Worldwide coverage: BRouter tiles are the only regional piece; the
   quiet profile's road-class weights are tuned to US tagging.
+
+
+## 2026-10-03 — Code review reliability and architecture pass
+
+Backed up the full dirty working tree before changes. Centralized immutable GPX
+artifacts, atomic session history and cancellation-aware transactions; extracted
+CLI application behavior into shared services. Fixed contextual edit parsing,
+failed corrections, ordered precise waypoints, road exclusions, outback shape,
+interval export geometry/travel direction, unknown metadata and partial-result
+reporting. Secured session reads, quota accounting and UI polling. Optional
+Strava is personal CLI-only; BRouter is the supported default. See
+[REVIEW_FIXES.md](REVIEW_FIXES.md) for the complete finding/test map, evidence and
+remaining limits. Historical evaluation result pages were preserved.
+
+A second review before committing found five regressions in that pass, each
+now pinned by a test that fails on the first version: "through Verona" loops
+rejected by a 150 m via check (via tolerance now comes from the place's own
+bounding box, 150 m for a cafe up to 3 km for a town), recordings split at
+pauses refused as "disconnected", CLIs reading `.env` after import-time
+settings, "avoid X" on a road the ride only crosses reported as a failed
+detour, and a damaged `state.json` locking the whole session.

@@ -191,12 +191,12 @@ def cancel(session: Session = Depends(authorized_session)) -> dict[str, str] | J
 
 def _save_upload(data: bytes, filename: str, session: Session) -> dict[str, Any]:
     from routes.elevation import track_ascent
-    from routes.preview import parse_gpx_text
+    from routes.gpx_in import parse_gpx_text
     from routes.editing import _cum
     from routes.gpx_out import write_track
     with session_mutation(session):
         try:
-            points = parse_gpx_text(data.decode("utf-8-sig"))
+            points = parse_gpx_text(data.decode("utf-8-sig"), strict=True)
         except (ValueError, UnicodeError) as error:
             raise HTTPException(400, str(error)) from error
         if len(points) < 2:

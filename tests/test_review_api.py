@@ -110,8 +110,10 @@ def test_forged_forwarding_header_does_not_change_ip_identity(client, monkeypatc
     assert identities[0] == identities[1]
 
 
-def test_oversize_uploads_preserve_current(client):
+def test_disconnected_and_oversize_uploads_preserve_current(client):
     first = upload(client)
+    disconnected = GPX.replace(b'</trkseg></trk>', b'</trkseg><trkseg><trkpt lat="44" lon="-89"/></trkseg></trk>')
+    assert client.post("/api/upload", headers=HEADERS, files={"file": ("x.gpx", disconnected)}).status_code == 400
     assert client.post("/api/upload", headers=HEADERS, files={"file": ("x.gpx", b'x' * (api.UPLOAD_MAX_BYTES + 1))}).status_code == 413
     assert client.get("/api/current", headers=HEADERS).json()["current"] == first
 

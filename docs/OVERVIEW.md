@@ -20,11 +20,11 @@ download, not a redesign.
   threshold" or "a 4x5 VO2 hill" returns scored stretches of road: right
   length, right gradient character, minimal stop signs and traffic
   lights (verified against OSM data, not guessed).
-- **Conversational route editing** — upload any GPX or use a generated
+- **Conversational route editing** — upload a GPX of one ride or use a generated
   one, then chain edits in plain English: avoid a road, add waypoints,
   extend/shorten, move the start or end, anchor a round trip, connect
   from another address. Undo is a button; corrections ("that wasn't what
-  I meant — use Struck St") automatically revert the bad change first;
+  I meant — use Struck St") build from the preceding version; failed corrections keep the current version;
   and a green/amber/red banner reports the *verified* outcome — the app
   measures whether the edit actually worked (e.g., meters remaining on
   the avoided road) instead of claiming success.
@@ -36,9 +36,10 @@ call per request (claude-haiku-4-5, ~$0.002, structured outputs so the
 response is schema-valid JSON — enum-locked modes, no retry loop, no
 tools, no agentic loop). Everything after the parse is deterministic
 code: generation, validation, ranking, and editing are all computed.
-Results are reproducible and testable offline, and the prompt-injection
-blast radius is tiny — a hostile request can only produce
-weird-but-schema-valid *values*, which are then clamped server-side.
+The geometry and orchestration layers are testable offline with fixed inputs.
+Live parses and external map data can vary. Runtime validation rejects invalid
+request combinations and non-finite values; resource bounds are disclosed.
+A selected operation prevents an edit from silently creating a new ride.
 
 The pipeline is **generator → validator**: synthesize many candidates
 (via-points on a circle through the start for loops, turnaround points
@@ -53,12 +54,12 @@ with stated reasons, not smoothed over.
 | Layer | Tech |
 |---|---|
 | NL parsing | Claude API (claude-haiku-4-5, structured outputs) |
-| Routing engine | **BRouter, self-hosted** (Java, local tiles) with a **custom "fastbike-quiet" profile** that penalizes county-highway-class roads 2–3x; OpenRouteService as a swappable second backend |
-| Geodata | OSM Nominatim (geocoding, with retry/backoff and route-bounded lookups), Overpass API (traffic controls, road geometry, peaks), Strava API (starred segments feed climb targeting) |
+| Routing engine | **BRouter, self-hosted** (Java, local tiles) with a **custom "fastbike-quiet" profile** that penalizes county-highway-class roads 2–3x; OpenRouteService as an explicit experimental CLI backend |
+| Geodata | OSM Nominatim (geocoding, with retry/backoff and route-bounded lookups), Overpass API (traffic controls, road geometry, peaks), Strava starred climbs only with an explicit personal CLI option |
 | Backend | Python, FastAPI, background jobs with live log streaming, per-session workspaces, sliding-window rate limits, invite-code gate |
 | Frontend | Zero-build vanilla JS + Leaflet — one text box, candidates on a map, GPX downloads |
 | Calibration | Routes were ridden with a Garmin; barometric FIT data calibrated the elevation model until predictions sat within instrument spread |
-| Testing | pytest — 90+ offline tests (mocked HTTP, no API keys needed) plus a live NL parse-regression corpus |
+| Testing | pytest — 251 offline tests (mocked HTTP, no API keys needed) plus 24 live parser tests, frontend behavior checks, and live HTTP routing checks |
 
 ## The process
 
@@ -72,3 +73,17 @@ verify by measuring on-road meters); the false "Done" on a failed edit
 stole another's (fix: thread-routed stdout); an LLM parser that hedged
 in its notes but acted anyway. Plus a structured code review against an
 11-type bug taxonomy and a written prompt-injection threat model.
+
+## Application boundaries
+
+`api.py` and the CLI are adapters. `routes/service.py` interprets requests;
+`edit_service.py`, `spot_service.py`, and `pipeline.py` own the application
+workflows. Geometry, routing, and scoring modules do not depend on CLI scripts.
+`policy.py` names product tolerances. `storage.py` owns immutable filenames,
+atomic selection/history, and per-session transactions. `execution.py` joins
+cancellation to the commit boundary. The frontend stays vanilla JavaScript in
+`static/app.js`; no build system or new UI framework was introduced.
+
+See [REVIEW_FIXES.md](REVIEW_FIXES.md) for the issue-to-test map and remaining
+single-process limitations. Saved evaluation reports are historical evidence,
+not automatically updated claims about this revision.

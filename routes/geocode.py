@@ -3,12 +3,13 @@
 Nominatim usage policy: identify yourself with a User-Agent and stay
 under 1 request/second. We make one request per compose run.
 """
+import math
 import time
 from typing import Any
 
 import requests
 
-from routes.spec import BBox
+from routes.spec import BBox, METERS_PER_DEG_LAT, METERS_PER_DEG_LON_EQ
 from routes.request_gate import wait_for_nominatim
 from routes.execution import checkpoint
 
@@ -34,6 +35,32 @@ class GeocodeNotFound(GeocodeError, ValueError):
     """Nominatim answered, and has no such place. Subclasses ValueError so
     the existing fallback chains in geocode_flexible and edit_route, which
     catch ValueError to try a simpler query, keep working unchanged."""
+
+
+# Size of recently geocoded places, keyed by the coordinates we returned.
+# A route "through Verona" needs a town-sized tolerance; "via Colectivo"
+# needs a cafe-sized one. Nominatim's bounding box says which, for free.
+_EXTENT_M: dict[tuple[float, float], float] = {}
+_EXTENT_KEEP: int = 512
+
+
+def _remember_extent(hit: dict[str, Any]) -> None:
+    try:
+        south, north, west, east = (float(v) for v in hit["boundingbox"])
+        lat, lon = float(hit["lat"]), float(hit["lon"])
+    except (KeyError, TypeError, ValueError):
+        return
+    tall = (north - south) * METERS_PER_DEG_LAT
+    wide = (east - west) * METERS_PER_DEG_LON_EQ * math.cos(math.radians(lat))
+    if len(_EXTENT_M) >= _EXTENT_KEEP:
+        _EXTENT_M.pop(next(iter(_EXTENT_M)))
+    _EXTENT_M[(lat, lon)] = min(tall, wide)
+
+
+def place_extent_m(lat: float, lon: float) -> float | None:
+    """Narrowest width of a place this process geocoded to (lat, lon), from
+    Nominatim's bounding box; None if unknown."""
+    return _EXTENT_M.get((lat, lon))
 
 
 RETRIES: int = 3
@@ -79,6 +106,7 @@ def geocode(address: str) -> tuple[float, float, str]:
     if not results:
         raise GeocodeNotFound(f"Could not geocode address: {address!r}")
     hit = results[0]
+    _remember_extent(hit)
     return float(hit["lat"]), float(hit["lon"]), hit["display_name"]
 
 
@@ -92,6 +120,7 @@ def _geocode_bounded(query: str, near: BBox) -> tuple[float, float, str]:
     if not results:
         raise GeocodeNotFound(f"Could not geocode near the route: {query!r}")
     hit = results[0]
+    _remember_extent(hit)
     return float(hit["lat"]), float(hit["lon"]), hit["display_name"]
 
 

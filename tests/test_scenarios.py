@@ -84,14 +84,13 @@ def test_connect_return_ends_and_starts_at_addr_even_for_loop():
 
 # ---- phase 21: via chains, more shapes ----
 
-def test_via_chain_skips_far_waypoint_keeps_near_ones():
+def test_via_chain_refuses_when_a_required_waypoint_is_too_far():
     pts = road(400)
     near1 = (pts[100][0], pts[100][1] + 0.002)
     near2 = (pts[160][0], pts[160][1] + 0.002)
     far = (pts[130][0], pts[130][1] + 0.5)  # ~40 km east
     result = route_via_chain(pts, [near1, far, near2], FakeProvider())
-    assert result is not None
-    assert result.detours == 2  # far one skipped
+    assert result is None  # never silently drop a required waypoint
 
 
 def test_via_chain_three_waypoints_ordered_by_route_position():

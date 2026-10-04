@@ -365,9 +365,10 @@ def _spot_request(iv: dict[str, Any], address: str, workdir: str) -> ServiceResu
 
 def _ride_request(r: dict[str, Any], address: str, home: str | None,
                   workdir: str) -> ServiceResult:
-    from compose_route import parse_avoid
-    from routes.geocode import geocode_flexible
+    from routes.constraints import resolve_avoid
+    from routes.geocode import geocode_flexible, place_extent_m
     from routes.pipeline import build_providers, compose
+    from routes.policy import via_place_tolerance_m
     from routes.spec import RouteSpec
     from routes.edit_service import NEAR_MARGIN_LAT_DEG, NEAR_MARGIN_LON_DEG
     # Resolve relative place names against the actual start, not an invented
@@ -375,8 +376,9 @@ def _ride_request(r: dict[str, Any], address: str, home: str | None,
     lat, lon, _ = _locate(address, "the start")
     near = (lat - NEAR_MARGIN_LAT_DEG, lon - NEAR_MARGIN_LON_DEG,
             lat + NEAR_MARGIN_LAT_DEG, lon + NEAR_MARGIN_LON_DEG)
-    avoid = parse_avoid([_home(p, home) or p for p in r["avoid_places"]])
+    avoidance = resolve_avoid([_home(p, home) or p for p in r["avoid_places"]], near=near, start=(lat, lon))
     via: list[LatLon] = []
+    via_tolerance: list[float] = []
     for place in r["via_places"]:
         resolved = _home(place, home) or place
         try:
@@ -384,16 +386,19 @@ def _ride_request(r: dict[str, Any], address: str, home: str | None,
         except Exception as error:
             raise _lookup_failed(error, "the waypoint", place) from error
         via.append((vlat, vlon))
+        via_tolerance.append(via_place_tolerance_m(place_extent_m(vlat, vlon)))
     down = _router_preflight()
     if down:
         return {"kind": "error", "ok": False, "summary": down, "candidates": []}
-    if via:
-        r["shape"] = "loop"  # via places imply a loop
     shapes = ["loop", "outback"] if r["shape"] == "both" else [r["shape"]]
     specs = [RouteSpec.from_imperial(address, r["distance_miles"], r["max_climb_ft"],
-                                    r["maximize_climb"], shape=shape, avoid=avoid,
+                                    r["maximize_climb"], shape=shape, avoid=avoidance.routing_zones,
                                     minimize_climb=r["minimize_climb"], via=via,
                                     via_names=r["via_places"]) for shape in shapes]
+    for spec in specs:
+        spec.via_tolerance_m = list(via_tolerance)
+        spec.avoid_roads = avoidance.roads
+        spec.avoid_areas = avoidance.areas
     providers = build_providers("brouter")
     keepers = compose(specs, providers, out_dir=workdir)
     candidates: list[CandidateOut] = []
