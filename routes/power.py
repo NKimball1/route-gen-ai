@@ -58,4 +58,5 @@ def seconds_for(length_m: float, grade_pct: float, watts: float,
 def mmss(seconds: float) -> str:
     if not math.isfinite(seconds):
         return "--:--"
-    return f"{int(seconds // 60)}:{int(round(seconds % 60)):02d}"
+    minutes, remainder = divmod(round(seconds), 60)
+    return f"{minutes}:{remainder:02d}"

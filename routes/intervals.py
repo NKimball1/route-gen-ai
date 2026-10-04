@@ -10,9 +10,8 @@ window along each spoke's geometry and score every window:
 - incline spots: mean grade near the sweet spot (~4%), climbing one way,
                  low variability, low turn density
 
-Turn density is a proxy for interruptions (junctions where you'd have to
-brake); true stop-sign/traffic-light data would need an Overpass query and is
-a known upgrade path.
+Turn density is a proxy for junction interruptions. Overpass supplies mapped
+stop signs and signals; unavailable control data remains explicitly unknown.
 """
 import math
 from dataclasses import dataclass, field
@@ -56,7 +55,7 @@ class IntervalSpec:
             v = speed_mps(self.watts, ASSUMED_GRADE_PCT[self.kind],
                           self.total_kg)
             return v * self.rep_minutes * 60.0
-        mph = FLAT_SPEED_MPH if self.kind == "flat" else INCLINE_SPEED_MPH
+        mph = INCLINE_SPEED_MPH if self.kind == "incline" else FLAT_SPEED_MPH
         return self.rep_minutes * mph / 60.0 * METERS_PER_MILE
 
     def rep_fits(self, length_m: float, grade_pct: float) -> bool:
@@ -93,6 +92,8 @@ class IntervalSpot:
     dist_from_start_m: float = 0.0     # riding distance out to the stretch
     bearing: float = 0.0
     score: float = 0.0
+    gpx_path: str | None = None
+    road_name: str = ""
 
     @property
     def length_mi(self) -> float:
@@ -173,7 +174,7 @@ def _window_stats(rs: list[Sample], i: int,
             turn = 360.0 - turn
         if turn > 35.0:
             turns += 1
-    mean = sum(grades) / len(grades) if grades else 0.0
+    mean = (rs[j][2] - rs[i][2]) / length * 100.0 if length else 0.0
     var = (sum((g - mean) ** 2 for g in grades) / len(grades)) if grades else 0.0
     return length, mean, math.sqrt(var), turns / max(length / 1000.0, 0.001)
 
@@ -262,6 +263,9 @@ def find_spots(spec: IntervalSpec, lat: float, lon: float, provider: Router,
     fetched = fetch_controls(lat, lon, spec.travel_radius_m + 2000)
     controls_known = fetched is not None
     controls = fetched or []
+    if spec.max_stops is not None and not controls_known:
+        print("Cannot verify the requested stop limit while traffic-control data is unavailable.")
+        return []
     print(f"  {len(controls)} traffic controls (stops/signals/crossings) in area"
           if controls_known else
           "  warning: no traffic-control data (Overpass down?) — scoring "
@@ -274,7 +278,14 @@ def find_spots(spec: IntervalSpec, lat: float, lon: float, provider: Router,
         leg = provider.route([(lat, lon), dest])
         if leg is None:
             continue
-        rs = _resample(leg["points"])
+        raw_points = leg["points"]
+        if any(p[2] is None for p in raw_points):
+            print("  skipping a spoke with missing elevation data")
+            continue
+        raw_cum = [0.0]
+        for point_a, point_b in zip(raw_points, raw_points[1:]):
+            raw_cum.append(raw_cum[-1] + _hav_m(point_a, point_b))
+        rs = _resample(raw_points)
         if len(rs) < 5:
             continue
         # Surface and road class: flag each resampled point once, then every
@@ -288,7 +299,7 @@ def find_spots(spec: IntervalSpec, lat: float, lon: float, provider: Router,
             bad_next[k] = k if bad else bad_next[k + 1]
         # Map every control onto this spoke once; windows then count hits in
         # their distance range with two bisects.
-        hits = controls_along(rs, controls)
+        hits = controls_along([(p[0], p[1]) for p in raw_points], controls)
         hit_pos = [h[0] for h in hits]
         hit_wt_cum = [0.0]
         for _, w in hits:
@@ -319,6 +330,9 @@ def find_spots(spec: IntervalSpec, lat: float, lon: float, provider: Router,
                 length, mean, std, tpk = _window_stats(rs, i0, j)
                 if length < 0.35 * spec.rep_distance_m or length < 400:
                     continue
+                travel_m = rs[j][3] if spec.kind == "incline" and mean < 0 else rs[i0][3]
+                if travel_m > spec.travel_radius_m:
+                    continue
                 unpaved_frac = (unpaved_cum[j + 1] - unpaved_cum[i0]) / (j - i0 + 1)
                 if unpaved_frac > MAX_UNPAVED_FRAC:
                     continue
@@ -337,12 +351,13 @@ def find_spots(spec: IntervalSpec, lat: float, lon: float, provider: Router,
                 score = _score(spec, length, mean, std, tpk, wt,
                                climb_m_per_km=_window_climb(rs, i0, j)) * (1.0 - busy_frac)
                 spot = IntervalSpot(
-                    points=[p[:3] for p in rs[i0:j + 1]],
+                    points=raw_points[bisect_left(raw_cum, rs[i0][3]):
+                                      bisect_left(raw_cum, rs[j][3]) + 1],
                     length_m=length, mean_grade_pct=mean, grade_std_pct=std,
                     turns_per_km=tpk, n_controls=b - a, control_wt_per_km=wt_per_km,
                     controls_known=controls_known, unpaved_frac=unpaved_frac,
                     busy_frac=busy_frac,
-                    dist_from_start_m=rs[i0][3],
+                    dist_from_start_m=travel_m,
                     bearing=bearing, score=score,
                 )
                 if best_for_spoke is None or spot.score > best_for_spoke.score:
