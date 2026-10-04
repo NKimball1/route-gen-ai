@@ -868,14 +868,116 @@ Verified the honest way: 112 tests, mypy strict, pyflakes, then the
 full end-to-end simulator against the restarted server — six stages,
 zero issues.
 
+## Phase 36 — Measuring the whole claim (2026-09-19 → 09-20)
+
+Thirty-five phases of "ride it, find a problem, fix it, write a test"
+built a lot of trust in individual behaviours and none in the sentence
+at the top of the README: *describe a ride in plain English, get a
+Garmin-ready GPX*. So this phase built the harness that tests that
+sentence instead of its parts.
+
+`evals/` holds a versioned request set (62 requests, expectations frozen
+before any fix, a third of them held out), a runner that drives the
+real `routes.service.handle_request`, and deterministic scorers that
+re-measure the GPX from disk with their own geodesy rather than reading
+the app's report of itself. Three questions are graded separately,
+because conflating them hides where a failure is: did it understand,
+did it produce something valid, does it satisfy the sentence.
+
+Baseline: 55 pass, 7 fail of 62. After the fixes:
+58 pass, 1 partial, 3 fail. Held-out live cases went
+22/25 to 23/25. Total model spend for the whole
+campaign, every run included: $0.44.
+
+**Four defects, and three of them were the same defect.**
+
+1. *A new ride request answered as an edit.* "I hate riding on Whitney
+   Way — 22 mile loop from the Memorial Union without it" parsed as an
+   `edit_route`/avoid, the distance was dropped (the edit branch has no
+   such field), and the user got "No current route to edit". The prompt
+   introduced avoid-mode with the example "I don't like riding Y" and
+   never said what decides between a new route and an edit. Fixed with
+   one rule at the top: a stated length for the *whole ride* means a
+   new route, even alongside avoid/via language; no stated length means
+   an edit, and never invent a distance to make it one.
+2. *A dead router told the rider to change their request.* The log said
+   ROUTING SERVER UNREACHABLE; the banner said "try a looser target or
+   different distance". The provider now records that the server never
+   answered, and a one-second TCP preflight replaces a dozen
+   two-minute timeouts.
+3. *A geocoder failure escaped as a stack trace* — `ConnectionError:
+   HTTPConnectionPool(host=…)` in the UI. geocode.py now names its two
+   failure modes (`GeocodeUnavailable`, `GeocodeNotFound`) and the
+   service turns both into sentences. My first attempt wrapped only the
+   waypoint lookups and missed the start address, which is geocoded
+   deeper in the pipeline; the test for that path is now the one that
+   matters.
+4. *An interval stretch too short for the rep, presented without the
+   caveat.* 5.5 mi of road for a rep needing 6.7. Lapping is a
+   supported answer — the CLI had printed the lap count all along; the
+   web label dropped it.
+
+Two, three and four are one bug wearing three hats: the program knew
+the truth and handed the user a sentence that did not contain it. No
+assertion on a return value would have caught any of them. They were
+found by writing down what the user should *see* and checking the
+user-visible string against it.
+
+**What did not get fixed, and why.** The held-out set contained the
+mirror image of defect 1: "route me through Vilas Park and then the
+Arboretum" states no length, so it is an edit — but it parsed as a new
+route with an invented distance and replaced an 18-mile ride with a
+10-mile one. The prompt rule moved that from a reliable failure to a
+coin flip (3 of 5 across repeats), not to a fix. The durable answer is
+not a better prompt: the parser cannot know whether a current route
+exists. It is to record a new route's parent so undo can recover the
+ride you had. Designed, not built — the only evidence for it sits in
+the held-out set, and spending that to chase one more green row would
+cost the campaign its one clean measurement.
+
+**Variability, measured rather than assumed.** Everything after the
+parse is deterministic, so nine requests were parsed five times each
+with the cache off. 5 of 9 were identical on every
+constraint-driving field, and the split is clean: every crisply
+specified request was stable; every unstable one underspecifies the
+ride. "I want to go for a bike ride" produced four different distances
+in five runs, one of them zero miles (the clamp caught it).
+
+**The harness was wrong three times before it was right**, and all
+three corrections predate any product change. A 600 m gap threshold
+flagged three good routes — Wisconsin's section grid produces
+dead-straight mile-long roads the router emits as one segment.
+Requiring an off-axis turn at one end still flagged grid corners.
+Requiring it at both ends still flagged a grid *jog*: south, half a
+mile west, south again, 90° at both ends, no vertex between. Geometry
+cannot answer this, so the check now asks the router: if a road
+connects the two ends in roughly the straight-line distance, it is a
+road. On the two flagged segments it answered 805 m by road against
+802 m straight. Separately, the out-and-back detector scored an exact
+palindrome at 0.6% because it compared by index and drifted out of
+phase; it now compares by arc length. Each correction is pinned by a
+test asserting both that the good geometry passes and that the broken
+geometry it exists to catch still fails.
+
+Cheap to rerun on purpose: parses are cached by (model, *system
+prompt*, text) — the prompt is in the key because leaving it out once
+silently scored a prompt fix against stale parses — and scoring is a
+pure function of saved records, so `python -m evals.rescore` re-grades
+every run under identical rules when a tolerance changes.
+
+The whole thing is written up as a case study at
+[evals/site/routegen-evals.html](../evals/site/routegen-evals.html),
+built from `summary.json` so no number on the page is maintained by
+hand.
+
 ## Testing & verification practices that emerged
 
-- 112 offline tests (no API keys, mocked HTTP): despurring, interval
+- 152 offline tests (no API keys, mocked HTTP): despurring, interval
   scoring (including the exact field-complaint cases), overlap
   detection, ranking, control mapping, every edit operation, road-line
   avoidance, geocode fallbacks and retries, rate limits, LLM-output
-  clamps, undo lineage, cancellation — plus a 16-phrase live NL
-  parse-regression corpus (opt-in, ~3 cents a run) rerun after any
+  clamps, undo lineage, cancellation — plus a 20-phrase live NL
+  parse-regression corpus (opt-in, ~5 cents a run) rerun after any
   prompt or schema change.
 - Every field complaint became a regression test before the fix shipped.
 - Independent re-verification of winners (e.g., re-fetching traffic

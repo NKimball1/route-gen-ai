@@ -1,0 +1,176 @@
+{
+ "id": "D04",
+ "split": "dev",
+ "category": "distance_target",
+ "tier": "live",
+ "scope": "supported",
+ "session": null,
+ "step": null,
+ "text": "something around an hour and a half of riding from Olin Park, Madison WI",
+ "start": "Olin Park, Madison WI",
+ "why": "Duration instead of distance -- the prompt instructs the model to assume 16 mph.",
+ "expect": {
+  "request_type": "route",
+  "outcome": "success",
+  "parse": {
+   "route.distance_miles": {
+    "range": [
+     20,
+     28
+    ]
+   }
+  },
+  "route": {
+   "target_miles": "from_parse",
+   "loop": null
+  }
+ },
+ "verdict": "pass",
+ "fail_reasons": [],
+ "parsed": {
+  "request_type": "route",
+  "address": "Olin Park, Madison WI",
+  "route": {
+   "distance_miles": 24,
+   "max_climb_ft": null,
+   "maximize_climb": false,
+   "minimize_climb": false,
+   "shape": "both",
+   "avoid_places": [],
+   "via_places": []
+  },
+  "interval": null,
+  "edit": null,
+  "notes": "Assuming 16 mph average pace for 90 minutes yields approximately 24 miles."
+ },
+ "notes": "Assuming 16 mph average pace for 90 minutes yields approximately 24 miles.",
+ "outcome_ok": true,
+ "summary": "10 route(s) \u2014 best: #1 outback: 24.0 mi, 964 ft, 0% repeat",
+ "kind": "route",
+ "n_candidates": 10,
+ "candidate_labels": [
+  "#1 outback: 24.0 mi, 964 ft, 0% repeat",
+  "#2 outback: 23.5 mi, 727 ft, 0% repeat",
+  "#3 outback: 23.5 mi, 792 ft, 0% repeat",
+  "#4 outback: 23.2 mi, 505 ft, 0% repeat",
+  "#5 loop: 25.1 mi, 977 ft, 1% repeat",
+  "#6 loop: 25.2 mi, 946 ft, 0% repeat",
+  "#7 outback: 25.2 mi, 998 ft, 0% repeat",
+  "#8 loop: 22.5 mi, 757 ft, 0% repeat",
+  "#9 loop: 20.9 mi, 774 ft, 1% repeat, 0.2 mi major",
+  "#10 loop: 27.4 mi, 1010 ft, 1% repeat"
+ ],
+ "error": null,
+ "traceback": "",
+ "seconds": 19.04,
+ "parse_cached": false,
+ "parse_tokens": {
+  "input": 2437,
+  "output": 112
+ },
+ "measured": {
+  "gpx_path": "evals/results/postfix/work/D04/route_24mi_ride_1_outback_brouter.gpx",
+  "gpx_valid": true,
+  "gpx_error": null,
+  "n_points": 1241,
+  "distance_mi": 23.93,
+  "app_reported_mi": 24.0,
+  "ascent_ft_app": 964.0,
+  "ascent_ft_independent": 949.0,
+  "loop_closure_m": 0.0,
+  "start_proximity_m": 0.3,
+  "end_proximity_m": 0.3,
+  "via_distances_m": {},
+  "avoid_on_road_m": {},
+  "max_point_gap_m": 308.8,
+  "duplicate_points": 0,
+  "repeat_frac": 0.476,
+  "mirror_frac": 1.0,
+  "teleports": [],
+  "gaps_confirmed_road": [],
+  "gaps_unknown": [],
+  "has_elevation": true
+ },
+ "checks": [
+  {
+   "name": "outcome.no_crash",
+   "status": "pass",
+   "hard": true,
+   "detail": "handled without an unhandled exception",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "outcome.succeeded",
+   "status": "pass",
+   "hard": true,
+   "detail": "ok=True, 10 candidate(s): 10 route(s) \u2014 best: #1 outback: 24.0 mi, 964 ft, 0% repeat",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.request_type",
+   "status": "pass",
+   "hard": true,
+   "detail": "got 'route', expected 'route'",
+   "value": "route",
+   "limit": "route"
+  },
+  {
+   "name": "parse.distance_miles",
+   "status": "pass",
+   "hard": true,
+   "detail": "24 vs [20, 28]",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "gpx.valid",
+   "status": "pass",
+   "hard": true,
+   "detail": "well-formed, 1241 points, elevation present",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "route.distance",
+   "status": "pass",
+   "hard": true,
+   "detail": "23.93 mi vs target 24 mi (+0.3%, tolerance +/-15%)",
+   "value": 23.93,
+   "limit": 24
+  },
+  {
+   "name": "route.starts_where_asked",
+   "status": "pass",
+   "hard": true,
+   "detail": "begins 0 m from the geocoded start (limit 600 m)",
+   "value": 0.3,
+   "limit": 600.0
+  },
+  {
+   "name": "geometry.continuous",
+   "status": "pass",
+   "hard": true,
+   "detail": "continuous: no breaks. Longest single segment 309 m",
+   "value": 0,
+   "limit": 0
+  },
+  {
+   "name": "geometry.repeat",
+   "status": "info",
+   "hard": false,
+   "detail": "48% repeated road, but the track is 100% its own reverse -- this is an out-and-back, where repetition is the shape, not a defect",
+   "value": 0.476,
+   "limit": null
+  }
+ ],
+ "log_tail": "Parsed (claude-haiku-4-5, 2437in/112out tokens): {'request_type': 'route', 'address': 'Olin Park, Madison WI', 'route': {'distance_miles': 24, 'max_climb_ft': None, 'maximize_climb': False, 'minimize_climb': False, 'shape': 'both', 'avoid_places': [], 'via_places': []}, 'notes': 'Assuming 16 mph average pace for 90 minutes yields approximately 24 miles.'}\nNote: couldn't map: Assuming 16 mph average pace for 90 minutes yields approximately 24 miles.\n(skipping ors: ORS_API_KEY not set)\nStart: Olin Park, 1155, Madison, Dane County, Wisconsin, 53715, United States (43.05494, -89.37807)\nGenerating 6 loop candidates via brouter...\n  brouter: trimmed 5.9 mi of out-and-back spurs\n  brouter: trimmed 4.0 mi of out-and-back spurs\n  brouter: trimmed 5.2 mi of out-and-back spurs\n  brouter: trimmed 2.6 mi of out-and-back spurs\n  brouter: trimmed 3.6 mi of out-and-back spurs\n  brouter: trimmed 2.1 mi of out-and-back spurs\n  brouter: trimmed 4.4 mi of out-and-back spurs\n  brouter: trimmed 5.1 mi of out-and-back spurs\n  brouter: trimmed 9.8 mi of out-and-back spurs\n  brouter: trimmed 1.0 mi of out-and-back spurs\n  brouter: trimmed 1.5 mi of out-and-back spurs\n  brouter: trimmed 0.3 mi of out-and-back spurs\n  brouter: trimmed 0.6 mi of out-and-back spurs\n  brouter: trimmed 0.3 mi of out-and-back spurs\n  brouter: trimmed 1.2 mi of out-and-back spurs\n  brouter: trimmed 4.4 mi of out-and-back spurs\n  brouter: trimmed 2.4 mi of out-and-back spurs\nGenerating 6 outback candidates via brouter...\n  reject [brouter bearing=120 cw scale=1.14]: distance 18.0 mi outside \u00b115% of target\n  reject [brouter outback bearing=0 scale=0.90]: 0.7 mi on major highways (trunk/primary)\n\nrank provider shape      miles  climb ft  repeat  major  file\n1    brouter  outback     24.0       964     n/a      0  evals\\results\\postfix\\work\\D04\\route_24mi_ride_1_outback_brouter.gpx\n2    brouter  outback     23.5       727     n/a      0  evals\\results\\postfix\\work\\D04\\route_24mi_ride_2_outback_brouter.gpx\n3    brouter  outback     23.5       792     n/a      0  evals\\results\\postfix\\work\\D04\\route_24mi_ride_3_outback_brouter.gpx\n4    brouter  outback     23.2       505     n/a      0  evals\\results\\postfix\\work\\D04\\route_24mi_ride_4_outback_brouter.gpx\n5    brouter  loop        25.1       977      1%      0  evals\\results\\postfix\\work\\D04\\route_24mi_ride_5_loop_brouter.gpx\n6    brouter  loop        25.2       946      0%      0  evals\\results\\postfix\\work\\D04\\route_24mi_ride_6_loop_brouter.gpx\n7    brouter  outback     25.2       998     n/a      0  evals\\results\\postfix\\work\\D04\\route_24mi_ride_7_outback_brouter.gpx\n8    brouter  loop        22.5       757      0%      0  evals\\results\\postfix\\work\\D04\\route_24mi_ride_8_loop_brouter.gpx\n9    brouter  loop        20.9       774      1%  0.2mi  evals\\results\\postfix\\work\\D04\\route_24mi_ride_9_loop_brouter.gpx\n10   brouter  loop        27.4      1010      1%      0  evals\\results\\postfix\\work\\D04\\route_24mi_ride_10_loop_brouter.gpx\nwrote evals\\results\\postfix\\work\\D04\\preview.html (10 routes)\n\nBest: rank 1 \u2014 24.0 mi, 964 ft climbing (brouter, outback bearing=60 scale=1.00)\n",
+ "run": "postfix",
+ "repeat": 1,
+ "cases_version": "routegen-eval-v1",
+ "timestamp": "2026-09-20T10:11:19",
+ "verdict_history": [],
+ "scorer_error": null,
+ "rescored_at": "2026-09-20T11:30:42"
+}

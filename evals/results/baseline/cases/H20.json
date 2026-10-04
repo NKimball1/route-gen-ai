@@ -1,0 +1,173 @@
+{
+ "id": "H20",
+ "split": "heldout",
+ "category": "edit",
+ "tier": "live",
+ "scope": "supported",
+ "session": "E3",
+ "step": 3,
+ "text": "add about 8 more miles to it",
+ "start": "Wisconsin State Capitol, Madison WI",
+ "why": "Held out: extend applied to an already-edited route (chained edits must compose).",
+ "expect": {
+  "request_type": "edit_route",
+  "outcome": "success",
+  "parse": {
+   "edit.mode": {
+    "in": [
+     "extend"
+    ]
+   },
+   "edit.miles_delta": {
+    "range": [
+     7,
+     9
+    ]
+   }
+  },
+  "route": {
+   "loop": null,
+   "distance_delta_mi": 8,
+   "distance_delta_tolerance_mi": 4,
+   "_before_mi": 23.51
+  }
+ },
+ "verdict": "pass",
+ "fail_reasons": [],
+ "parsed": {
+  "request_type": "edit_route",
+  "address": null,
+  "route": null,
+  "interval": null,
+  "edit": {
+   "mode": "extend",
+   "place": null,
+   "places": null,
+   "radius_m": 1000,
+   "miles_delta": 8,
+   "target_miles": null,
+   "connect_return": false,
+   "revert_first": false
+  },
+  "notes": ""
+ },
+ "notes": "",
+ "outcome_ok": true,
+ "summary": "Done \u2014  extend 8mi: now 31.3 mi (+7.8 mi).",
+ "kind": "edit",
+ "n_candidates": 2,
+ "error": null,
+ "traceback": "",
+ "seconds": 4.75,
+ "parse_cached": false,
+ "parse_tokens": {
+  "input": 2192,
+  "output": 92
+ },
+ "measured": {
+  "gpx_path": "evals/results/baseline/work/E3/route_20mi_ride_1_loop_brouter_edit2.gpx",
+  "gpx_valid": true,
+  "gpx_error": null,
+  "n_points": 1747,
+  "distance_mi": 31.33,
+  "app_reported_mi": 31.3,
+  "ascent_ft_app": 1196.0,
+  "ascent_ft_independent": 1264.0,
+  "loop_closure_m": 4497.6,
+  "start_proximity_m": 0.1,
+  "end_proximity_m": 4497.5,
+  "via_distances_m": {},
+  "avoid_on_road_m": {},
+  "max_point_gap_m": 382.6,
+  "duplicate_points": 4,
+  "repeat_frac": 0.105,
+  "mirror_frac": 0.0,
+  "teleports": [],
+  "gaps_confirmed_road": [],
+  "gaps_unknown": [],
+  "has_elevation": true
+ },
+ "checks": [
+  {
+   "name": "outcome.no_crash",
+   "status": "pass",
+   "hard": true,
+   "detail": "handled without an unhandled exception",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "outcome.succeeded",
+   "status": "pass",
+   "hard": true,
+   "detail": "ok=True, 2 candidate(s): Done \u2014  extend 8mi: now 31.3 mi (+7.8 mi).",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.request_type",
+   "status": "pass",
+   "hard": true,
+   "detail": "got 'edit_route', expected 'edit_route'",
+   "value": "edit_route",
+   "limit": "edit_route"
+  },
+  {
+   "name": "parse.mode",
+   "status": "pass",
+   "hard": true,
+   "detail": "'extend' vs allowed ['extend']",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.miles_delta",
+   "status": "pass",
+   "hard": true,
+   "detail": "8 vs [7, 9]",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "gpx.valid",
+   "status": "pass",
+   "hard": true,
+   "detail": "well-formed, 1747 points, elevation present",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "route.distance_delta",
+   "status": "pass",
+   "hard": true,
+   "detail": "grew +7.82 mi, asked for +8.0 mi (tolerance +/-4 mi)",
+   "value": 7.82,
+   "limit": 8
+  },
+  {
+   "name": "geometry.continuous",
+   "status": "pass",
+   "hard": true,
+   "detail": "continuous: no breaks. Longest single segment 383 m",
+   "value": 0,
+   "limit": 0
+  },
+  {
+   "name": "geometry.repeat",
+   "status": "pass",
+   "hard": false,
+   "detail": "10% of the route rides the same road twice (the app rejects loops above 25%); mirror score 0% -- not an out-and-back",
+   "value": 0.105,
+   "limit": 0.25
+  }
+ ],
+ "log_tail": "Parsed (claude-haiku-4-5, 2192in/92out tokens): {'request_type': 'edit_route', 'edit': {'mode': 'extend', 'place': None, 'places': None, 'radius_m': 1000, 'miles_delta': 8, 'target_miles': None, 'connect_return': False, 'revert_first': False}}\nEditing: evals\\results\\baseline\\work\\E3\\route_20mi_ride_1_loop_brouter_edit1.gpx\nExtending by ~8 mi\n  brouter: trimmed 0.3 mi of out-and-back spurs\n  brouter: trimmed 4.5 mi of out-and-back spurs\n  brouter: trimmed 4.8 mi of out-and-back spurs\n  brouter: trimmed 3.5 mi of out-and-back spurs\n  brouter: trimmed 5.7 mi of out-and-back spurs\n  brouter: trimmed 2.5 mi of out-and-back spurs\n  brouter: trimmed 7.3 mi of out-and-back spurs\n  brouter: trimmed 2.9 mi of out-and-back spurs\n  brouter: trimmed 9.3 mi of out-and-back spurs\nwrote evals\\results\\baseline\\work\\E3\\preview.html (2 routes)\nReplaced 1.9 mi with 9.8 mi across 1 detour(s) (+7.8 mi)\nEdited route: 31.3 mi, 1196 ft, 10% repeat -> evals\\results\\baseline\\work\\E3\\route_20mi_ride_1_loop_brouter_edit2.gpx\nDone \u2014  extend 8mi: now 31.3 mi (+7.8 mi).\n",
+ "run": "baseline",
+ "repeat": 1,
+ "cases_version": "routegen-eval-v1",
+ "timestamp": "2026-09-20T09:48:39",
+ "verdict_history": [],
+ "rescored_at": "2026-09-20T11:30:42",
+ "scorer_error": null,
+ "candidate_labels": []
+}

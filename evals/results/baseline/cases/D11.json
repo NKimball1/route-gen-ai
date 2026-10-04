@@ -1,0 +1,197 @@
+{
+ "id": "D11",
+ "split": "dev",
+ "category": "climb_min",
+ "tier": "live",
+ "scope": "supported",
+ "session": null,
+ "step": null,
+ "text": "not much climbing, about 25 miles, from Sun Prairie WI",
+ "start": "Sun Prairie, WI",
+ "why": "SOFT climbing language -- the prompt maps 'not much climbing' to roughly 1000 ft for rides up to 35 mi.",
+ "expect": {
+  "request_type": "route",
+  "outcome": "success",
+  "parse": {
+   "route.distance_miles": {
+    "range": [
+     23,
+     27
+    ]
+   },
+   "route.max_climb_ft": {
+    "range": [
+     500,
+     1600
+    ]
+   }
+  },
+  "route": {
+   "target_miles": 25,
+   "loop": null,
+   "max_climb_ft": "from_parse"
+  }
+ },
+ "verdict": "pass",
+ "fail_reasons": [],
+ "parsed": {
+  "request_type": "route",
+  "address": "Sun Prairie, WI",
+  "route": {
+   "distance_miles": 25,
+   "max_climb_ft": 1000,
+   "maximize_climb": false,
+   "minimize_climb": false,
+   "shape": "both",
+   "avoid_places": [],
+   "via_places": []
+  },
+  "interval": null,
+  "edit": null,
+  "notes": ""
+ },
+ "notes": "",
+ "outcome_ok": true,
+ "summary": "9 route(s) \u2014 best: #1 outback: 25.1 mi, 695 ft, 0% repeat",
+ "kind": "route",
+ "n_candidates": 9,
+ "error": null,
+ "traceback": "",
+ "seconds": 6.22,
+ "parse_cached": false,
+ "parse_tokens": {
+  "input": 2198,
+  "output": 91
+ },
+ "measured": {
+  "gpx_path": "evals/results/baseline/work/D11/route_25mi_ride_1_outback_brouter.gpx",
+  "gpx_valid": true,
+  "gpx_error": null,
+  "n_points": 1611,
+  "distance_mi": 25.04,
+  "app_reported_mi": 25.1,
+  "ascent_ft_app": 695.0,
+  "ascent_ft_independent": 677.0,
+  "loop_closure_m": 0.0,
+  "start_proximity_m": 3.4,
+  "end_proximity_m": 3.4,
+  "via_distances_m": {},
+  "avoid_on_road_m": {},
+  "max_point_gap_m": 301.6,
+  "duplicate_points": 0,
+  "repeat_frac": 0.484,
+  "mirror_frac": 1.0,
+  "teleports": [],
+  "gaps_confirmed_road": [],
+  "gaps_unknown": [],
+  "has_elevation": true
+ },
+ "checks": [
+  {
+   "name": "outcome.no_crash",
+   "status": "pass",
+   "hard": true,
+   "detail": "handled without an unhandled exception",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "outcome.succeeded",
+   "status": "pass",
+   "hard": true,
+   "detail": "ok=True, 9 candidate(s): 9 route(s) \u2014 best: #1 outback: 25.1 mi, 695 ft, 0% repeat",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.request_type",
+   "status": "pass",
+   "hard": true,
+   "detail": "got 'route', expected 'route'",
+   "value": "route",
+   "limit": "route"
+  },
+  {
+   "name": "parse.distance_miles",
+   "status": "pass",
+   "hard": true,
+   "detail": "25 vs [23, 27]",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.max_climb_ft",
+   "status": "pass",
+   "hard": true,
+   "detail": "1000 vs [500, 1600]",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "gpx.valid",
+   "status": "pass",
+   "hard": true,
+   "detail": "well-formed, 1611 points, elevation present",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "route.distance",
+   "status": "pass",
+   "hard": true,
+   "detail": "25.04 mi vs target 25 mi (+0.2%, tolerance +/-15%)",
+   "value": 25.04,
+   "limit": 25
+  },
+  {
+   "name": "route.starts_where_asked",
+   "status": "pass",
+   "hard": true,
+   "detail": "begins 3 m from the geocoded start (limit 600 m)",
+   "value": 3.4,
+   "limit": 600.0
+  },
+  {
+   "name": "route.climb_cap",
+   "status": "pass",
+   "hard": true,
+   "detail": "695 ft vs cap 1000 ft (app model; independent unsmoothed sum 677 ft)",
+   "value": 695.0,
+   "limit": 1000
+  },
+  {
+   "name": "geometry.continuous",
+   "status": "pass",
+   "hard": true,
+   "detail": "continuous: no breaks. Longest single segment 302 m",
+   "value": 0,
+   "limit": 0
+  },
+  {
+   "name": "geometry.repeat",
+   "status": "info",
+   "hard": false,
+   "detail": "48% repeated road, but the track is 100% its own reverse -- this is an out-and-back, where repetition is the shape, not a defect",
+   "value": 0.484,
+   "limit": null
+  }
+ ],
+ "log_tail": "Parsed (claude-haiku-4-5, 2198in/91out tokens): {'request_type': 'route', 'address': 'Sun Prairie, WI', 'route': {'distance_miles': 25, 'max_climb_ft': 1000, 'maximize_climb': False, 'minimize_climb': False, 'shape': 'both', 'avoid_places': [], 'via_places': []}}\n(skipping ors: ORS_API_KEY not set)\nStart: Sun Prairie, Dane County, Wisconsin, United States (43.18328, -89.21283)\nGenerating 6 loop candidates via brouter...\n  brouter: trimmed 3.2 mi of out-and-back spurs\n  brouter: trimmed 3.2 mi of out-and-back spurs\n  brouter: trimmed 13.1 mi of out-and-back spurs\n  brouter: trimmed 8.7 mi of out-and-back spurs\n  brouter: trimmed 1.8 mi of out-and-back spurs\n  brouter: trimmed 13.3 mi of out-and-back spurs\n  brouter: trimmed 3.0 mi of out-and-back spurs\n  brouter: trimmed 12.1 mi of out-and-back spurs\n  brouter: trimmed 1.0 mi of out-and-back spurs\n  brouter: trimmed 3.8 mi of out-and-back spurs\n  brouter: trimmed 4.8 mi of out-and-back spurs\n  brouter: trimmed 2.0 mi of out-and-back spurs\n  brouter: trimmed 8.0 mi of out-and-back spurs\nGenerating 6 outback candidates via brouter...\n  reject [brouter bearing=60 ccw scale=1.18]: ascent 1010 ft exceeds cap\n  reject [brouter bearing=180 ccw scale=1.00]: ascent 1049 ft exceeds cap\n  reject [brouter bearing=240 cw scale=1.37]: ascent 1001 ft exceeds cap\n\nrank provider shape      miles  climb ft  repeat  major  file\n1    brouter  outback     25.1       695     n/a      0  evals\\results\\baseline\\work\\D11\\route_25mi_ride_1_outback_brouter.gpx\n2    brouter  outback     24.7       790     n/a  0.1mi  evals\\results\\baseline\\work\\D11\\route_25mi_ride_2_outback_brouter.gpx\n3    brouter  loop        24.5       764      0%      0  evals\\results\\baseline\\work\\D11\\route_25mi_ride_3_loop_brouter.gpx\n4    brouter  outback     26.2       870     n/a      0  evals\\results\\baseline\\work\\D11\\route_25mi_ride_4_outback_brouter.gpx\n5    brouter  outback     23.3       779     n/a      0  evals\\results\\baseline\\work\\D11\\route_25mi_ride_5_outback_brouter.gpx\n6    brouter  loop        23.2       788      0%  0.1mi  evals\\results\\baseline\\work\\D11\\route_25mi_ride_6_loop_brouter.gpx\n7    brouter  loop        22.3       767      4%      0  evals\\results\\baseline\\work\\D11\\route_25mi_ride_7_loop_brouter.gpx\n8    brouter  outback     21.8       832     n/a      0  evals\\results\\baseline\\work\\D11\\route_25mi_ride_8_outback_brouter.gpx\n9    brouter  outback     21.7       717     n/a      0  evals\\results\\baseline\\work\\D11\\route_25mi_ride_9_outback_brouter.gpx\nwrote evals\\results\\baseline\\work\\D11\\preview.html (9 routes)\n\nBest: rank 1 \u2014 25.1 mi, 695 ft climbing (brouter, outback bearing=240 scale=1.00)\n",
+ "run": "baseline",
+ "repeat": 1,
+ "cases_version": "routegen-eval-v1",
+ "timestamp": "2026-09-20T09:33:59",
+ "verdict_history": [
+  {
+   "was": "partial",
+   "now": "pass",
+   "was_reasons": [
+    "geometry.repeat"
+   ],
+   "at": "2026-09-20T09:53:31"
+  }
+ ],
+ "rescored_at": "2026-09-20T11:30:41",
+ "scorer_error": null,
+ "candidate_labels": []
+}

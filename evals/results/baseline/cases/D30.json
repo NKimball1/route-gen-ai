@@ -1,0 +1,173 @@
+{
+ "id": "D30",
+ "split": "dev",
+ "category": "edit",
+ "tier": "live",
+ "scope": "supported",
+ "session": "E1",
+ "step": 4,
+ "text": "that wasn't what I meant -- send it past the Memorial Union instead",
+ "start": "Olin Park, Madison WI",
+ "why": "Corrective phrasing must set revert_first, so the fix applies to the version BEFORE the bad change, not on top of it.",
+ "expect": {
+  "request_type": "edit_route",
+  "outcome": "success",
+  "parse": {
+   "edit.mode": {
+    "in": [
+     "via"
+    ]
+   },
+   "edit.revert_first": {
+    "equals": true
+   }
+  },
+  "route": {
+   "loop": null,
+   "via": [
+    "Memorial Union, Madison WI"
+   ],
+   "via_tolerance_m": 1500
+  }
+ },
+ "verdict": "pass",
+ "fail_reasons": [],
+ "parsed": {
+  "request_type": "edit_route",
+  "address": null,
+  "route": null,
+  "interval": null,
+  "edit": {
+   "mode": "via",
+   "place": "Memorial Union",
+   "places": null,
+   "radius_m": 1500,
+   "miles_delta": null,
+   "target_miles": null,
+   "connect_return": false,
+   "revert_first": true
+  },
+  "notes": ""
+ },
+ "notes": "",
+ "outcome_ok": true,
+ "summary": "Done \u2014 via Memorial Union: now 27.1 mi (+0.0 mi).",
+ "kind": "edit",
+ "n_candidates": 2,
+ "error": null,
+ "traceback": "",
+ "seconds": 2.36,
+ "parse_cached": false,
+ "parse_tokens": {
+  "input": 2197,
+  "output": 93
+ },
+ "measured": {
+  "gpx_path": "evals/results/baseline/work/E1/route_22mi_ride_1_loop_brouter_edit3.gpx",
+  "gpx_valid": true,
+  "gpx_error": null,
+  "n_points": 1814,
+  "distance_mi": 27.21,
+  "app_reported_mi": 27.1,
+  "ascent_ft_app": 1189.0,
+  "ascent_ft_independent": 1199.0,
+  "loop_closure_m": 1.3,
+  "start_proximity_m": 0.3,
+  "end_proximity_m": 1.5,
+  "via_distances_m": {
+   "Memorial Union, Madison WI": 15.3
+  },
+  "avoid_on_road_m": {},
+  "max_point_gap_m": 280.2,
+  "duplicate_points": 4,
+  "repeat_frac": 0.075,
+  "mirror_frac": 0.02,
+  "teleports": [],
+  "gaps_confirmed_road": [],
+  "gaps_unknown": [],
+  "has_elevation": true
+ },
+ "checks": [
+  {
+   "name": "outcome.no_crash",
+   "status": "pass",
+   "hard": true,
+   "detail": "handled without an unhandled exception",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "outcome.succeeded",
+   "status": "pass",
+   "hard": true,
+   "detail": "ok=True, 2 candidate(s): Done \u2014 via Memorial Union: now 27.1 mi (+0.0 mi).",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.request_type",
+   "status": "pass",
+   "hard": true,
+   "detail": "got 'edit_route', expected 'edit_route'",
+   "value": "edit_route",
+   "limit": "edit_route"
+  },
+  {
+   "name": "parse.mode",
+   "status": "pass",
+   "hard": true,
+   "detail": "'via' vs allowed ['via']",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.revert_first",
+   "status": "pass",
+   "hard": true,
+   "detail": "True vs expected True",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "gpx.valid",
+   "status": "pass",
+   "hard": true,
+   "detail": "well-formed, 1814 points, elevation present",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "route.via[Memorial Union, Madison WI]",
+   "status": "pass",
+   "hard": true,
+   "detail": "closest approach 15 m (limit 1500 m)",
+   "value": 15.3,
+   "limit": 1500
+  },
+  {
+   "name": "geometry.continuous",
+   "status": "pass",
+   "hard": true,
+   "detail": "continuous: no breaks. Longest single segment 280 m",
+   "value": 0,
+   "limit": 0
+  },
+  {
+   "name": "geometry.repeat",
+   "status": "pass",
+   "hard": false,
+   "detail": "8% of the route rides the same road twice (the app rejects loops above 25%); mirror score 2% -- not an out-and-back",
+   "value": 0.075,
+   "limit": 0.25
+  }
+ ],
+ "log_tail": "Parsed (claude-haiku-4-5, 2197in/93out tokens): {'request_type': 'edit_route', 'edit': {'mode': 'via', 'place': 'Memorial Union', 'places': None, 'radius_m': 1500, 'miles_delta': None, 'target_miles': None, 'connect_return': False, 'revert_first': True}}\nReverting the last change first (route_22mi_ride_1_loop_brouter_edit2.gpx -> route_22mi_ride_1_loop_brouter_edit1.gpx)\nEditing: evals\\results\\baseline\\work\\E1\\route_22mi_ride_1_loop_brouter_edit1.gpx\nRouting through: Memorial Union, 800, Langdon Street, State-Langdon, Downtown, Madison, Dane County, Wisconsin, 53706, United States\nwrote evals\\results\\baseline\\work\\E1\\preview.html (2 routes)\nReplaced 1.9 mi with 1.9 mi across 1 detour(s) (+0.0 mi)\nEdited route: 27.1 mi, 1189 ft, 8% repeat -> evals\\results\\baseline\\work\\E1\\route_22mi_ride_1_loop_brouter_edit3.gpx\nDone \u2014 via Memorial Union: now 27.1 mi (+0.0 mi).\n",
+ "run": "baseline",
+ "repeat": 1,
+ "cases_version": "routegen-eval-v1",
+ "timestamp": "2026-09-20T09:47:51",
+ "verdict_history": [],
+ "rescored_at": "2026-09-20T11:30:41",
+ "scorer_error": null,
+ "candidate_labels": []
+}

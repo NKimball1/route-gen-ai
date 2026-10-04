@@ -1,0 +1,24 @@
+{
+ "run": "postfix",
+ "cases_version": "routegen-eval-v1",
+ "finished": "2026-09-20T10:43:22",
+ "selection": {
+  "tier": "all",
+  "split": "all",
+  "category": null,
+  "ids": null,
+  "repeats": 1
+ },
+ "cases_executed_this_invocation": 37,
+ "wall_seconds": 454.3,
+ "parse_calls_live": 34,
+ "parse_calls_cached": 3,
+ "parse_input_tokens": 82743,
+ "parse_output_tokens": 3105,
+ "parse_cost_usd": 0.098268,
+ "model": "claude-haiku-4-5",
+ "price_per_mtok": {
+  "input": 1.0,
+  "output": 5.0
+ }
+}

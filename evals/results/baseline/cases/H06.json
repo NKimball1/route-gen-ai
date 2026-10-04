@@ -1,0 +1,185 @@
+{
+ "id": "H06",
+ "split": "heldout",
+ "category": "climb_min",
+ "tier": "live",
+ "scope": "supported",
+ "session": null,
+ "step": null,
+ "text": "flattest 35 miles you can find around Stoughton WI",
+ "start": "Stoughton, WI",
+ "why": "Held out: climb minimization as a superlative.",
+ "expect": {
+  "request_type": "route",
+  "outcome": "success",
+  "parse": {
+   "route.distance_miles": {
+    "range": [
+     32,
+     38
+    ]
+   },
+   "route.minimize_climb": {
+    "equals": true
+   }
+  },
+  "route": {
+   "target_miles": 35,
+   "loop": null
+  }
+ },
+ "verdict": "pass",
+ "fail_reasons": [],
+ "parsed": {
+  "request_type": "route",
+  "address": "Stoughton, WI",
+  "route": {
+   "distance_miles": 35,
+   "max_climb_ft": null,
+   "maximize_climb": false,
+   "minimize_climb": true,
+   "shape": "both",
+   "avoid_places": [],
+   "via_places": []
+  },
+  "interval": null,
+  "edit": null,
+  "notes": ""
+ },
+ "notes": "",
+ "outcome_ok": true,
+ "summary": "11 route(s) \u2014 best: #1 loop: 33.7 mi, 929 ft, 1% repeat, 0.1 mi major",
+ "kind": "route",
+ "n_candidates": 11,
+ "error": null,
+ "traceback": "",
+ "seconds": 5.76,
+ "parse_cached": false,
+ "parse_tokens": {
+  "input": 2199,
+  "output": 91
+ },
+ "measured": {
+  "gpx_path": "evals/results/baseline/work/H06/route_35mi_minclimb_1_loop_brouter.gpx",
+  "gpx_valid": true,
+  "gpx_error": null,
+  "n_points": 537,
+  "distance_mi": 33.71,
+  "app_reported_mi": 33.7,
+  "ascent_ft_app": 923.0,
+  "ascent_ft_independent": 918.0,
+  "loop_closure_m": 0.0,
+  "start_proximity_m": 1.1,
+  "end_proximity_m": 1.1,
+  "via_distances_m": {},
+  "avoid_on_road_m": {},
+  "max_point_gap_m": 1077.8,
+  "duplicate_points": 0,
+  "repeat_frac": 0.007,
+  "mirror_frac": 0.005,
+  "teleports": [],
+  "gaps_confirmed_road": [],
+  "gaps_unknown": [],
+  "has_elevation": true
+ },
+ "checks": [
+  {
+   "name": "outcome.no_crash",
+   "status": "pass",
+   "hard": true,
+   "detail": "handled without an unhandled exception",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "outcome.succeeded",
+   "status": "pass",
+   "hard": true,
+   "detail": "ok=True, 11 candidate(s): 11 route(s) \u2014 best: #1 loop: 33.7 mi, 929 ft, 1% repeat, 0.1 mi major",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.request_type",
+   "status": "pass",
+   "hard": true,
+   "detail": "got 'route', expected 'route'",
+   "value": "route",
+   "limit": "route"
+  },
+  {
+   "name": "parse.distance_miles",
+   "status": "pass",
+   "hard": true,
+   "detail": "35 vs [32, 38]",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.minimize_climb",
+   "status": "pass",
+   "hard": true,
+   "detail": "True vs expected True",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "gpx.valid",
+   "status": "pass",
+   "hard": true,
+   "detail": "well-formed, 537 points, elevation present",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "route.distance",
+   "status": "pass",
+   "hard": true,
+   "detail": "33.71 mi vs target 35 mi (+3.7%, tolerance +/-15%)",
+   "value": 33.71,
+   "limit": 35
+  },
+  {
+   "name": "route.starts_where_asked",
+   "status": "pass",
+   "hard": true,
+   "detail": "begins 1 m from the geocoded start (limit 600 m)",
+   "value": 1.1,
+   "limit": 600.0
+  },
+  {
+   "name": "geometry.continuous",
+   "status": "pass",
+   "hard": true,
+   "detail": "continuous: no breaks. Longest single segment 1078 m",
+   "value": 0,
+   "limit": 0
+  },
+  {
+   "name": "geometry.repeat",
+   "status": "pass",
+   "hard": false,
+   "detail": "1% of the route rides the same road twice (the app rejects loops above 25%); mirror score 0% -- not an out-and-back",
+   "value": 0.007,
+   "limit": 0.25
+  }
+ ],
+ "log_tail": "Parsed (claude-haiku-4-5, 2199in/91out tokens): {'request_type': 'route', 'address': 'Stoughton, WI', 'route': {'distance_miles': 35, 'max_climb_ft': None, 'maximize_climb': False, 'minimize_climb': True, 'shape': 'both', 'avoid_places': [], 'via_places': []}}\n(skipping ors: ORS_API_KEY not set)\nStart: Stoughton, Dane County, Wisconsin, 53589, United States (42.91674, -89.21790)\nGenerating 6 loop candidates via brouter...\n  brouter: trimmed 17.1 mi of out-and-back spurs\n  brouter: trimmed 4.5 mi of out-and-back spurs\n  brouter: trimmed 3.1 mi of out-and-back spurs\n  brouter: trimmed 9.9 mi of out-and-back spurs\n  brouter: trimmed 4.0 mi of out-and-back spurs\n  brouter: trimmed 1.9 mi of out-and-back spurs\n  brouter: trimmed 5.1 mi of out-and-back spurs\n  brouter: trimmed 1.4 mi of out-and-back spurs\n  brouter: trimmed 1.6 mi of out-and-back spurs\n  brouter: trimmed 0.5 mi of out-and-back spurs\n  brouter: trimmed 1.6 mi of out-and-back spurs\n  brouter: trimmed 1.4 mi of out-and-back spurs\n  brouter: trimmed 7.6 mi of out-and-back spurs\n  brouter: trimmed 2.2 mi of out-and-back spurs\n  brouter: trimmed 4.1 mi of out-and-back spurs\nGenerating 6 outback candidates via brouter...\n  reject [brouter bearing=300 ccw scale=1.18]: 0.8 mi on major highways (trunk/primary)\n\nrank provider shape      miles  climb ft  repeat  major  file\n1    brouter  loop        33.7       929      1%  0.1mi  evals\\results\\baseline\\work\\H06\\route_35mi_minclimb_1_loop_brouter.gpx\n2    brouter  loop        32.4      1014      0%      0  evals\\results\\baseline\\work\\H06\\route_35mi_minclimb_2_loop_brouter.gpx\n3    brouter  outback     33.2      1022     n/a      0  evals\\results\\baseline\\work\\H06\\route_35mi_minclimb_3_outback_brouter.gpx\n4    brouter  outback     35.9      1039     n/a      0  evals\\results\\baseline\\work\\H06\\route_35mi_minclimb_4_outback_brouter.gpx\n5    brouter  outback     35.4      1097     n/a      0  evals\\results\\baseline\\work\\H06\\route_35mi_minclimb_5_outback_brouter.gpx\n6    brouter  outback     32.9      1262     n/a      0  evals\\results\\baseline\\work\\H06\\route_35mi_minclimb_6_outback_brouter.gpx\n7    brouter  outback     34.0      1328     n/a  0.5mi  evals\\results\\baseline\\work\\H06\\route_35mi_minclimb_7_outback_brouter.gpx\n8    brouter  loop        38.6      1389      0%  0.3mi  evals\\results\\baseline\\work\\H06\\route_35mi_minclimb_8_loop_brouter.gpx\n9    brouter  loop        38.1      1550      0%      0  evals\\results\\baseline\\work\\H06\\route_35mi_minclimb_9_loop_brouter.gpx\n10   brouter  outback     35.6      1749     n/a      0  evals\\results\\baseline\\work\\H06\\route_35mi_minclimb_10_outback_brouter.gpx\n11   brouter  loop        40.2      1971      2%  0.3mi  evals\\results\\baseline\\work\\H06\\route_35mi_minclimb_11_loop_brouter.gpx\nwrote evals\\results\\baseline\\work\\H06\\preview.html (11 routes)\n\nBest: rank 1 \u2014 33.7 mi, 929 ft climbing (brouter, bearing=180 ccw scale=1.00)\n",
+ "run": "baseline",
+ "repeat": 1,
+ "cases_version": "routegen-eval-v1",
+ "timestamp": "2026-09-20T09:44:07",
+ "verdict_history": [
+  {
+   "was": "fail",
+   "now": "pass",
+   "was_reasons": [
+    "geometry.continuous"
+   ],
+   "at": "2026-09-20T09:49:15"
+  }
+ ],
+ "rescored_at": "2026-09-20T11:30:41",
+ "scorer_error": null,
+ "candidate_labels": []
+}

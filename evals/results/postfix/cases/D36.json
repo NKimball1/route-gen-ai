@@ -1,0 +1,132 @@
+{
+ "id": "D36",
+ "split": "dev",
+ "category": "provider_failure",
+ "tier": "offline",
+ "scope": "supported",
+ "session": null,
+ "step": null,
+ "text": "a 20 mile loop from Monona Terrace Madison WI",
+ "start": "Monona Terrace, Madison WI",
+ "why": "Routing provider unreachable. Must fail honestly and point at the routing server, not hand back an empty map or a traceback.",
+ "expect": {
+  "request_type": "route",
+  "outcome": "decline",
+  "parse": {},
+  "route": {
+   "loop": null
+  },
+  "message_mentions": [
+   "routing server",
+   "unreachable",
+   "brouter",
+   "router is",
+   "cannot reach"
+  ]
+ },
+ "verdict": "pass",
+ "fail_reasons": [],
+ "parsed": {
+  "request_type": "route",
+  "address": "Monona Terrace Madison WI",
+  "route": {
+   "distance_miles": 20,
+   "max_climb_ft": null,
+   "maximize_climb": false,
+   "minimize_climb": false,
+   "shape": "loop",
+   "avoid_places": [],
+   "via_places": []
+  },
+  "interval": null,
+  "edit": null,
+  "notes": ""
+ },
+ "notes": "",
+ "outcome_ok": false,
+ "summary": "The routing server isn't responding, so no route could be generated. Nothing is wrong with your request \u2014 this is the router (BRouter) being down, and it will work again once the server is back.",
+ "kind": "error",
+ "n_candidates": 0,
+ "candidate_labels": [],
+ "error": null,
+ "traceback": "",
+ "seconds": 2.72,
+ "scorer_error": null,
+ "parse_cached": false,
+ "parse_tokens": {
+  "input": 2435,
+  "output": 93
+ },
+ "measured": {
+  "gpx_path": null,
+  "gpx_valid": null,
+  "gpx_error": null,
+  "n_points": null,
+  "distance_mi": null,
+  "app_reported_mi": null,
+  "ascent_ft_app": null,
+  "ascent_ft_independent": null,
+  "loop_closure_m": null,
+  "start_proximity_m": null,
+  "end_proximity_m": null,
+  "via_distances_m": {},
+  "avoid_on_road_m": {},
+  "max_point_gap_m": null,
+  "duplicate_points": null,
+  "repeat_frac": null,
+  "mirror_frac": null,
+  "teleports": [],
+  "gaps_confirmed_road": [],
+  "gaps_unknown": [],
+  "has_elevation": null
+ },
+ "checks": [
+  {
+   "name": "outcome.no_crash",
+   "status": "pass",
+   "hard": true,
+   "detail": "handled without an unhandled exception",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "outcome.declined",
+   "status": "pass",
+   "hard": true,
+   "detail": "ok=False, 0 candidate(s): The routing server isn't responding, so no route could be generated. Nothing is wrong with your request \u2014 this is the router (BRouter) being down, and it will w",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "outcome.explained",
+   "status": "pass",
+   "hard": true,
+   "detail": "user-facing explanation: The routing server isn't responding, so no route could be generated. Nothing is wrong with your request \u2014 this is the router (BRouter) being down, and it will work again once the server is back.",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "outcome.message_names_cause",
+   "status": "pass",
+   "hard": true,
+   "detail": "user-visible summary names the cause (matched ['routing server', 'brouter'] of ['routing server', 'unreachable', 'brouter', 'router is', 'cannot reach']); the progress log matched ['routing server', 'unreachable', 'brouter']. Summary was: \"The routing server isn't responding, so no route could be generated. Nothing is wrong with your request \u2014 this is the router (BRouter) being down, and it will w\"",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.request_type",
+   "status": "pass",
+   "hard": true,
+   "detail": "got 'route', expected 'route'",
+   "value": "route",
+   "limit": "route"
+  }
+ ],
+ "log_tail": "Parsed (claude-haiku-4-5, 2435in/93out tokens): {'request_type': 'route', 'address': 'Monona Terrace Madison WI', 'route': {'distance_miles': 20, 'max_climb_ft': None, 'maximize_climb': False, 'minimize_climb': False, 'shape': 'loop', 'avoid_places': [], 'via_places': []}}\nPreflight: routing server unreachable at http://127.0.0.1:9/brouter\nThe routing server isn't responding, so no route could be generated. Nothing is wrong with your request \u2014 this is the router (BRouter) being down, and it will work again once the server is back.\n",
+ "run": "postfix",
+ "repeat": 1,
+ "cases_version": "routegen-eval-v1",
+ "timestamp": "2026-09-20T10:36:00",
+ "verdict_history": [],
+ "rescored_at": "2026-09-20T11:30:43"
+}

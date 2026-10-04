@@ -1,0 +1,203 @@
+{
+ "id": "D13",
+ "split": "dev",
+ "category": "via",
+ "tier": "live",
+ "scope": "supported",
+ "session": null,
+ "step": null,
+ "text": "35 miles from Middleton WI, I want it to pass through Cross Plains and Black Earth",
+ "start": "Middleton, WI",
+ "why": "Two waypoints in ride order; both must be honored.",
+ "expect": {
+  "request_type": "route",
+  "outcome": "success",
+  "parse": {
+   "route.distance_miles": {
+    "range": [
+     32,
+     38
+    ]
+   },
+   "route.via_places": {
+    "len_min": 2
+   }
+  },
+  "route": {
+   "target_miles": 35,
+   "loop": null,
+   "via": [
+    "Cross Plains, WI",
+    "Black Earth, WI"
+   ],
+   "via_tolerance_m": 2500
+  }
+ },
+ "verdict": "pass",
+ "fail_reasons": [],
+ "parsed": {
+  "request_type": "route",
+  "address": "Middleton, WI",
+  "route": {
+   "distance_miles": 35,
+   "max_climb_ft": null,
+   "maximize_climb": false,
+   "minimize_climb": false,
+   "shape": "both",
+   "avoid_places": [],
+   "via_places": [
+    "Cross Plains, WI",
+    "Black Earth, WI"
+   ]
+  },
+  "interval": null,
+  "edit": null,
+  "notes": ""
+ },
+ "notes": "",
+ "outcome_ok": true,
+ "summary": "3 route(s) \u2014 best: #1 loop: 34.0 mi, 1913 ft, 23% repeat, 0.1 mi major",
+ "kind": "route",
+ "n_candidates": 3,
+ "error": null,
+ "traceback": "",
+ "seconds": 10.22,
+ "parse_cached": false,
+ "parse_tokens": {
+  "input": 2205,
+  "output": 103
+ },
+ "measured": {
+  "gpx_path": "evals/results/baseline/work/D13/route_35mi_ride_1_loop_brouter.gpx",
+  "gpx_valid": true,
+  "gpx_error": null,
+  "n_points": 1173,
+  "distance_mi": 33.97,
+  "app_reported_mi": 34.0,
+  "ascent_ft_app": 1912.0,
+  "ascent_ft_independent": 1900.0,
+  "loop_closure_m": 0.0,
+  "start_proximity_m": 22.9,
+  "end_proximity_m": 22.9,
+  "via_distances_m": {
+   "Cross Plains, WI": 17.2,
+   "Black Earth, WI": 2.8
+  },
+  "avoid_on_road_m": {},
+  "max_point_gap_m": 592.2,
+  "duplicate_points": 0,
+  "repeat_frac": 0.225,
+  "mirror_frac": 0.45,
+  "teleports": [],
+  "gaps_confirmed_road": [],
+  "gaps_unknown": [],
+  "has_elevation": true
+ },
+ "checks": [
+  {
+   "name": "outcome.no_crash",
+   "status": "pass",
+   "hard": true,
+   "detail": "handled without an unhandled exception",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "outcome.succeeded",
+   "status": "pass",
+   "hard": true,
+   "detail": "ok=True, 3 candidate(s): 3 route(s) \u2014 best: #1 loop: 34.0 mi, 1913 ft, 23% repeat, 0.1 mi major",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.request_type",
+   "status": "pass",
+   "hard": true,
+   "detail": "got 'route', expected 'route'",
+   "value": "route",
+   "limit": "route"
+  },
+  {
+   "name": "parse.distance_miles",
+   "status": "pass",
+   "hard": true,
+   "detail": "35 vs [32, 38]",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.via_places",
+   "status": "pass",
+   "hard": true,
+   "detail": "2 item(s), need >= 2",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "gpx.valid",
+   "status": "pass",
+   "hard": true,
+   "detail": "well-formed, 1173 points, elevation present",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "route.distance",
+   "status": "pass",
+   "hard": true,
+   "detail": "33.97 mi vs target 35 mi (+2.9%, tolerance +/-15%)",
+   "value": 33.97,
+   "limit": 35
+  },
+  {
+   "name": "route.starts_where_asked",
+   "status": "pass",
+   "hard": true,
+   "detail": "begins 23 m from the geocoded start (limit 600 m)",
+   "value": 22.9,
+   "limit": 600.0
+  },
+  {
+   "name": "route.via[Cross Plains, WI]",
+   "status": "pass",
+   "hard": true,
+   "detail": "closest approach 17 m (limit 2500 m)",
+   "value": 17.2,
+   "limit": 2500
+  },
+  {
+   "name": "route.via[Black Earth, WI]",
+   "status": "pass",
+   "hard": true,
+   "detail": "closest approach 3 m (limit 2500 m)",
+   "value": 2.8,
+   "limit": 2500
+  },
+  {
+   "name": "geometry.continuous",
+   "status": "pass",
+   "hard": true,
+   "detail": "continuous: no breaks. Longest single segment 592 m",
+   "value": 0,
+   "limit": 0
+  },
+  {
+   "name": "geometry.repeat",
+   "status": "pass",
+   "hard": false,
+   "detail": "22% of the route rides the same road twice (the app rejects loops above 25%); mirror score 45%",
+   "value": 0.225,
+   "limit": 0.25
+  }
+ ],
+ "log_tail": "Parsed (claude-haiku-4-5, 2205in/103out tokens): {'request_type': 'route', 'address': 'Middleton, WI', 'route': {'distance_miles': 35, 'max_climb_ft': None, 'maximize_climb': False, 'minimize_climb': False, 'shape': 'both', 'avoid_places': [], 'via_places': ['Cross Plains, WI', 'Black Earth, WI']}}\nVia: Village of Cross Plains, Dane County, Wisconsin, 53528, United States\nVia: Black Earth, Dane County, Wisconsin, United States\n(skipping ors: ORS_API_KEY not set)\nStart: Middleton, Dane County, Wisconsin, 53562, United States (43.09629, -89.51196)\nGenerating 6 loop via 'Cross Plains, WI' candidates via brouter...\n  brouter: trimmed 1.6 mi of out-and-back spurs\n  brouter: trimmed 3.3 mi of out-and-back spurs\n  brouter: trimmed 2.5 mi of out-and-back spurs\n  brouter: trimmed 5.3 mi of out-and-back spurs\n  brouter: trimmed 2.8 mi of out-and-back spurs\n  brouter: trimmed 4.9 mi of out-and-back spurs\n  brouter: trimmed 5.5 mi of out-and-back spurs\n  brouter: trimmed 2.9 mi of out-and-back spurs\n  brouter: trimmed 0.7 mi of out-and-back spurs\n  brouter: trimmed 2.3 mi of out-and-back spurs\n  brouter: trimmed 5.5 mi of out-and-back spurs\n  brouter: trimmed 2.3 mi of out-and-back spurs\n  brouter: trimmed 2.9 mi of out-and-back spurs\n  brouter: trimmed 2.4 mi of out-and-back spurs\n  reject [brouter via direct]: 44% of the route rides the same road twice\n  reject [brouter via leg=1 side=+ r=2.3mi]: 32% of the route rides the same road twice\n\nrank provider shape      miles  climb ft  repeat  major  file\n1    brouter  loop        34.0      1913     23%  0.1mi  evals\\results\\baseline\\work\\D13\\route_35mi_ride_1_loop_brouter.gpx\n2    brouter  loop        32.9      1637     12%  0.1mi  evals\\results\\baseline\\work\\D13\\route_35mi_ride_2_loop_brouter.gpx\n3    brouter  loop        32.2      1824      6%  0.1mi  evals\\results\\baseline\\work\\D13\\route_35mi_ride_3_loop_brouter.gpx\nwrote evals\\results\\baseline\\work\\D13\\preview.html (3 routes)\n\nBest: rank 1 \u2014 34.0 mi, 1913 ft climbing (brouter, via leg=1 side=- r=3.3mi)\n",
+ "run": "baseline",
+ "repeat": 1,
+ "cases_version": "routegen-eval-v1",
+ "timestamp": "2026-09-20T09:34:27",
+ "verdict_history": [],
+ "rescored_at": "2026-09-20T11:30:41",
+ "scorer_error": null,
+ "candidate_labels": []
+}

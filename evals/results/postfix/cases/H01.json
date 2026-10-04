@@ -1,0 +1,191 @@
+{
+ "id": "H01",
+ "split": "heldout",
+ "category": "simple_loop",
+ "tier": "live",
+ "scope": "supported",
+ "session": null,
+ "step": null,
+ "text": "can I get a 15 mile loop out of Middleton WI",
+ "start": "Middleton, WI",
+ "why": "Held out: plain short loop, different town.",
+ "expect": {
+  "request_type": "route",
+  "outcome": "success",
+  "parse": {
+   "route.distance_miles": {
+    "range": [
+     13,
+     17
+    ]
+   },
+   "route.shape": {
+    "in": [
+     "loop",
+     "both"
+    ]
+   }
+  },
+  "route": {
+   "target_miles": 15,
+   "loop": true
+  }
+ },
+ "verdict": "pass",
+ "fail_reasons": [],
+ "parsed": {
+  "request_type": "route",
+  "address": "Middleton, WI",
+  "route": {
+   "distance_miles": 15,
+   "max_climb_ft": null,
+   "maximize_climb": false,
+   "minimize_climb": false,
+   "shape": "loop",
+   "avoid_places": [],
+   "via_places": []
+  },
+  "interval": null,
+  "edit": null,
+  "notes": ""
+ },
+ "notes": "",
+ "outcome_ok": true,
+ "summary": "3 route(s) \u2014 best: #1 loop: 15.2 mi, 678 ft, 0% repeat",
+ "kind": "route",
+ "n_candidates": 3,
+ "candidate_labels": [
+  "#1 loop: 15.2 mi, 678 ft, 0% repeat",
+  "#2 loop: 15.4 mi, 641 ft, 5% repeat",
+  "#3 loop: 16.3 mi, 748 ft, 1% repeat"
+ ],
+ "error": null,
+ "traceback": "",
+ "seconds": 8.0,
+ "scorer_error": null,
+ "parse_cached": false,
+ "parse_tokens": {
+  "input": 2435,
+  "output": 90
+ },
+ "measured": {
+  "gpx_path": "evals/results/postfix/work/H01/route_15mi_ride_1_loop_brouter.gpx",
+  "gpx_valid": true,
+  "gpx_error": null,
+  "n_points": 980,
+  "distance_mi": 15.12,
+  "app_reported_mi": 15.2,
+  "ascent_ft_app": 678.0,
+  "ascent_ft_independent": 647.0,
+  "loop_closure_m": 0.0,
+  "start_proximity_m": 22.9,
+  "end_proximity_m": 22.9,
+  "via_distances_m": {},
+  "avoid_on_road_m": {},
+  "max_point_gap_m": 49.5,
+  "duplicate_points": 0,
+  "repeat_frac": 0.003,
+  "mirror_frac": 0.005,
+  "teleports": [],
+  "gaps_confirmed_road": [],
+  "gaps_unknown": [],
+  "has_elevation": true
+ },
+ "checks": [
+  {
+   "name": "outcome.no_crash",
+   "status": "pass",
+   "hard": true,
+   "detail": "handled without an unhandled exception",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "outcome.succeeded",
+   "status": "pass",
+   "hard": true,
+   "detail": "ok=True, 3 candidate(s): 3 route(s) \u2014 best: #1 loop: 15.2 mi, 678 ft, 0% repeat",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.request_type",
+   "status": "pass",
+   "hard": true,
+   "detail": "got 'route', expected 'route'",
+   "value": "route",
+   "limit": "route"
+  },
+  {
+   "name": "parse.distance_miles",
+   "status": "pass",
+   "hard": true,
+   "detail": "15 vs [13, 17]",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.shape",
+   "status": "pass",
+   "hard": true,
+   "detail": "'loop' vs allowed ['loop', 'both']",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "gpx.valid",
+   "status": "pass",
+   "hard": true,
+   "detail": "well-formed, 980 points, elevation present",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "route.distance",
+   "status": "pass",
+   "hard": true,
+   "detail": "15.12 mi vs target 15 mi (+0.8%, tolerance +/-15%)",
+   "value": 15.12,
+   "limit": 15
+  },
+  {
+   "name": "route.loop_closure",
+   "status": "pass",
+   "hard": true,
+   "detail": "start-to-finish gap 0 m (limit 250 m)",
+   "value": 0.0,
+   "limit": 250.0
+  },
+  {
+   "name": "route.starts_where_asked",
+   "status": "pass",
+   "hard": true,
+   "detail": "begins 23 m from the geocoded start (limit 600 m)",
+   "value": 22.9,
+   "limit": 600.0
+  },
+  {
+   "name": "geometry.continuous",
+   "status": "pass",
+   "hard": true,
+   "detail": "continuous: no breaks. Longest single segment 50 m",
+   "value": 0,
+   "limit": 0
+  },
+  {
+   "name": "geometry.repeat",
+   "status": "pass",
+   "hard": false,
+   "detail": "0% of the route rides the same road twice (the app rejects loops above 25%); mirror score 0% -- not an out-and-back",
+   "value": 0.003,
+   "limit": 0.25
+  }
+ ],
+ "log_tail": "Parsed (claude-haiku-4-5, 2435in/90out tokens): {'request_type': 'route', 'address': 'Middleton, WI', 'route': {'distance_miles': 15, 'max_climb_ft': None, 'maximize_climb': False, 'minimize_climb': False, 'shape': 'loop', 'avoid_places': [], 'via_places': []}}\n(skipping ors: ORS_API_KEY not set)\nStart: Middleton, Dane County, Wisconsin, 53562, United States (43.09629, -89.51196)\nGenerating 6 loop candidates via brouter...\n  brouter: trimmed 2.9 mi of out-and-back spurs\n  brouter: trimmed 3.3 mi of out-and-back spurs\n  brouter: trimmed 4.5 mi of out-and-back spurs\n  brouter: trimmed 6.2 mi of out-and-back spurs\n  brouter: trimmed 1.9 mi of out-and-back spurs\n  brouter: trimmed 4.8 mi of out-and-back spurs\n  brouter: trimmed 4.0 mi of out-and-back spurs\n  brouter: trimmed 1.5 mi of out-and-back spurs\n  brouter: trimmed 3.2 mi of out-and-back spurs\n  brouter: trimmed 0.6 mi of out-and-back spurs\n  brouter: trimmed 2.1 mi of out-and-back spurs\n  brouter: trimmed 0.7 mi of out-and-back spurs\n  brouter: trimmed 1.3 mi of out-and-back spurs\n  brouter: trimmed 6.5 mi of out-and-back spurs\n  brouter: trimmed 2.4 mi of out-and-back spurs\n  brouter: trimmed 6.5 mi of out-and-back spurs\n  reject [brouter bearing=60 ccw scale=1.00]: distance 10.7 mi outside \u00b115% of target\n  reject [brouter bearing=120 cw scale=1.02]: distance 12.6 mi outside \u00b115% of target\n  reject [brouter bearing=300 ccw scale=0.95]: distance 9.6 mi outside \u00b115% of target\n\nrank provider shape      miles  climb ft  repeat  major  file\n1    brouter  loop        15.2       678      0%      0  evals\\results\\postfix\\work\\H01\\route_15mi_ride_1_loop_brouter.gpx\n2    brouter  loop        15.4       641      5%      0  evals\\results\\postfix\\work\\H01\\route_15mi_ride_2_loop_brouter.gpx\n3    brouter  loop        16.3       748      1%      0  evals\\results\\postfix\\work\\H01\\route_15mi_ride_3_loop_brouter.gpx\nwrote evals\\results\\postfix\\work\\H01\\preview.html (3 routes)\n\nBest: rank 1 \u2014 15.2 mi, 678 ft climbing (brouter, bearing=0 cw scale=1.25)\n",
+ "run": "postfix",
+ "repeat": 1,
+ "cases_version": "routegen-eval-v1",
+ "timestamp": "2026-09-20T10:36:10",
+ "verdict_history": [],
+ "rescored_at": "2026-09-20T11:30:43"
+}

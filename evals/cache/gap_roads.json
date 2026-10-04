@@ -1,0 +1,16 @@
+{
+ "42.68283,-90.35744->42.68295,-90.34763": {
+  "ratio": 1.0,
+  "road": true,
+  "road_m": 805.0,
+  "straight_m": 802.1,
+  "why": "road distance 805 m vs straight line 802 m (x1.00); a road runs along it"
+ },
+ "42.68295,-90.34763->42.68283,-90.35744": {
+  "ratio": 1.0,
+  "road": true,
+  "road_m": 805.0,
+  "straight_m": 802.1,
+  "why": "road distance 805 m vs straight line 802 m (x1.00); a road runs along it"
+ }
+}

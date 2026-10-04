@@ -1,0 +1,24 @@
+{
+ "run": "baseline",
+ "cases_version": "routegen-eval-v1",
+ "finished": "2026-09-20T09:49:03",
+ "selection": {
+  "tier": "all",
+  "split": "all",
+  "category": null,
+  "ids": null,
+  "repeats": 1
+ },
+ "cases_executed_this_invocation": 62,
+ "wall_seconds": 1075.9,
+ "parse_calls_live": 59,
+ "parse_calls_cached": 3,
+ "parse_input_tokens": 129798,
+ "parse_output_tokens": 5603,
+ "parse_cost_usd": 0.157813,
+ "model": "claude-haiku-4-5",
+ "price_per_mtok": {
+  "input": 1.0,
+  "output": 5.0
+ }
+}

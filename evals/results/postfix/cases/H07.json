@@ -1,0 +1,148 @@
+{
+ "id": "H07",
+ "split": "heldout",
+ "category": "climb_min",
+ "tier": "live",
+ "scope": "supported",
+ "session": null,
+ "step": null,
+ "text": "25 mile loop from Middleton WI, cap the climbing at 800 feet",
+ "start": "Middleton, WI",
+ "why": "Held out: a tight hard ceiling that may legitimately reject every candidate -- an honest refusal is a pass.",
+ "expect": {
+  "request_type": "route",
+  "outcome": "either",
+  "parse": {
+   "route.distance_miles": {
+    "range": [
+     23,
+     27
+    ]
+   },
+   "route.max_climb_ft": {
+    "range": [
+     700,
+     900
+    ]
+   }
+  },
+  "route": {
+   "target_miles": 25,
+   "loop": true,
+   "max_climb_ft": 800
+  }
+ },
+ "verdict": "pass",
+ "fail_reasons": [],
+ "parsed": {
+  "request_type": "route",
+  "address": "Middleton, WI",
+  "route": {
+   "distance_miles": 25,
+   "max_climb_ft": 800,
+   "maximize_climb": false,
+   "minimize_climb": false,
+   "shape": "loop",
+   "avoid_places": [],
+   "via_places": []
+  },
+  "interval": null,
+  "edit": null,
+  "notes": ""
+ },
+ "notes": "",
+ "outcome_ok": false,
+ "summary": "No route met the constraints \u2014 try a looser target or different distance.",
+ "kind": "route",
+ "n_candidates": 0,
+ "candidate_labels": [],
+ "error": null,
+ "traceback": "",
+ "seconds": 7.59,
+ "scorer_error": null,
+ "parse_cached": false,
+ "parse_tokens": {
+  "input": 2439,
+  "output": 91
+ },
+ "measured": {
+  "gpx_path": null,
+  "gpx_valid": null,
+  "gpx_error": null,
+  "n_points": null,
+  "distance_mi": null,
+  "app_reported_mi": null,
+  "ascent_ft_app": null,
+  "ascent_ft_independent": null,
+  "loop_closure_m": null,
+  "start_proximity_m": null,
+  "end_proximity_m": null,
+  "via_distances_m": {},
+  "avoid_on_road_m": {},
+  "max_point_gap_m": null,
+  "duplicate_points": null,
+  "repeat_frac": null,
+  "mirror_frac": null,
+  "teleports": [],
+  "gaps_confirmed_road": [],
+  "gaps_unknown": [],
+  "has_elevation": null
+ },
+ "checks": [
+  {
+   "name": "outcome.no_crash",
+   "status": "pass",
+   "hard": true,
+   "detail": "handled without an unhandled exception",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "outcome.handled",
+   "status": "pass",
+   "hard": false,
+   "detail": "ok=False, 0 candidate(s): No route met the constraints \u2014 try a looser target or different distance.",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "outcome.explained",
+   "status": "pass",
+   "hard": true,
+   "detail": "user-facing explanation: No route met the constraints \u2014 try a looser target or different distance.",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.request_type",
+   "status": "pass",
+   "hard": true,
+   "detail": "got 'route', expected 'route'",
+   "value": "route",
+   "limit": "route"
+  },
+  {
+   "name": "parse.distance_miles",
+   "status": "pass",
+   "hard": true,
+   "detail": "25 vs [23, 27]",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.max_climb_ft",
+   "status": "pass",
+   "hard": true,
+   "detail": "800 vs [700, 900]",
+   "value": null,
+   "limit": null
+  }
+ ],
+ "log_tail": "Parsed (claude-haiku-4-5, 2439in/91out tokens): {'request_type': 'route', 'address': 'Middleton, WI', 'route': {'distance_miles': 25, 'max_climb_ft': 800, 'maximize_climb': False, 'minimize_climb': False, 'shape': 'loop', 'avoid_places': [], 'via_places': []}}\n(skipping ors: ORS_API_KEY not set)\nStart: Middleton, Dane County, Wisconsin, 53562, United States (43.09629, -89.51196)\nGenerating 6 loop candidates via brouter...\n  brouter: trimmed 2.5 mi of out-and-back spurs\n  brouter: trimmed 1.8 mi of out-and-back spurs\n  brouter: trimmed 2.4 mi of out-and-back spurs\n  brouter: trimmed 2.2 mi of out-and-back spurs\n  brouter: trimmed 5.9 mi of out-and-back spurs\n  brouter: trimmed 1.4 mi of out-and-back spurs\n  brouter: trimmed 7.2 mi of out-and-back spurs\n  brouter: trimmed 1.0 mi of out-and-back spurs\n  brouter: trimmed 2.5 mi of out-and-back spurs\n  brouter: trimmed 2.3 mi of out-and-back spurs\n  reject [brouter bearing=0 cw scale=0.99]: distance 20.8 mi outside \u00b115% of target\n  reject [brouter bearing=60 ccw scale=1.00]: ascent 1049 ft exceeds cap\n  reject [brouter bearing=120 cw scale=0.97]: distance 16.7 mi outside \u00b115% of target\n  reject [brouter bearing=180 ccw scale=1.13]: ascent 1006 ft exceeds cap\n  reject [brouter bearing=240 cw scale=1.00]: ascent 1505 ft exceeds cap\n  reject [brouter bearing=300 ccw scale=1.00]: ascent 1280 ft exceeds cap\nNo candidate met the constraints. Try more candidates or a looser target.\n",
+ "run": "postfix",
+ "repeat": 1,
+ "cases_version": "routegen-eval-v1",
+ "timestamp": "2026-09-20T10:38:42",
+ "verdict_history": [],
+ "rescored_at": "2026-09-20T11:30:43"
+}

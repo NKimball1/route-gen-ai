@@ -1,0 +1,190 @@
+{
+ "id": "D19",
+ "split": "dev",
+ "category": "interval_spot",
+ "tier": "live",
+ "scope": "supported",
+ "session": null,
+ "step": null,
+ "text": "I need a hill close to Verona WI for 4x5 minute VO2 efforts",
+ "start": "Verona, WI",
+ "why": "Incline kind inferred from 'VO2'; travel budget inferred from 'close to'.",
+ "expect": {
+  "request_type": "interval_spot",
+  "outcome": "success",
+  "parse": {
+   "interval.reps": {
+    "equals": 4
+   },
+   "interval.rep_minutes": {
+    "range": [
+     4,
+     6
+    ]
+   },
+   "interval.kind": {
+    "in": [
+     "incline"
+    ]
+   }
+  },
+  "route": {
+   "target_miles": null,
+   "loop": false
+  }
+ },
+ "verdict": "pass",
+ "fail_reasons": [],
+ "parsed": {
+  "address": "Verona, WI",
+  "edit": null,
+  "interval": {
+   "kind": "incline",
+   "max_travel_minutes": 15,
+   "rep_minutes": 5,
+   "reps": 4
+  },
+  "notes": "",
+  "request_type": "interval_spot",
+  "route": null
+ },
+ "notes": "",
+ "outcome_ok": true,
+ "summary": "Found 3 interval spot(s) \u2014 best: #1: 0.9 mi @ +3.3%, 0 stops, 4.2 mi out. A 5-minute incline rep needs about 0.9 mi of road.",
+ "kind": "interval_spot",
+ "n_candidates": 3,
+ "candidate_labels": [
+  "#1: 0.9 mi @ +3.3%, 0 stops, 4.2 mi out",
+  "#2: 0.9 mi @ +3.5%, 0 stops, 2.0 mi out",
+  "#3: 0.9 mi @ +2.2%, 0 stops, 1.1 mi out \u2014 2 laps per rep (turnaround each lap)"
+ ],
+ "error": null,
+ "traceback": "",
+ "seconds": 100.77,
+ "scorer_error": null,
+ "parse_cached": true,
+ "parse_tokens": {
+  "input": 2442,
+  "output": 74
+ },
+ "measured": {
+  "gpx_path": "evals/results/postfix/work/D19/spot_incline_4x5_1.gpx",
+  "gpx_valid": true,
+  "gpx_error": null,
+  "n_points": 11,
+  "distance_mi": 0.91,
+  "app_reported_mi": 0.9,
+  "ascent_ft_app": 149.0,
+  "ascent_ft_independent": 152.0,
+  "loop_closure_m": 1447.9,
+  "start_proximity_m": 5326.9,
+  "end_proximity_m": 5998.1,
+  "via_distances_m": {},
+  "avoid_on_road_m": {},
+  "max_point_gap_m": 317.4,
+  "duplicate_points": 0,
+  "repeat_frac": 0.0,
+  "mirror_frac": 0.025,
+  "teleports": [],
+  "gaps_confirmed_road": [],
+  "gaps_unknown": [],
+  "has_elevation": true
+ },
+ "checks": [
+  {
+   "name": "outcome.no_crash",
+   "status": "pass",
+   "hard": true,
+   "detail": "handled without an unhandled exception",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "outcome.succeeded",
+   "status": "pass",
+   "hard": true,
+   "detail": "ok=True, 3 candidate(s): Found 3 interval spot(s) \u2014 best: #1: 0.9 mi @ +3.3%, 0 stops, 4.2 mi out. A 5-minute incline rep needs about 0.9 mi of road.",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.request_type",
+   "status": "pass",
+   "hard": true,
+   "detail": "got 'interval_spot', expected 'interval_spot'",
+   "value": "interval_spot",
+   "limit": "interval_spot"
+  },
+  {
+   "name": "parse.reps",
+   "status": "pass",
+   "hard": true,
+   "detail": "4 vs expected 4",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.rep_minutes",
+   "status": "pass",
+   "hard": true,
+   "detail": "5 vs [4, 6]",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.kind",
+   "status": "pass",
+   "hard": true,
+   "detail": "'incline' vs allowed ['incline']",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "gpx.valid",
+   "status": "pass",
+   "hard": true,
+   "detail": "well-formed, 11 points, elevation present",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "geometry.continuous",
+   "status": "pass",
+   "hard": true,
+   "detail": "continuous: no breaks. Longest single segment 317 m",
+   "value": 0,
+   "limit": 0
+  },
+  {
+   "name": "geometry.repeat",
+   "status": "pass",
+   "hard": false,
+   "detail": "0% of the route rides the same road twice (the app rejects loops above 25%); mirror score 2% -- not an out-and-back",
+   "value": 0.0,
+   "limit": 0.25
+  },
+  {
+   "name": "spot.within_travel_budget",
+   "status": "pass",
+   "hard": true,
+   "detail": "stretch begins 5.3 km from the start; the stated budget of 15 min allows 6.0 km at the app's assumed 15 mph travel pace",
+   "value": 5327.0,
+   "limit": 6035.0
+  },
+  {
+   "name": "spot.long_enough_for_a_rep",
+   "status": "pass",
+   "hard": false,
+   "detail": "0.91 mi of road for a 5-minute incline rep, which needs about 0.92 mi at the app's assumed pace (1 lap(s) per rep)",
+   "value": 0.91,
+   "limit": 0.92
+  }
+ ],
+ "log_tail": "Parsed (claude-haiku-4-5, 2442in/74out tokens): {'address': 'Verona, WI', 'interval': {'kind': 'incline', 'max_travel_minutes': 15, 'rep_minutes': 5, 'reps': 4}, 'request_type': 'interval_spot'}\nStart: Verona, Dane County, Wisconsin, United States (42.99055, -89.53356)\nLooking for a incline stretch ~0.9 mi long within ~4 mi (15 min easy riding)...\n  overpass overpass-api.de: failed (504 Server Error: Gateway Timeout for url: https://overpass-api.de/api/interpreter)\n  overpass overpass.kumi.systems: failed (HTTPSConnectionPool(host='overpass.kumi.systems', port=443): Read timed out. (read timeout=90))\n  warning: no traffic-control data (Overpass down?) \u2014 scoring without interruption counts\n\nrank  len mi  grade %    \u00b1%  turns/km  stops  ride out mi  file\n1        0.9      3.3   1.6       0.0      0          4.2  evals\\results\\postfix\\work\\D19\\spot_incline_4x5_1.gpx\n2        0.9      3.5   3.2       0.7      0          2.0  evals\\results\\postfix\\work\\D19\\spot_incline_4x5_2.gpx\n3        0.9      2.2   1.6       0.7      0          1.1  evals\\results\\postfix\\work\\D19\\spot_incline_4x5_3.gpx\nwrote evals\\results\\postfix\\work\\D19\\preview.html (3 routes)\n\nBest: 0.9 mi at +3.3%, 4.2 mi ride out\n",
+ "run": "postfix",
+ "repeat": 1,
+ "cases_version": "routegen-eval-v1",
+ "timestamp": "2026-09-20T11:01:43",
+ "verdict_history": [],
+ "rescored_at": "2026-09-20T11:30:43"
+}

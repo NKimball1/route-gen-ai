@@ -1,0 +1,151 @@
+{
+ "id": "D35",
+ "split": "dev",
+ "category": "edit",
+ "tier": "live",
+ "scope": "supported",
+ "session": "E2",
+ "step": 4,
+ "text": "actually keep me off County Road PB",
+ "start": "Verona, WI",
+ "why": "Avoid edit naming a county road -- exercises OSM way-geometry avoidance and the verified outcome banner.",
+ "expect": {
+  "request_type": "edit_route",
+  "outcome": "either",
+  "parse": {
+   "edit.mode": {
+    "in": [
+     "avoid"
+    ]
+   }
+  },
+  "route": {
+   "loop": null
+  }
+ },
+ "verdict": "pass",
+ "fail_reasons": [],
+ "parsed": {
+  "request_type": "edit_route",
+  "address": null,
+  "route": null,
+  "interval": null,
+  "edit": {
+   "mode": "avoid",
+   "place": "County Road PB",
+   "places": null,
+   "radius_m": 1000,
+   "miles_delta": null,
+   "target_miles": null,
+   "connect_return": false,
+   "revert_first": false
+  },
+  "notes": ""
+ },
+ "notes": "",
+ "outcome_ok": true,
+ "summary": "Done \u2014 around County Road PB: now 47.7 mi (+3.7 mi). Verified clear of the area.",
+ "kind": "edit",
+ "n_candidates": 2,
+ "candidate_labels": [
+  "route_35mi_ride_1_loop_brouter_edit3.gpx \u2014 47.7 mi, 2424 ft (edit: around County Road PB)",
+  "original: route_35mi_ride_1_loop_brouter_edit2.gpx"
+ ],
+ "error": null,
+ "traceback": "",
+ "seconds": 102.59,
+ "scorer_error": null,
+ "parse_cached": false,
+ "parse_tokens": {
+  "input": 2427,
+  "output": 94
+ },
+ "measured": {
+  "gpx_path": "evals/results/postfix/work/E2/route_35mi_ride_1_loop_brouter_edit3.gpx",
+  "gpx_valid": true,
+  "gpx_error": null,
+  "n_points": 1134,
+  "distance_mi": 47.8,
+  "app_reported_mi": 47.7,
+  "ascent_ft_app": 2423.0,
+  "ascent_ft_independent": 2474.0,
+  "loop_closure_m": 0.0,
+  "start_proximity_m": 16780.3,
+  "end_proximity_m": 16780.3,
+  "via_distances_m": {},
+  "avoid_on_road_m": {},
+  "max_point_gap_m": 669.7,
+  "duplicate_points": 6,
+  "repeat_frac": 0.207,
+  "mirror_frac": 0.395,
+  "teleports": [],
+  "gaps_confirmed_road": [],
+  "gaps_unknown": [],
+  "has_elevation": true
+ },
+ "checks": [
+  {
+   "name": "outcome.no_crash",
+   "status": "pass",
+   "hard": true,
+   "detail": "handled without an unhandled exception",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "outcome.handled",
+   "status": "pass",
+   "hard": false,
+   "detail": "ok=True, 2 candidate(s): Done \u2014 around County Road PB: now 47.7 mi (+3.7 mi). Verified clear of the area.",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.request_type",
+   "status": "pass",
+   "hard": true,
+   "detail": "got 'edit_route', expected 'edit_route'",
+   "value": "edit_route",
+   "limit": "edit_route"
+  },
+  {
+   "name": "parse.mode",
+   "status": "pass",
+   "hard": true,
+   "detail": "'avoid' vs allowed ['avoid']",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "gpx.valid",
+   "status": "pass",
+   "hard": true,
+   "detail": "well-formed, 1134 points, elevation present",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "geometry.continuous",
+   "status": "pass",
+   "hard": true,
+   "detail": "continuous: no breaks. Longest single segment 670 m",
+   "value": 0,
+   "limit": 0
+  },
+  {
+   "name": "geometry.repeat",
+   "status": "pass",
+   "hard": false,
+   "detail": "21% of the route rides the same road twice (the app rejects loops above 25%); mirror score 40%",
+   "value": 0.207,
+   "limit": 0.25
+  }
+ ],
+ "log_tail": "Parsed (claude-haiku-4-5, 2427in/94out tokens): {'request_type': 'edit_route', 'edit': {'mode': 'avoid', 'place': 'County Road PB', 'places': None, 'radius_m': 1000, 'miles_delta': None, 'target_miles': None, 'connect_return': False, 'revert_first': False}}\nEditing: evals\\results\\postfix\\work\\E2\\route_35mi_ride_1_loop_brouter_edit2.gpx\n  overpass overpass-api.de: failed (504 Server Error: Gateway Timeout for url: https://overpass-api.de/api/interpreter)\n  overpass overpass.kumi.systems: failed (HTTPSConnectionPool(host='overpass.kumi.systems', port=443): Read timed out. (read timeout=90))\nDetouring around: County Road PB, Paoli, Town of Montrose, Dane County, Wisconsin, 53508, United States (r=1000 m)\nwrote evals\\results\\postfix\\work\\E2\\preview.html (2 routes)\nReplaced 2.1 mi with 5.7 mi across 1 detour(s) (+3.7 mi)\nEdited route: 47.7 mi, 2424 ft, 21% repeat -> evals\\results\\postfix\\work\\E2\\route_35mi_ride_1_loop_brouter_edit3.gpx\nDone \u2014 around County Road PB: now 47.7 mi (+3.7 mi). Verified clear of the area.\n",
+ "run": "postfix",
+ "repeat": 1,
+ "cases_version": "routegen-eval-v1",
+ "timestamp": "2026-09-20T10:42:31",
+ "verdict_history": [],
+ "rescored_at": "2026-09-20T11:30:43"
+}

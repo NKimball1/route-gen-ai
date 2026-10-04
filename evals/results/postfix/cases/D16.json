@@ -1,0 +1,211 @@
+{
+ "id": "D16",
+ "split": "dev",
+ "category": "multi_constraint",
+ "tier": "live",
+ "scope": "supported",
+ "session": null,
+ "step": null,
+ "text": "40 mile loop from Verona WI, under 1500 ft of climbing, and stay off Highway 18",
+ "start": "Verona, WI",
+ "why": "Distance + hard climb cap + avoid, all at once.",
+ "expect": {
+  "request_type": "route",
+  "outcome": "success",
+  "parse": {
+   "route.distance_miles": {
+    "range": [
+     37,
+     43
+    ]
+   },
+   "route.max_climb_ft": {
+    "range": [
+     1400,
+     1600
+    ]
+   },
+   "route.avoid_places": {
+    "len_min": 1
+   }
+  },
+  "route": {
+   "target_miles": 40,
+   "loop": true,
+   "max_climb_ft": 1500
+  }
+ },
+ "verdict": "pass",
+ "fail_reasons": [],
+ "parsed": {
+  "request_type": "route",
+  "address": "Verona, WI",
+  "route": {
+   "distance_miles": 40,
+   "max_climb_ft": 1500,
+   "maximize_climb": false,
+   "minimize_climb": false,
+   "shape": "loop",
+   "avoid_places": [
+    "Highway 18, Verona, WI"
+   ],
+   "via_places": []
+  },
+  "interval": null,
+  "edit": null,
+  "notes": ""
+ },
+ "notes": "",
+ "outcome_ok": true,
+ "summary": "1 route(s) \u2014 best: #1 loop: 37.1 mi, 1491 ft, 1% repeat",
+ "kind": "route",
+ "n_candidates": 1,
+ "candidate_labels": [
+  "#1 loop: 37.1 mi, 1491 ft, 1% repeat"
+ ],
+ "error": null,
+ "traceback": "",
+ "seconds": 10.36,
+ "parse_cached": false,
+ "parse_tokens": {
+  "input": 2446,
+  "output": 103
+ },
+ "measured": {
+  "gpx_path": "evals/results/postfix/work/D16/route_40mi_ride_1_loop_brouter.gpx",
+  "gpx_valid": true,
+  "gpx_error": null,
+  "n_points": 1131,
+  "distance_mi": 37.03,
+  "app_reported_mi": 37.1,
+  "ascent_ft_app": 1492.0,
+  "ascent_ft_independent": 1503.0,
+  "loop_closure_m": 0.0,
+  "start_proximity_m": 1.9,
+  "end_proximity_m": 1.9,
+  "via_distances_m": {},
+  "avoid_on_road_m": {},
+  "max_point_gap_m": 842.1,
+  "duplicate_points": 0,
+  "repeat_frac": 0.01,
+  "mirror_frac": 0.015,
+  "teleports": [],
+  "gaps_confirmed_road": [],
+  "gaps_unknown": [],
+  "has_elevation": true
+ },
+ "checks": [
+  {
+   "name": "outcome.no_crash",
+   "status": "pass",
+   "hard": true,
+   "detail": "handled without an unhandled exception",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "outcome.succeeded",
+   "status": "pass",
+   "hard": true,
+   "detail": "ok=True, 1 candidate(s): 1 route(s) \u2014 best: #1 loop: 37.1 mi, 1491 ft, 1% repeat",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.request_type",
+   "status": "pass",
+   "hard": true,
+   "detail": "got 'route', expected 'route'",
+   "value": "route",
+   "limit": "route"
+  },
+  {
+   "name": "parse.distance_miles",
+   "status": "pass",
+   "hard": true,
+   "detail": "40 vs [37, 43]",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.max_climb_ft",
+   "status": "pass",
+   "hard": true,
+   "detail": "1500 vs [1400, 1600]",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.avoid_places",
+   "status": "pass",
+   "hard": true,
+   "detail": "1 item(s), need >= 1",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "gpx.valid",
+   "status": "pass",
+   "hard": true,
+   "detail": "well-formed, 1131 points, elevation present",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "route.distance",
+   "status": "pass",
+   "hard": true,
+   "detail": "37.03 mi vs target 40 mi (+7.4%, tolerance +/-15%)",
+   "value": 37.03,
+   "limit": 40
+  },
+  {
+   "name": "route.loop_closure",
+   "status": "pass",
+   "hard": true,
+   "detail": "start-to-finish gap 0 m (limit 250 m)",
+   "value": 0.0,
+   "limit": 250.0
+  },
+  {
+   "name": "route.starts_where_asked",
+   "status": "pass",
+   "hard": true,
+   "detail": "begins 2 m from the geocoded start (limit 600 m)",
+   "value": 1.9,
+   "limit": 600.0
+  },
+  {
+   "name": "route.climb_cap",
+   "status": "pass",
+   "hard": true,
+   "detail": "1492 ft vs cap 1500 ft (app model; independent unsmoothed sum 1503 ft)",
+   "value": 1492.0,
+   "limit": 1500
+  },
+  {
+   "name": "geometry.continuous",
+   "status": "pass",
+   "hard": true,
+   "detail": "continuous: no breaks. Longest single segment 842 m",
+   "value": 0,
+   "limit": 0
+  },
+  {
+   "name": "geometry.repeat",
+   "status": "pass",
+   "hard": false,
+   "detail": "1% of the route rides the same road twice (the app rejects loops above 25%); mirror score 2% -- not an out-and-back",
+   "value": 0.01,
+   "limit": 0.25
+  }
+ ],
+ "log_tail": "Parsed (claude-haiku-4-5, 2446in/103out tokens): {'request_type': 'route', 'address': 'Verona, WI', 'route': {'distance_miles': 40, 'max_climb_ft': 1500, 'maximize_climb': False, 'minimize_climb': False, 'shape': 'loop', 'avoid_places': ['Highway 18, Verona, WI'], 'via_places': []}}\nAvoiding: County Highway M, Town of Verona, Dane County, Wisconsin, 53593, United States (r=800 m)\n(skipping ors: ORS_API_KEY not set)\nStart: Verona, Dane County, Wisconsin, United States (42.99055, -89.53356)\nGenerating 6 loop candidates via brouter...\n  brouter: trimmed 4.6 mi of out-and-back spurs\n  brouter: trimmed 1.7 mi of out-and-back spurs\n  brouter: trimmed 1.1 mi of out-and-back spurs\n  brouter: trimmed 2.4 mi of out-and-back spurs\n  brouter: trimmed 5.1 mi of out-and-back spurs\n  brouter: trimmed 0.3 mi of out-and-back spurs\n  brouter: trimmed 0.5 mi of out-and-back spurs\n  brouter: trimmed 7.2 mi of out-and-back spurs\n  brouter: trimmed 1.7 mi of out-and-back spurs\n  brouter: trimmed 2.6 mi of out-and-back spurs\n  brouter: trimmed 1.6 mi of out-and-back spurs\n  brouter: trimmed 0.9 mi of out-and-back spurs\n  brouter: trimmed 7.2 mi of out-and-back spurs\n  brouter: trimmed 0.4 mi of out-and-back spurs\n  reject [brouter bearing=0 cw scale=1.23]: ascent 1684 ft exceeds cap\n  reject [brouter bearing=60 ccw scale=1.16]: ascent 1687 ft exceeds cap\n  reject [brouter bearing=180 ccw scale=1.21]: ascent 2195 ft exceeds cap\n  reject [brouter bearing=240 cw scale=1.08]: ascent 1900 ft exceeds cap\n  reject [brouter bearing=300 ccw scale=1.27]: distance 50.5 mi outside \u00b115% of target\n\nrank provider shape      miles  climb ft  repeat  major  file\n1    brouter  loop        37.1      1491      1%      0  evals\\results\\postfix\\work\\D16\\route_40mi_ride_1_loop_brouter.gpx\nwrote evals\\results\\postfix\\work\\D16\\preview.html (1 routes)\n\nBest: rank 1 \u2014 37.1 mi, 1491 ft climbing (brouter, bearing=120 cw scale=1.00)\n",
+ "run": "postfix",
+ "repeat": 1,
+ "cases_version": "routegen-eval-v1",
+ "timestamp": "2026-09-20T10:15:23",
+ "verdict_history": [],
+ "scorer_error": null,
+ "rescored_at": "2026-09-20T11:30:43"
+}

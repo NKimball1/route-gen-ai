@@ -1,0 +1,179 @@
+{
+ "id": "H16",
+ "split": "heldout",
+ "category": "out_of_scope",
+ "tier": "live",
+ "scope": "out_of_scope",
+ "session": null,
+ "step": null,
+ "text": "give me the most scenic 40 mile loop from Mount Horeb WI, best views",
+ "start": "Mount Horeb, WI",
+ "why": "Held out: there is no scenery model. Honest behavior is a route plus a note that scenery was not used as a criterion.",
+ "expect": {
+  "request_type": "route",
+  "outcome": "success_with_caveat",
+  "parse": {
+   "notes": {
+    "nonempty": true
+   }
+  },
+  "route": {
+   "target_miles": 40,
+   "loop": null
+  }
+ },
+ "verdict": "pass",
+ "fail_reasons": [],
+ "parsed": {
+  "request_type": "route",
+  "address": "Mount Horeb, WI",
+  "route": {
+   "distance_miles": 40,
+   "max_climb_ft": null,
+   "maximize_climb": false,
+   "minimize_climb": false,
+   "shape": "loop",
+   "avoid_places": [],
+   "via_places": []
+  },
+  "interval": null,
+  "edit": null,
+  "notes": "User wants the most scenic route with best views; prioritize scenic quality and vistas"
+ },
+ "notes": "User wants the most scenic route with best views; prioritize scenic quality and vistas",
+ "outcome_ok": true,
+ "summary": "1 route(s) \u2014 best: #1 loop: 38.5 mi, 2283 ft, 0% repeat",
+ "kind": "route",
+ "n_candidates": 1,
+ "error": null,
+ "traceback": "",
+ "seconds": 5.74,
+ "parse_cached": false,
+ "parse_tokens": {
+  "input": 2203,
+  "output": 108
+ },
+ "measured": {
+  "gpx_path": "evals/results/baseline/work/H16/route_40mi_ride_1_loop_brouter.gpx",
+  "gpx_valid": true,
+  "gpx_error": null,
+  "n_points": 1075,
+  "distance_mi": 38.53,
+  "app_reported_mi": 38.5,
+  "ascent_ft_app": 2284.0,
+  "ascent_ft_independent": 2364.0,
+  "loop_closure_m": 0.0,
+  "start_proximity_m": 3.5,
+  "end_proximity_m": 3.5,
+  "via_distances_m": {},
+  "avoid_on_road_m": {},
+  "max_point_gap_m": 1196.2,
+  "duplicate_points": 0,
+  "repeat_frac": 0.004,
+  "mirror_frac": 0.005,
+  "teleports": [],
+  "gaps_confirmed_road": [],
+  "gaps_unknown": [],
+  "has_elevation": true
+ },
+ "checks": [
+  {
+   "name": "outcome.no_crash",
+   "status": "pass",
+   "hard": true,
+   "detail": "handled without an unhandled exception",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "outcome.succeeded",
+   "status": "pass",
+   "hard": true,
+   "detail": "ok=True, 1 candidate(s): 1 route(s) \u2014 best: #1 loop: 38.5 mi, 2283 ft, 0% repeat",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "outcome.flagged_unsupported",
+   "status": "pass",
+   "hard": true,
+   "detail": "unsupported part reported to the user: User wants the most scenic route with best views; prioritize scenic quality and vistas",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.request_type",
+   "status": "pass",
+   "hard": true,
+   "detail": "got 'route', expected 'route'",
+   "value": "route",
+   "limit": "route"
+  },
+  {
+   "name": "parse.notes",
+   "status": "pass",
+   "hard": true,
+   "detail": "present",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "gpx.valid",
+   "status": "pass",
+   "hard": true,
+   "detail": "well-formed, 1075 points, elevation present",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "route.distance",
+   "status": "pass",
+   "hard": true,
+   "detail": "38.53 mi vs target 40 mi (+3.7%, tolerance +/-15%)",
+   "value": 38.53,
+   "limit": 40
+  },
+  {
+   "name": "route.starts_where_asked",
+   "status": "pass",
+   "hard": true,
+   "detail": "begins 4 m from the geocoded start (limit 600 m)",
+   "value": 3.5,
+   "limit": 600.0
+  },
+  {
+   "name": "geometry.continuous",
+   "status": "pass",
+   "hard": true,
+   "detail": "continuous: no breaks. Longest single segment 1196 m",
+   "value": 0,
+   "limit": 0
+  },
+  {
+   "name": "geometry.repeat",
+   "status": "pass",
+   "hard": false,
+   "detail": "0% of the route rides the same road twice (the app rejects loops above 25%); mirror score 0% -- not an out-and-back",
+   "value": 0.004,
+   "limit": 0.25
+  }
+ ],
+ "log_tail": "Parsed (claude-haiku-4-5, 2203in/108out tokens): {'request_type': 'route', 'address': 'Mount Horeb, WI', 'route': {'distance_miles': 40, 'max_climb_ft': None, 'maximize_climb': False, 'minimize_climb': False, 'shape': 'loop', 'avoid_places': [], 'via_places': []}, 'notes': 'User wants the most scenic route with best views; prioritize scenic quality and vistas'}\nNote: couldn't map: User wants the most scenic route with best views; prioritize scenic quality and vistas\n(skipping ors: ORS_API_KEY not set)\nStart: Mount Horeb, Dane County, Wisconsin, United States (43.00862, -89.73846)\nGenerating 6 loop candidates via brouter...\n  brouter: trimmed 3.8 mi of out-and-back spurs\n  brouter: trimmed 4.5 mi of out-and-back spurs\n  brouter: trimmed 8.3 mi of out-and-back spurs\n  brouter: trimmed 4.5 mi of out-and-back spurs\n  brouter: trimmed 4.2 mi of out-and-back spurs\n  brouter: trimmed 0.4 mi of out-and-back spurs\n  brouter: trimmed 2.6 mi of out-and-back spurs\n  brouter: trimmed 1.5 mi of out-and-back spurs\n  brouter: trimmed 3.8 mi of out-and-back spurs\n  brouter: trimmed 4.1 mi of out-and-back spurs\n  brouter: trimmed 7.5 mi of out-and-back spurs\n  brouter: trimmed 13.9 mi of out-and-back spurs\n  brouter: trimmed 12.8 mi of out-and-back spurs\n  reject [brouter bearing=0 cw scale=1.10]: distance 31.4 mi outside \u00b115% of target\n  reject [brouter bearing=60 ccw scale=1.00]: 1.4 mi on major highways (trunk/primary)\n  reject [brouter bearing=180 ccw scale=1.18]: 1.2 mi on major highways (trunk/primary)\n  reject [brouter bearing=240 cw scale=1.00]: 0.9 mi on major highways (trunk/primary)\n  reject [brouter bearing=300 ccw scale=1.51]: distance 46.1 mi outside \u00b115% of target\n\nrank provider shape      miles  climb ft  repeat  major  file\n1    brouter  loop        38.5      2283      0%      0  evals\\results\\baseline\\work\\H16\\route_40mi_ride_1_loop_brouter.gpx\nwrote evals\\results\\baseline\\work\\H16\\preview.html (1 routes)\n\nBest: rank 1 \u2014 38.5 mi, 2283 ft climbing (brouter, bearing=120 cw scale=1.18)\n",
+ "run": "baseline",
+ "repeat": 1,
+ "cases_version": "routegen-eval-v1",
+ "timestamp": "2026-09-20T09:47:22",
+ "verdict_history": [
+  {
+   "was": "fail",
+   "now": "pass",
+   "was_reasons": [
+    "geometry.continuous"
+   ],
+   "at": "2026-09-20T09:49:15"
+  }
+ ],
+ "rescored_at": "2026-09-20T11:30:42",
+ "scorer_error": null,
+ "candidate_labels": []
+}

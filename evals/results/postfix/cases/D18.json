@@ -1,0 +1,214 @@
+{
+ "id": "D18",
+ "split": "dev",
+ "category": "interval_spot",
+ "tier": "live",
+ "scope": "supported",
+ "session": null,
+ "step": null,
+ "text": "find me a flat stretch within 20 minutes of Olin Park Madison WI for 2x20 threshold intervals",
+ "start": "Olin Park, Madison WI",
+ "why": "The other request type entirely -- a stretch of road, not a route.",
+ "expect": {
+  "request_type": "interval_spot",
+  "outcome": "success",
+  "parse": {
+   "interval.reps": {
+    "equals": 2
+   },
+   "interval.rep_minutes": {
+    "range": [
+     18,
+     22
+    ]
+   },
+   "interval.kind": {
+    "in": [
+     "flat"
+    ]
+   },
+   "interval.max_travel_minutes": {
+    "range": [
+     15,
+     25
+    ]
+   }
+  },
+  "route": {
+   "target_miles": null,
+   "loop": false
+  }
+ },
+ "verdict": "partial",
+ "fail_reasons": [
+  "spot.long_enough_for_a_rep"
+ ],
+ "parsed": {
+  "address": "Olin Park Madison WI",
+  "edit": null,
+  "interval": {
+   "kind": "flat",
+   "max_travel_minutes": 20,
+   "rep_minutes": 20,
+   "reps": 2
+  },
+  "notes": "",
+  "request_type": "interval_spot",
+  "route": null
+ },
+ "notes": "",
+ "outcome_ok": true,
+ "summary": "Found 3 interval spot(s) \u2014 best: #1: 5.6 mi @ +0.1%, 11 stops, 0.0 mi out \u2014 2 laps per rep (turnaround each lap). A 20-minute flat rep needs about 6.7 mi of road.",
+ "kind": "interval_spot",
+ "n_candidates": 3,
+ "candidate_labels": [
+  "#1: 5.6 mi @ +0.1%, 11 stops, 0.0 mi out \u2014 2 laps per rep (turnaround each lap)",
+  "#2: 6.6 mi @ +0.2%, 9 stops, 0.0 mi out",
+  "#3: 5.4 mi @ +0.1%, 17 stops, 0.0 mi out \u2014 2 laps per rep (turnaround each lap)"
+ ],
+ "error": null,
+ "traceback": "",
+ "seconds": 7.75,
+ "scorer_error": null,
+ "parse_cached": true,
+ "parse_tokens": {
+  "input": 2445,
+  "output": 60
+ },
+ "measured": {
+  "gpx_path": "evals/results/postfix/work/D18/spot_flat_2x20_1.gpx",
+  "gpx_valid": true,
+  "gpx_error": null,
+  "n_points": 64,
+  "distance_mi": 5.5,
+  "app_reported_mi": 5.6,
+  "ascent_ft_app": 122.0,
+  "ascent_ft_independent": 127.0,
+  "loop_closure_m": 6677.9,
+  "start_proximity_m": 0.3,
+  "end_proximity_m": 6677.6,
+  "via_distances_m": {},
+  "avoid_on_road_m": {},
+  "max_point_gap_m": 766.2,
+  "duplicate_points": 0,
+  "repeat_frac": 0.0,
+  "mirror_frac": 0.005,
+  "teleports": [],
+  "gaps_confirmed_road": [],
+  "gaps_unknown": [],
+  "has_elevation": true
+ },
+ "checks": [
+  {
+   "name": "outcome.no_crash",
+   "status": "pass",
+   "hard": true,
+   "detail": "handled without an unhandled exception",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "outcome.succeeded",
+   "status": "pass",
+   "hard": true,
+   "detail": "ok=True, 3 candidate(s): Found 3 interval spot(s) \u2014 best: #1: 5.6 mi @ +0.1%, 11 stops, 0.0 mi out \u2014 2 laps per rep (turnaround each lap). A 20-minute flat rep needs about 6.7 mi of roa",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.request_type",
+   "status": "pass",
+   "hard": true,
+   "detail": "got 'interval_spot', expected 'interval_spot'",
+   "value": "interval_spot",
+   "limit": "interval_spot"
+  },
+  {
+   "name": "parse.reps",
+   "status": "pass",
+   "hard": true,
+   "detail": "2 vs expected 2",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.rep_minutes",
+   "status": "pass",
+   "hard": true,
+   "detail": "20 vs [18, 22]",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.kind",
+   "status": "pass",
+   "hard": true,
+   "detail": "'flat' vs allowed ['flat']",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.max_travel_minutes",
+   "status": "pass",
+   "hard": true,
+   "detail": "20 vs [15, 25]",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "gpx.valid",
+   "status": "pass",
+   "hard": true,
+   "detail": "well-formed, 64 points, elevation present",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "geometry.continuous",
+   "status": "pass",
+   "hard": true,
+   "detail": "continuous: no breaks. Longest single segment 766 m",
+   "value": 0,
+   "limit": 0
+  },
+  {
+   "name": "geometry.repeat",
+   "status": "pass",
+   "hard": false,
+   "detail": "0% of the route rides the same road twice (the app rejects loops above 25%); mirror score 0% -- not an out-and-back",
+   "value": 0.0,
+   "limit": 0.25
+  },
+  {
+   "name": "spot.within_travel_budget",
+   "status": "pass",
+   "hard": true,
+   "detail": "stretch begins 0.0 km from the start; the stated budget of 20 min allows 8.0 km at the app's assumed 15 mph travel pace",
+   "value": 0.0,
+   "limit": 8047.0
+  },
+  {
+   "name": "spot.long_enough_for_a_rep",
+   "status": "fail",
+   "hard": false,
+   "detail": "5.50 mi of road for a 20-minute flat rep, which needs about 6.67 mi at the app's assumed pace (2 lap(s) per rep)",
+   "value": 5.5,
+   "limit": 6.67
+  },
+  {
+   "name": "spot.lap_count_disclosed",
+   "status": "pass",
+   "hard": true,
+   "detail": "the stretch needs 2 laps per rep; the text the rider sees says so: 'Found 3 interval spot(s) \u2014 best: #1: 5.6 mi @ +0.1%, 11 stops, 0.0 mi out \u2014 2 laps per rep (turnaround each lap). A 20-minute flat rep needs about 6.7 mi of road. #1: 5.6 mi @ +0.1%, 11 stops, 0.0 mi '",
+   "value": null,
+   "limit": null
+  }
+ ],
+ "log_tail": "Parsed (claude-haiku-4-5, 2445in/60out tokens): {'address': 'Olin Park Madison WI', 'interval': {'kind': 'flat', 'max_travel_minutes': 20, 'rep_minutes': 20, 'reps': 2}, 'request_type': 'interval_spot'}\nStart: Olin Park, 1155, Madison, Dane County, Wisconsin, 53715, United States (43.05494, -89.37807)\nLooking for a flat stretch ~6.7 mi long within ~5 mi (20 min easy riding)...\n  1982 traffic controls (stops/signals/crossings) in area\n\nrank  len mi  grade %    \u00b1%  turns/km  stops  ride out mi  file\n1        5.6      0.1   1.5       0.9     11          0.0  evals\\results\\postfix\\work\\D18\\spot_flat_2x20_1.gpx\n2        6.6      0.2   2.0       1.2      9          0.0  evals\\results\\postfix\\work\\D18\\spot_flat_2x20_2.gpx\n3        5.4      0.1   1.2       0.7     17          0.0  evals\\results\\postfix\\work\\D18\\spot_flat_2x20_3.gpx\nwrote evals\\results\\postfix\\work\\D18\\preview.html (3 routes)\n\nBest: 5.6 mi at +0.1%, 0.0 mi ride out (~2 laps per rep \u2014 expect turnarounds)\n",
+ "run": "postfix",
+ "repeat": 1,
+ "cases_version": "routegen-eval-v1",
+ "timestamp": "2026-09-20T11:00:02",
+ "verdict_history": [],
+ "rescored_at": "2026-09-20T11:30:43"
+}

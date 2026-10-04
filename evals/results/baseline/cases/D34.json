@@ -1,0 +1,175 @@
+{
+ "id": "D34",
+ "split": "dev",
+ "category": "edit",
+ "tier": "live",
+ "scope": "supported",
+ "session": "E2",
+ "step": 3,
+ "text": "make this one start and finish at Mount Horeb WI",
+ "start": "Verona, WI",
+ "why": "Anchor: start AND end at one place as a single operation, not move_start alone.",
+ "expect": {
+  "request_type": "edit_route",
+  "outcome": "success",
+  "parse": {
+   "edit.mode": {
+    "in": [
+     "anchor"
+    ]
+   }
+  },
+  "route": {
+   "loop": true,
+   "anchor": "Mount Horeb, WI",
+   "anchor_tolerance_m": 1500
+  }
+ },
+ "verdict": "pass",
+ "fail_reasons": [],
+ "parsed": {
+  "request_type": "edit_route",
+  "address": null,
+  "route": null,
+  "interval": null,
+  "edit": {
+   "mode": "anchor",
+   "place": "Mount Horeb, WI",
+   "places": null,
+   "radius_m": 0,
+   "miles_delta": null,
+   "target_miles": null,
+   "connect_return": false,
+   "revert_first": false
+  },
+  "notes": ""
+ },
+ "notes": "",
+ "outcome_ok": true,
+ "summary": "Done \u2014 round trip from Mount Horeb, WI: now 44.1 mi (+18.8 mi).",
+ "kind": "edit",
+ "n_candidates": 2,
+ "error": null,
+ "traceback": "",
+ "seconds": 2.21,
+ "parse_cached": false,
+ "parse_tokens": {
+  "input": 2196,
+  "output": 80
+ },
+ "measured": {
+  "gpx_path": "evals/results/baseline/work/E2/route_35mi_ride_1_loop_brouter_edit2.gpx",
+  "gpx_valid": true,
+  "gpx_error": null,
+  "n_points": 1072,
+  "distance_mi": 44.15,
+  "app_reported_mi": 44.1,
+  "ascent_ft_app": 2151.0,
+  "ascent_ft_independent": 2195.0,
+  "loop_closure_m": 0.0,
+  "start_proximity_m": 3.5,
+  "end_proximity_m": 3.5,
+  "via_distances_m": {},
+  "avoid_on_road_m": {},
+  "max_point_gap_m": 669.7,
+  "duplicate_points": 4,
+  "repeat_frac": 0.207,
+  "mirror_frac": 0.425,
+  "teleports": [],
+  "gaps_confirmed_road": [],
+  "gaps_unknown": [],
+  "has_elevation": true
+ },
+ "checks": [
+  {
+   "name": "outcome.no_crash",
+   "status": "pass",
+   "hard": true,
+   "detail": "handled without an unhandled exception",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "outcome.succeeded",
+   "status": "pass",
+   "hard": true,
+   "detail": "ok=True, 2 candidate(s): Done \u2014 round trip from Mount Horeb, WI: now 44.1 mi (+18.8 mi).",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.request_type",
+   "status": "pass",
+   "hard": true,
+   "detail": "got 'edit_route', expected 'edit_route'",
+   "value": "edit_route",
+   "limit": "edit_route"
+  },
+  {
+   "name": "parse.mode",
+   "status": "pass",
+   "hard": true,
+   "detail": "'anchor' vs allowed ['anchor']",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "gpx.valid",
+   "status": "pass",
+   "hard": true,
+   "detail": "well-formed, 1072 points, elevation present",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "route.loop_closure",
+   "status": "pass",
+   "hard": true,
+   "detail": "start-to-finish gap 0 m (limit 250 m)",
+   "value": 0.0,
+   "limit": 250.0
+  },
+  {
+   "name": "route.anchored",
+   "status": "pass",
+   "hard": true,
+   "detail": "start 4 m / finish 4 m from the anchor (limit 1500 m)",
+   "value": 3.5,
+   "limit": 1500
+  },
+  {
+   "name": "geometry.continuous",
+   "status": "pass",
+   "hard": true,
+   "detail": "continuous: no breaks. Longest single segment 670 m",
+   "value": 0,
+   "limit": 0
+  },
+  {
+   "name": "geometry.repeat",
+   "status": "pass",
+   "hard": false,
+   "detail": "21% of the route rides the same road twice (the app rejects loops above 25%); mirror score 42%",
+   "value": 0.207,
+   "limit": 0.25
+  }
+ ],
+ "log_tail": "Parsed (claude-haiku-4-5, 2196in/80out tokens): {'request_type': 'edit_route', 'edit': {'mode': 'anchor', 'place': 'Mount Horeb, WI', 'places': None, 'radius_m': 0, 'miles_delta': None, 'target_miles': None, 'connect_return': False, 'revert_first': False}}\nClamped radius_m: 0 -> 50\nEditing: evals\\results\\baseline\\work\\E2\\route_35mi_ride_1_loop_brouter_edit1.gpx\nMaking it a round trip from: Mount Horeb, Dane County, Wisconsin, United States\nwrote evals\\results\\baseline\\work\\E2\\preview.html (2 routes)\nReplaced 0.0 mi with 18.8 mi across 2 detour(s) (+18.8 mi)\nEdited route: 44.1 mi, 2150 ft, 21% repeat -> evals\\results\\baseline\\work\\E2\\route_35mi_ride_1_loop_brouter_edit2.gpx\nDone \u2014 round trip from Mount Horeb, WI: now 44.1 mi (+18.8 mi).\n",
+ "run": "baseline",
+ "repeat": 1,
+ "cases_version": "routegen-eval-v1",
+ "timestamp": "2026-09-20T09:48:06",
+ "verdict_history": [
+  {
+   "was": "fail",
+   "now": "pass",
+   "was_reasons": [
+    "geometry.continuous"
+   ],
+   "at": "2026-09-20T09:49:15"
+  }
+ ],
+ "rescored_at": "2026-09-20T11:30:41",
+ "scorer_error": null,
+ "candidate_labels": []
+}

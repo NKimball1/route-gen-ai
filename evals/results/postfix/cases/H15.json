@@ -1,0 +1,171 @@
+{
+ "id": "H15",
+ "split": "heldout",
+ "category": "infeasible",
+ "tier": "live",
+ "scope": "supported",
+ "session": null,
+ "step": null,
+ "text": "a 300 mile loop from Monona Terrace Madison WI",
+ "start": "Monona Terrace, Madison WI",
+ "why": "Held out: beyond the server-side clamp of 150 mi. Probes whether the clamp is applied AND disclosed to the user.",
+ "expect": {
+  "request_type": "route",
+  "outcome": "either",
+  "parse": {
+   "route.distance_miles": {
+    "range": [
+     250,
+     350
+    ]
+   }
+  },
+  "route": {
+   "target_miles": 150,
+   "loop": null,
+   "clamped": true
+  }
+ },
+ "verdict": "pass",
+ "fail_reasons": [],
+ "parsed": {
+  "request_type": "route",
+  "address": "Monona Terrace, Madison, WI",
+  "route": {
+   "distance_miles": 300,
+   "max_climb_ft": null,
+   "maximize_climb": false,
+   "minimize_climb": false,
+   "shape": "loop",
+   "avoid_places": [],
+   "via_places": []
+  },
+  "interval": null,
+  "edit": null,
+  "notes": ""
+ },
+ "notes": "",
+ "outcome_ok": true,
+ "summary": "4 route(s) \u2014 best: #1 loop: 150.5 mi, 4398 ft, 0% repeat, 0.4 mi major",
+ "kind": "route",
+ "n_candidates": 4,
+ "candidate_labels": [
+  "#1 loop: 150.5 mi, 4398 ft, 0% repeat, 0.4 mi major",
+  "#2 loop: 153.4 mi, 8197 ft, 0% repeat, 0.3 mi major",
+  "#3 loop: 143.0 mi, 4660 ft, 1% repeat",
+  "#4 loop: 140.5 mi, 5912 ft, 0% repeat, 0.1 mi major"
+ ],
+ "error": null,
+ "traceback": "",
+ "seconds": 19.99,
+ "scorer_error": null,
+ "parse_cached": false,
+ "parse_tokens": {
+  "input": 2435,
+  "output": 95
+ },
+ "measured": {
+  "gpx_path": "evals/results/postfix/work/H15/route_150mi_ride_1_loop_brouter.gpx",
+  "gpx_valid": true,
+  "gpx_error": null,
+  "n_points": 3084,
+  "distance_mi": 150.39,
+  "app_reported_mi": 150.5,
+  "ascent_ft_app": 4404.0,
+  "ascent_ft_independent": 4379.0,
+  "loop_closure_m": 0.0,
+  "start_proximity_m": 14.6,
+  "end_proximity_m": 14.6,
+  "via_distances_m": {},
+  "avoid_on_road_m": {},
+  "max_point_gap_m": 1394.2,
+  "duplicate_points": 0,
+  "repeat_frac": 0.005,
+  "mirror_frac": 0.005,
+  "teleports": [],
+  "gaps_confirmed_road": [],
+  "gaps_unknown": [],
+  "has_elevation": true
+ },
+ "checks": [
+  {
+   "name": "outcome.no_crash",
+   "status": "pass",
+   "hard": true,
+   "detail": "handled without an unhandled exception",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "outcome.handled",
+   "status": "pass",
+   "hard": false,
+   "detail": "ok=True, 4 candidate(s): 4 route(s) \u2014 best: #1 loop: 150.5 mi, 4398 ft, 0% repeat, 0.4 mi major",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.request_type",
+   "status": "pass",
+   "hard": true,
+   "detail": "got 'route', expected 'route'",
+   "value": "route",
+   "limit": "route"
+  },
+  {
+   "name": "parse.distance_miles",
+   "status": "pass",
+   "hard": true,
+   "detail": "300 vs [250, 350]",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "gpx.valid",
+   "status": "pass",
+   "hard": true,
+   "detail": "well-formed, 3084 points, elevation present",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "route.distance",
+   "status": "pass",
+   "hard": true,
+   "detail": "150.39 mi vs target 150 mi (+0.3%, tolerance +/-15%)",
+   "value": 150.39,
+   "limit": 150
+  },
+  {
+   "name": "route.starts_where_asked",
+   "status": "pass",
+   "hard": true,
+   "detail": "begins 15 m from the geocoded start (limit 600 m)",
+   "value": 14.6,
+   "limit": 600.0
+  },
+  {
+   "name": "geometry.continuous",
+   "status": "pass",
+   "hard": true,
+   "detail": "continuous: no breaks. Longest single segment 1394 m",
+   "value": 0,
+   "limit": 0
+  },
+  {
+   "name": "geometry.repeat",
+   "status": "pass",
+   "hard": false,
+   "detail": "0% of the route rides the same road twice (the app rejects loops above 25%); mirror score 0% -- not an out-and-back",
+   "value": 0.005,
+   "limit": 0.25
+  }
+ ],
+ "log_tail": "Parsed (claude-haiku-4-5, 2435in/95out tokens): {'request_type': 'route', 'address': 'Monona Terrace, Madison, WI', 'route': {'distance_miles': 300, 'max_climb_ft': None, 'maximize_climb': False, 'minimize_climb': False, 'shape': 'loop', 'avoid_places': [], 'via_places': []}}\nClamped distance_miles: 300 -> 150\n(skipping ors: ORS_API_KEY not set)\nStart: Monona Terrace, Capital City State Trail, Bassett, Madison, Dane County, Wisconsin, 53788, United States (43.07167, -89.38002)\nGenerating 6 loop candidates via brouter...\n  brouter: trimmed 3.6 mi of out-and-back spurs\n  brouter: trimmed 4.4 mi of out-and-back spurs\n  brouter: trimmed 6.0 mi of out-and-back spurs\n  brouter: trimmed 15.2 mi of out-and-back spurs\n  brouter: trimmed 2.6 mi of out-and-back spurs\n  brouter: trimmed 2.4 mi of out-and-back spurs\n  brouter: trimmed 4.9 mi of out-and-back spurs\n  brouter: trimmed 9.5 mi of out-and-back spurs\n  brouter: trimmed 1.7 mi of out-and-back spurs\n  brouter: trimmed 4.1 mi of out-and-back spurs\n  brouter: trimmed 2.3 mi of out-and-back spurs\n  reject [brouter bearing=0 cw scale=1.13]: 0.9 mi on major highways (trunk/primary)\n  reject [brouter bearing=300 ccw scale=1.00]: 2.5 mi on major highways (trunk/primary)\n\nrank provider shape      miles  climb ft  repeat  major  file\n1    brouter  loop       150.5      4398      0%  0.4mi  evals\\results\\postfix\\work\\H15\\route_150mi_ride_1_loop_brouter.gpx\n2    brouter  loop       153.4      8197      0%  0.3mi  evals\\results\\postfix\\work\\H15\\route_150mi_ride_2_loop_brouter.gpx\n3    brouter  loop       143.0      4660      1%      0  evals\\results\\postfix\\work\\H15\\route_150mi_ride_3_loop_brouter.gpx\n4    brouter  loop       140.5      5912      0%  0.1mi  evals\\results\\postfix\\work\\H15\\route_150mi_ride_4_loop_brouter.gpx\nwrote evals\\results\\postfix\\work\\H15\\preview.html (4 routes)\n\nBest: rank 1 \u2014 150.5 mi, 4398 ft climbing (brouter, bearing=120 cw scale=1.18)\n",
+ "run": "postfix",
+ "repeat": 1,
+ "cases_version": "routegen-eval-v1",
+ "timestamp": "2026-09-20T10:39:59",
+ "verdict_history": [],
+ "rescored_at": "2026-09-20T11:30:43"
+}

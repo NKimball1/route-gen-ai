@@ -1,0 +1,196 @@
+{
+ "id": "D03",
+ "split": "dev",
+ "category": "simple_loop",
+ "tier": "live",
+ "scope": "supported",
+ "session": null,
+ "step": null,
+ "text": "I'd like to ride about thirty miles starting and finishing at the Wisconsin State Capitol in Madison",
+ "start": "Wisconsin State Capitol, Madison WI",
+ "why": "Spelled-out number, round-trip phrasing, explicit public start.",
+ "expect": {
+  "request_type": "route",
+  "outcome": "success",
+  "parse": {
+   "route.distance_miles": {
+    "range": [
+     27,
+     33
+    ]
+   },
+   "route.shape": {
+    "in": [
+     "loop",
+     "both"
+    ]
+   }
+  },
+  "route": {
+   "target_miles": 30,
+   "loop": true
+  }
+ },
+ "verdict": "pass",
+ "fail_reasons": [],
+ "parsed": {
+  "request_type": "route",
+  "address": "Wisconsin State Capitol, Madison, Wisconsin",
+  "route": {
+   "distance_miles": 30,
+   "max_climb_ft": null,
+   "maximize_climb": false,
+   "minimize_climb": false,
+   "shape": "loop",
+   "avoid_places": [],
+   "via_places": []
+  },
+  "interval": null,
+  "edit": null,
+  "notes": ""
+ },
+ "notes": "",
+ "outcome_ok": true,
+ "summary": "5 route(s) \u2014 best: #1 loop: 30.7 mi, 1112 ft, 0% repeat",
+ "kind": "route",
+ "n_candidates": 5,
+ "error": null,
+ "traceback": "",
+ "seconds": 15.01,
+ "parse_cached": false,
+ "parse_tokens": {
+  "input": 2201,
+  "output": 91
+ },
+ "measured": {
+  "gpx_path": "evals/results/baseline/work/D03/route_30mi_ride_1_loop_brouter.gpx",
+  "gpx_valid": true,
+  "gpx_error": null,
+  "n_points": 1193,
+  "distance_mi": 30.64,
+  "app_reported_mi": 30.7,
+  "ascent_ft_app": 1112.0,
+  "ascent_ft_independent": 1127.0,
+  "loop_closure_m": 0.0,
+  "start_proximity_m": 0.1,
+  "end_proximity_m": 0.1,
+  "via_distances_m": {},
+  "avoid_on_road_m": {},
+  "max_point_gap_m": 687.7,
+  "duplicate_points": 0,
+  "repeat_frac": 0.004,
+  "mirror_frac": 0.0,
+  "teleports": [],
+  "gaps_confirmed_road": [],
+  "gaps_unknown": [],
+  "has_elevation": true
+ },
+ "checks": [
+  {
+   "name": "outcome.no_crash",
+   "status": "pass",
+   "hard": true,
+   "detail": "handled without an unhandled exception",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "outcome.succeeded",
+   "status": "pass",
+   "hard": true,
+   "detail": "ok=True, 5 candidate(s): 5 route(s) \u2014 best: #1 loop: 30.7 mi, 1112 ft, 0% repeat",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.request_type",
+   "status": "pass",
+   "hard": true,
+   "detail": "got 'route', expected 'route'",
+   "value": "route",
+   "limit": "route"
+  },
+  {
+   "name": "parse.distance_miles",
+   "status": "pass",
+   "hard": true,
+   "detail": "30 vs [27, 33]",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.shape",
+   "status": "pass",
+   "hard": true,
+   "detail": "'loop' vs allowed ['loop', 'both']",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "gpx.valid",
+   "status": "pass",
+   "hard": true,
+   "detail": "well-formed, 1193 points, elevation present",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "route.distance",
+   "status": "pass",
+   "hard": true,
+   "detail": "30.64 mi vs target 30 mi (+2.1%, tolerance +/-15%)",
+   "value": 30.64,
+   "limit": 30
+  },
+  {
+   "name": "route.loop_closure",
+   "status": "pass",
+   "hard": true,
+   "detail": "start-to-finish gap 0 m (limit 250 m)",
+   "value": 0.0,
+   "limit": 250.0
+  },
+  {
+   "name": "route.starts_where_asked",
+   "status": "pass",
+   "hard": true,
+   "detail": "begins 0 m from the geocoded start (limit 600 m)",
+   "value": 0.1,
+   "limit": 600.0
+  },
+  {
+   "name": "geometry.continuous",
+   "status": "pass",
+   "hard": true,
+   "detail": "continuous: no breaks. Longest single segment 688 m",
+   "value": 0,
+   "limit": 0
+  },
+  {
+   "name": "geometry.repeat",
+   "status": "pass",
+   "hard": false,
+   "detail": "0% of the route rides the same road twice (the app rejects loops above 25%); mirror score 0% -- not an out-and-back",
+   "value": 0.004,
+   "limit": 0.25
+  }
+ ],
+ "log_tail": "Parsed (claude-haiku-4-5, 2201in/91out tokens): {'request_type': 'route', 'address': 'Wisconsin State Capitol, Madison, Wisconsin', 'route': {'distance_miles': 30, 'max_climb_ft': None, 'maximize_climb': False, 'minimize_climb': False, 'shape': 'loop', 'avoid_places': [], 'via_places': []}}\n(skipping ors: ORS_API_KEY not set)\nStart: Wisconsin State Capitol, 2, East Main Street, First Settlement, Downtown, Madison, Dane County, Wisconsin, 53703, United States (43.07469, -89.38417)\nGenerating 6 loop candidates via brouter...\n  brouter: trimmed 2.2 mi of out-and-back spurs\n  brouter: trimmed 4.7 mi of out-and-back spurs\n  brouter: trimmed 1.0 mi of out-and-back spurs\n  brouter: trimmed 1.7 mi of out-and-back spurs\n  brouter: trimmed 1.2 mi of out-and-back spurs\n  brouter: trimmed 8.4 mi of out-and-back spurs\n  brouter: trimmed 2.5 mi of out-and-back spurs\n  brouter: trimmed 6.7 mi of out-and-back spurs\n  brouter: trimmed 4.4 mi of out-and-back spurs\n  brouter: trimmed 0.3 mi of out-and-back spurs\n  brouter: trimmed 1.7 mi of out-and-back spurs\n  brouter: trimmed 2.4 mi of out-and-back spurs\n  brouter: trimmed 1.6 mi of out-and-back spurs\n  brouter: trimmed 0.9 mi of out-and-back spurs\n  brouter: trimmed 1.1 mi of out-and-back spurs\n  reject [brouter bearing=0 cw scale=1.08]: distance 35.4 mi outside \u00b115% of target\n\nrank provider shape      miles  climb ft  repeat  major  file\n1    brouter  loop        30.7      1112      0%      0  evals\\results\\baseline\\work\\D03\\route_30mi_ride_1_loop_brouter.gpx\n2    brouter  loop        30.7      1489      0%      0  evals\\results\\baseline\\work\\D03\\route_30mi_ride_2_loop_brouter.gpx\n3    brouter  loop        28.5      1147      0%      0  evals\\results\\baseline\\work\\D03\\route_30mi_ride_3_loop_brouter.gpx\n4    brouter  loop        32.6      1298      0%      0  evals\\results\\baseline\\work\\D03\\route_30mi_ride_4_loop_brouter.gpx\n5    brouter  loop        25.8       989      1%      0  evals\\results\\baseline\\work\\D03\\route_30mi_ride_5_loop_brouter.gpx\nwrote evals\\results\\baseline\\work\\D03\\preview.html (5 routes)\n\nBest: rank 1 \u2014 30.7 mi, 1112 ft climbing (brouter, bearing=60 ccw scale=1.16)\n",
+ "run": "baseline",
+ "repeat": 1,
+ "cases_version": "routegen-eval-v1",
+ "timestamp": "2026-09-20T09:31:45",
+ "verdict_history": [
+  {
+   "was": "fail",
+   "now": "pass",
+   "was_reasons": [
+    "geometry.continuous"
+   ],
+   "at": "2026-09-20T09:49:14"
+  }
+ ],
+ "rescored_at": "2026-09-20T11:30:41",
+ "scorer_error": null,
+ "candidate_labels": []
+}

@@ -1,0 +1,165 @@
+{
+ "id": "H13",
+ "split": "heldout",
+ "category": "ambiguous",
+ "tier": "live",
+ "scope": "supported",
+ "session": null,
+ "step": null,
+ "text": "ride from Olin Park Madison WI, I've got maybe an hour but I might have longer",
+ "start": "Olin Park, Madison WI",
+ "why": "Held out: underspecified duration with a hedge. Probes whether the hedge is surfaced or silently resolved.",
+ "expect": {
+  "request_type": "route",
+  "outcome": "either",
+  "parse": {
+   "route.distance_miles": {
+    "range": [
+     10,
+     40
+    ]
+   }
+  },
+  "route": {
+   "target_miles": "from_parse",
+   "loop": null
+  }
+ },
+ "verdict": "pass",
+ "fail_reasons": [],
+ "parsed": {
+  "request_type": "route",
+  "address": "Olin Park, Madison, WI",
+  "route": {
+   "distance_miles": 16,
+   "max_climb_ft": null,
+   "maximize_climb": false,
+   "minimize_climb": false,
+   "shape": "loop",
+   "avoid_places": [],
+   "via_places": []
+  },
+  "interval": null,
+  "edit": null,
+  "notes": "User has approximately 60 minutes available with potential for longer; at 16 mph average this is roughly an hour ride. User flexible on duration."
+ },
+ "notes": "User has approximately 60 minutes available with potential for longer; at 16 mph average this is roughly an hour ride. User flexible on duration.",
+ "outcome_ok": true,
+ "summary": "5 route(s) \u2014 best: #1 loop: 16.0 mi, 597 ft, 2% repeat",
+ "kind": "route",
+ "n_candidates": 5,
+ "error": null,
+ "traceback": "",
+ "seconds": 10.14,
+ "parse_cached": false,
+ "parse_tokens": {
+  "input": 2204,
+  "output": 110
+ },
+ "measured": {
+  "gpx_path": "evals/results/baseline/work/H13/route_16mi_ride_1_loop_brouter.gpx",
+  "gpx_valid": true,
+  "gpx_error": null,
+  "n_points": 1028,
+  "distance_mi": 15.81,
+  "app_reported_mi": 16.0,
+  "ascent_ft_app": 597.0,
+  "ascent_ft_independent": 581.0,
+  "loop_closure_m": 1.3,
+  "start_proximity_m": 0.3,
+  "end_proximity_m": 1.5,
+  "via_distances_m": {},
+  "avoid_on_road_m": {},
+  "max_point_gap_m": 29.1,
+  "duplicate_points": 0,
+  "repeat_frac": 0.017,
+  "mirror_frac": 0.03,
+  "teleports": [],
+  "gaps_confirmed_road": [],
+  "gaps_unknown": [],
+  "has_elevation": true
+ },
+ "checks": [
+  {
+   "name": "outcome.no_crash",
+   "status": "pass",
+   "hard": true,
+   "detail": "handled without an unhandled exception",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "outcome.handled",
+   "status": "pass",
+   "hard": false,
+   "detail": "ok=True, 5 candidate(s): 5 route(s) \u2014 best: #1 loop: 16.0 mi, 597 ft, 2% repeat",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.request_type",
+   "status": "pass",
+   "hard": true,
+   "detail": "got 'route', expected 'route'",
+   "value": "route",
+   "limit": "route"
+  },
+  {
+   "name": "parse.distance_miles",
+   "status": "pass",
+   "hard": true,
+   "detail": "16 vs [10, 40]",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "gpx.valid",
+   "status": "pass",
+   "hard": true,
+   "detail": "well-formed, 1028 points, elevation present",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "route.distance",
+   "status": "pass",
+   "hard": true,
+   "detail": "15.81 mi vs target 16 mi (+1.2%, tolerance +/-15%)",
+   "value": 15.81,
+   "limit": 16
+  },
+  {
+   "name": "route.starts_where_asked",
+   "status": "pass",
+   "hard": true,
+   "detail": "begins 0 m from the geocoded start (limit 600 m)",
+   "value": 0.3,
+   "limit": 600.0
+  },
+  {
+   "name": "geometry.continuous",
+   "status": "pass",
+   "hard": true,
+   "detail": "continuous: no breaks. Longest single segment 29 m",
+   "value": 0,
+   "limit": 0
+  },
+  {
+   "name": "geometry.repeat",
+   "status": "pass",
+   "hard": false,
+   "detail": "2% of the route rides the same road twice (the app rejects loops above 25%); mirror score 3% -- not an out-and-back",
+   "value": 0.017,
+   "limit": 0.25
+  }
+ ],
+ "log_tail": "Parsed (claude-haiku-4-5, 2204in/110out tokens): {'request_type': 'route', 'address': 'Olin Park, Madison, WI', 'route': {'distance_miles': 16, 'max_climb_ft': None, 'maximize_climb': False, 'minimize_climb': False, 'shape': 'loop', 'avoid_places': [], 'via_places': []}, 'notes': 'User has approximately 60 minutes available with potential for longer; at 16 mph average this is roughly an hour ride. User flexible on duration.'}\nNote: couldn't map: User has approximately 60 minutes available with potential for longer; at 16 mph average this is roughly an hour ride. User flexible on duration.\n(skipping ors: ORS_API_KEY not set)\nStart: Olin Park, 1155, Madison, Dane County, Wisconsin, 53715, United States (43.05494, -89.37807)\nGenerating 6 loop candidates via brouter...\n  brouter: trimmed 4.9 mi of out-and-back spurs\n  brouter: trimmed 4.5 mi of out-and-back spurs\n  brouter: trimmed 4.3 mi of out-and-back spurs\n  brouter: trimmed 0.9 mi of out-and-back spurs\n  brouter: trimmed 1.2 mi of out-and-back spurs\n  brouter: trimmed 3.0 mi of out-and-back spurs\n  brouter: trimmed 2.0 mi of out-and-back spurs\n  brouter: trimmed 0.5 mi of out-and-back spurs\n  brouter: trimmed 2.0 mi of out-and-back spurs\n  brouter: trimmed 1.6 mi of out-and-back spurs\n  brouter: trimmed 0.6 mi of out-and-back spurs\n  brouter: trimmed 0.9 mi of out-and-back spurs\n  brouter: trimmed 0.8 mi of out-and-back spurs\n  reject [brouter bearing=180 ccw scale=1.29]: distance 19.0 mi outside \u00b115% of target\n\nrank provider shape      miles  climb ft  repeat  major  file\n1    brouter  loop        16.0       597      2%      0  evals\\results\\baseline\\work\\H13\\route_16mi_ride_1_loop_brouter.gpx\n2    brouter  loop        15.6       808      2%      0  evals\\results\\baseline\\work\\H13\\route_16mi_ride_2_loop_brouter.gpx\n3    brouter  loop        16.5       544      8%      0  evals\\results\\baseline\\work\\H13\\route_16mi_ride_3_loop_brouter.gpx\n4    brouter  loop        15.2       600      0%      0  evals\\results\\baseline\\work\\H13\\route_16mi_ride_4_loop_brouter.gpx\n5    brouter  loop        14.8       427      1%      0  evals\\results\\baseline\\work\\H13\\route_16mi_ride_5_loop_brouter.gpx\nwrote evals\\results\\baseline\\work\\H13\\preview.html (5 routes)\n\nBest: rank 1 \u2014 16.0 mi, 597 ft climbing (brouter, bearing=0 cw scale=1.14)\n",
+ "run": "baseline",
+ "repeat": 1,
+ "cases_version": "routegen-eval-v1",
+ "timestamp": "2026-09-20T09:46:54",
+ "verdict_history": [],
+ "rescored_at": "2026-09-20T11:30:42",
+ "scorer_error": null,
+ "candidate_labels": []
+}

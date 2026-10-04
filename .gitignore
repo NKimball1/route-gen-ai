@@ -3,3 +3,10 @@ __pycache__/
 output/
 .env
 .strava_tokens.json
+
+# Eval scratch stays local: per-run working directories (hundreds of GPX
+# files plus session state with absolute paths) and run logs. Case results,
+# summaries, the parse/geocode cache and the published report are committed.
+evals/results/*/work/
+evals/results/pilot_work/
+evals/results/*.log

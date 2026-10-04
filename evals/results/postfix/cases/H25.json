@@ -1,0 +1,109 @@
+{
+ "id": "H25",
+ "split": "heldout",
+ "category": "edit",
+ "tier": "live",
+ "scope": "supported",
+ "session": "E5",
+ "step": 1,
+ "text": "undo that",
+ "start": "Monona Terrace, Madison WI",
+ "why": "Held out: undo with NO route in the session. Must refuse cleanly rather than crash.",
+ "expect": {
+  "request_type": "undo",
+  "outcome": "decline",
+  "parse": {},
+  "route": {
+   "loop": null
+  }
+ },
+ "verdict": "pass",
+ "fail_reasons": [],
+ "parsed": {
+  "request_type": "undo",
+  "address": null,
+  "route": null,
+  "interval": null,
+  "edit": null,
+  "notes": ""
+ },
+ "notes": "",
+ "outcome_ok": false,
+ "summary": "Nothing to undo \u2014 this is the earliest version.",
+ "kind": "error",
+ "n_candidates": 0,
+ "candidate_labels": [],
+ "error": null,
+ "traceback": "",
+ "seconds": 0.0,
+ "scorer_error": null,
+ "parse_cached": true,
+ "parse_tokens": {
+  "input": 2422,
+  "output": 37
+ },
+ "measured": {
+  "gpx_path": null,
+  "gpx_valid": null,
+  "gpx_error": null,
+  "n_points": null,
+  "distance_mi": null,
+  "app_reported_mi": null,
+  "ascent_ft_app": null,
+  "ascent_ft_independent": null,
+  "loop_closure_m": null,
+  "start_proximity_m": null,
+  "end_proximity_m": null,
+  "via_distances_m": {},
+  "avoid_on_road_m": {},
+  "max_point_gap_m": null,
+  "duplicate_points": null,
+  "repeat_frac": null,
+  "mirror_frac": null,
+  "teleports": [],
+  "gaps_confirmed_road": [],
+  "gaps_unknown": [],
+  "has_elevation": null
+ },
+ "checks": [
+  {
+   "name": "outcome.no_crash",
+   "status": "pass",
+   "hard": true,
+   "detail": "handled without an unhandled exception",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "outcome.declined",
+   "status": "pass",
+   "hard": true,
+   "detail": "ok=False, 0 candidate(s): Nothing to undo \u2014 this is the earliest version.",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "outcome.explained",
+   "status": "pass",
+   "hard": true,
+   "detail": "user-facing explanation: Nothing to undo \u2014 this is the earliest version.",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.request_type",
+   "status": "pass",
+   "hard": true,
+   "detail": "got 'undo', expected 'undo'",
+   "value": "undo",
+   "limit": "undo"
+  }
+ ],
+ "log_tail": "Parsed (claude-haiku-4-5, 2422in/37out tokens): {'request_type': 'undo'}\nNothing to undo \u2014 this is the earliest version.\n",
+ "run": "postfix",
+ "repeat": 1,
+ "cases_version": "routegen-eval-v1",
+ "timestamp": "2026-09-20T10:43:22",
+ "verdict_history": [],
+ "rescored_at": "2026-09-20T11:30:44"
+}

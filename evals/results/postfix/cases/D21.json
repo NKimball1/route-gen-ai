@@ -1,0 +1,127 @@
+{
+ "id": "D21",
+ "split": "dev",
+ "category": "ambiguous",
+ "tier": "live",
+ "scope": "supported",
+ "session": null,
+ "step": null,
+ "text": "a short easy spin from Olin Park Madison WI",
+ "start": "Olin Park, Madison WI",
+ "why": "Vague magnitude words only. 'Short' must not become 60 miles.",
+ "expect": {
+  "request_type": "route",
+  "outcome": "success",
+  "parse": {
+   "route.distance_miles": {
+    "range": [
+     4,
+     20
+    ]
+   }
+  },
+  "route": {
+   "target_miles": "from_parse",
+   "loop": null
+  }
+ },
+ "verdict": "fail",
+ "fail_reasons": [
+  "outcome.succeeded"
+ ],
+ "parsed": {
+  "request_type": "route",
+  "address": "Olin Park, Madison, WI",
+  "route": {
+   "distance_miles": 10,
+   "max_climb_ft": 300,
+   "maximize_climb": false,
+   "minimize_climb": true,
+   "shape": "loop",
+   "avoid_places": [],
+   "via_places": []
+  },
+  "interval": null,
+  "edit": null,
+  "notes": "Short easy spin implies flat, leisurely ride around 10 miles; user emphasized easy and short so minimizing climb and keeping distance modest"
+ },
+ "notes": "Short easy spin implies flat, leisurely ride around 10 miles; user emphasized easy and short so minimizing climb and keeping distance modest",
+ "outcome_ok": false,
+ "summary": "No route met the constraints \u2014 try a looser target or different distance.",
+ "kind": "route",
+ "n_candidates": 0,
+ "candidate_labels": [],
+ "error": null,
+ "traceback": "",
+ "seconds": 8.69,
+ "parse_cached": false,
+ "parse_tokens": {
+  "input": 2431,
+  "output": 122
+ },
+ "measured": {
+  "gpx_path": null,
+  "gpx_valid": null,
+  "gpx_error": null,
+  "n_points": null,
+  "distance_mi": null,
+  "app_reported_mi": null,
+  "ascent_ft_app": null,
+  "ascent_ft_independent": null,
+  "loop_closure_m": null,
+  "start_proximity_m": null,
+  "end_proximity_m": null,
+  "via_distances_m": {},
+  "avoid_on_road_m": {},
+  "max_point_gap_m": null,
+  "duplicate_points": null,
+  "repeat_frac": null,
+  "mirror_frac": null,
+  "teleports": [],
+  "gaps_confirmed_road": [],
+  "gaps_unknown": [],
+  "has_elevation": null
+ },
+ "checks": [
+  {
+   "name": "outcome.no_crash",
+   "status": "pass",
+   "hard": true,
+   "detail": "handled without an unhandled exception",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "outcome.succeeded",
+   "status": "fail",
+   "hard": true,
+   "detail": "ok=False, 0 candidate(s): No route met the constraints \u2014 try a looser target or different distance.",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.request_type",
+   "status": "pass",
+   "hard": true,
+   "detail": "got 'route', expected 'route'",
+   "value": "route",
+   "limit": "route"
+  },
+  {
+   "name": "parse.distance_miles",
+   "status": "pass",
+   "hard": true,
+   "detail": "10 vs [4, 20]",
+   "value": null,
+   "limit": null
+  }
+ ],
+ "log_tail": "Parsed (claude-haiku-4-5, 2431in/122out tokens): {'request_type': 'route', 'address': 'Olin Park, Madison, WI', 'route': {'distance_miles': 10, 'max_climb_ft': 300, 'maximize_climb': False, 'minimize_climb': True, 'shape': 'loop', 'avoid_places': [], 'via_places': []}, 'notes': 'Short easy spin implies flat, leisurely ride around 10 miles; user emphasized easy and short so minimizing climb and keeping distance modest'}\nNote: couldn't map: Short easy spin implies flat, leisurely ride around 10 miles; user emphasized easy and short so minimizing climb and keeping distance modest\n(skipping ors: ORS_API_KEY not set)\nStart: Olin Park, 1155, Madison, Dane County, Wisconsin, 53715, United States (43.05494, -89.37807)\nGenerating 6 loop candidates via brouter...\n  brouter: trimmed 0.7 mi of out-and-back spurs\n  brouter: trimmed 0.7 mi of out-and-back spurs\n  brouter: trimmed 1.0 mi of out-and-back spurs\n  brouter: trimmed 0.7 mi of out-and-back spurs\n  brouter: trimmed 4.7 mi of out-and-back spurs\n  brouter: trimmed 4.2 mi of out-and-back spurs\n  brouter: trimmed 1.6 mi of out-and-back spurs\n  brouter: trimmed 0.3 mi of out-and-back spurs\n  brouter: trimmed 3.0 mi of out-and-back spurs\n  brouter: trimmed 2.1 mi of out-and-back spurs\n  brouter: trimmed 2.4 mi of out-and-back spurs\n  brouter: trimmed 2.4 mi of out-and-back spurs\n  brouter: trimmed 3.7 mi of out-and-back spurs\n  brouter: trimmed 4.3 mi of out-and-back spurs\n  reject [brouter bearing=0 cw scale=0.57]: distance 11.9 mi outside \u00b115% of target\n  reject [brouter bearing=60 ccw scale=0.80]: distance 11.5 mi outside \u00b115% of target\n  reject [brouter bearing=120 cw scale=1.25]: ascent 334 ft exceeds cap\n  reject [brouter bearing=180 ccw scale=1.14]: ascent 316 ft exceeds cap\n  reject [brouter bearing=240 cw scale=1.26]: ascent 387 ft exceeds cap\n  reject [brouter bearing=300 ccw scale=1.33]: distance 8.3 mi outside \u00b115% of target\nNo candidate met the constraints. Try more candidates or a looser target.\n",
+ "run": "postfix",
+ "repeat": 1,
+ "cases_version": "routegen-eval-v1",
+ "timestamp": "2026-09-20T10:16:18",
+ "verdict_history": [],
+ "scorer_error": null,
+ "rescored_at": "2026-09-20T11:30:43"
+}

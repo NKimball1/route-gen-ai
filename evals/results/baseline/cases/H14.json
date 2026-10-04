@@ -1,0 +1,121 @@
+{
+ "id": "H14",
+ "split": "heldout",
+ "category": "ambiguous",
+ "tier": "live",
+ "scope": "supported",
+ "session": null,
+ "step": null,
+ "text": "30 mile loop from Verona WI that goes through the place with the good pie",
+ "start": "Verona, WI",
+ "why": "Held out: an ungeocodable waypoint. A confidently wrong location is worse than a clear 'not found'.",
+ "expect": {
+  "request_type": "route",
+  "outcome": "either",
+  "parse": {
+   "route.distance_miles": {
+    "range": [
+     27,
+     33
+    ]
+   }
+  },
+  "route": {
+   "target_miles": 30,
+   "loop": null
+  }
+ },
+ "verdict": "fail",
+ "fail_reasons": [
+  "outcome.no_crash"
+ ],
+ "parsed": {
+  "request_type": "route",
+  "address": "Verona, WI",
+  "route": {
+   "distance_miles": 30,
+   "max_climb_ft": null,
+   "maximize_climb": false,
+   "minimize_climb": false,
+   "shape": "loop",
+   "avoid_places": [],
+   "via_places": [
+    "place with the good pie, Verona, WI"
+   ]
+  },
+  "interval": null,
+  "edit": null,
+  "notes": "User referred to a specific location by its characteristic (good pie) rather than a proper name. The tool may need clarification or local knowledge to identify the exact venue."
+ },
+ "notes": "User referred to a specific location by its characteristic (good pie) rather than a proper name. The tool may need clarification or local knowledge to identify the exact venue.",
+ "outcome_ok": null,
+ "summary": null,
+ "kind": null,
+ "n_candidates": 0,
+ "error": "ValueError: Could not geocode address: 'place with the good pie, Verona, WI'",
+ "traceback": "Traceback (most recent call last):\n  File \"evals\\runner.py\", line 255, in run_case\n    result = dict(handle_request(case[\"text\"], log_sink=sink,\n                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"routes\\service.py\", line 141, in handle_request\n    result = _dispatch(text, default_address, workdir)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"routes\\service.py\", line 283, in _dispatch\n    vlat, vlon, vname = geocode(place)\n                        ^^^^^^^^^^^^^^\n  File \"routes\\geocode.py\", line 49, in geocode\n    raise ValueError(f\"Could not geocode address: {address!r}\")\nValueError: Could not geocode address: 'place with the good pie, Verona, WI'\n",
+ "seconds": 2.71,
+ "parse_cached": false,
+ "parse_tokens": {
+  "input": 2203,
+  "output": 123
+ },
+ "measured": {
+  "gpx_path": null,
+  "gpx_valid": null,
+  "gpx_error": null,
+  "n_points": null,
+  "distance_mi": null,
+  "app_reported_mi": null,
+  "ascent_ft_app": null,
+  "ascent_ft_independent": null,
+  "loop_closure_m": null,
+  "start_proximity_m": null,
+  "end_proximity_m": null,
+  "via_distances_m": {},
+  "avoid_on_road_m": {},
+  "max_point_gap_m": null,
+  "duplicate_points": null,
+  "repeat_frac": null,
+  "mirror_frac": null,
+  "teleports": [],
+  "gaps_confirmed_road": [],
+  "gaps_unknown": [],
+  "has_elevation": null
+ },
+ "checks": [
+  {
+   "name": "outcome.no_crash",
+   "status": "fail",
+   "hard": true,
+   "detail": "the request raised out of the service layer: ValueError: Could not geocode address: 'place with the good pie, Verona, WI'",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.request_type",
+   "status": "pass",
+   "hard": true,
+   "detail": "got 'route', expected 'route'",
+   "value": "route",
+   "limit": "route"
+  },
+  {
+   "name": "parse.distance_miles",
+   "status": "pass",
+   "hard": true,
+   "detail": "30 vs [27, 33]",
+   "value": null,
+   "limit": null
+  }
+ ],
+ "log_tail": "Parsed (claude-haiku-4-5, 2203in/123out tokens): {'request_type': 'route', 'address': 'Verona, WI', 'route': {'distance_miles': 30, 'max_climb_ft': None, 'maximize_climb': False, 'minimize_climb': False, 'shape': 'loop', 'avoid_places': [], 'via_places': ['place with the good pie, Verona, WI']}, 'notes': 'User referred to a specific location by its characteristic (good pie) rather than a proper name. The tool may need clarification or local knowledge to identify the exact venue.'}\nNote: couldn't map: User referred to a specific location by its characteristic (good pie) rather than a proper name. The tool may need clarification or local knowledge to identify the exact venue.\n",
+ "run": "baseline",
+ "repeat": 1,
+ "cases_version": "routegen-eval-v1",
+ "timestamp": "2026-09-20T09:46:56",
+ "verdict_history": [],
+ "rescored_at": "2026-09-20T11:30:42",
+ "scorer_error": null,
+ "candidate_labels": []
+}

@@ -1,0 +1,176 @@
+{
+ "id": "D28",
+ "split": "dev",
+ "category": "edit",
+ "tier": "live",
+ "scope": "supported",
+ "session": "E1",
+ "step": 2,
+ "text": "make it about 6 miles longer",
+ "start": "Olin Park, Madison WI",
+ "why": "Relative extend: a delta, not a total.",
+ "expect": {
+  "request_type": "edit_route",
+  "outcome": "success",
+  "parse": {
+   "edit.mode": {
+    "in": [
+     "extend"
+    ]
+   },
+   "edit.miles_delta": {
+    "range": [
+     5,
+     7
+    ]
+   }
+  },
+  "route": {
+   "loop": null,
+   "distance_delta_mi": 6,
+   "distance_delta_tolerance_mi": 3,
+   "_before_mi": 21.4
+  }
+ },
+ "verdict": "pass",
+ "fail_reasons": [],
+ "parsed": {
+  "request_type": "edit_route",
+  "address": null,
+  "route": null,
+  "interval": null,
+  "edit": {
+   "mode": "extend",
+   "place": null,
+   "places": null,
+   "radius_m": 1000,
+   "miles_delta": 6,
+   "target_miles": null,
+   "connect_return": false,
+   "revert_first": false
+  },
+  "notes": ""
+ },
+ "notes": "",
+ "outcome_ok": true,
+ "summary": "Done \u2014  extend 6mi: now 27.1 mi (+5.8 mi).",
+ "kind": "edit",
+ "n_candidates": 2,
+ "candidate_labels": [
+  "route_22mi_ride_1_loop_brouter_edit1.gpx \u2014 27.1 mi, 1184 ft (edit: extend 6mi)",
+  "original: route_22mi_ride_1_loop_brouter.gpx"
+ ],
+ "error": null,
+ "traceback": "",
+ "seconds": 5.46,
+ "scorer_error": null,
+ "parse_cached": false,
+ "parse_tokens": {
+  "input": 2427,
+  "output": 91
+ },
+ "measured": {
+  "gpx_path": "evals/results/postfix/work/E1/route_22mi_ride_1_loop_brouter_edit1.gpx",
+  "gpx_valid": true,
+  "gpx_error": null,
+  "n_points": 1767,
+  "distance_mi": 27.19,
+  "app_reported_mi": 27.1,
+  "ascent_ft_app": 1185.0,
+  "ascent_ft_independent": 1180.0,
+  "loop_closure_m": 1.3,
+  "start_proximity_m": 0.3,
+  "end_proximity_m": 1.5,
+  "via_distances_m": {},
+  "avoid_on_road_m": {},
+  "max_point_gap_m": 280.2,
+  "duplicate_points": 2,
+  "repeat_frac": 0.075,
+  "mirror_frac": 0.02,
+  "teleports": [],
+  "gaps_confirmed_road": [],
+  "gaps_unknown": [],
+  "has_elevation": true
+ },
+ "checks": [
+  {
+   "name": "outcome.no_crash",
+   "status": "pass",
+   "hard": true,
+   "detail": "handled without an unhandled exception",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "outcome.succeeded",
+   "status": "pass",
+   "hard": true,
+   "detail": "ok=True, 2 candidate(s): Done \u2014  extend 6mi: now 27.1 mi (+5.8 mi).",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.request_type",
+   "status": "pass",
+   "hard": true,
+   "detail": "got 'edit_route', expected 'edit_route'",
+   "value": "edit_route",
+   "limit": "edit_route"
+  },
+  {
+   "name": "parse.mode",
+   "status": "pass",
+   "hard": true,
+   "detail": "'extend' vs allowed ['extend']",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.miles_delta",
+   "status": "pass",
+   "hard": true,
+   "detail": "6 vs [5, 7]",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "gpx.valid",
+   "status": "pass",
+   "hard": true,
+   "detail": "well-formed, 1767 points, elevation present",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "route.distance_delta",
+   "status": "pass",
+   "hard": true,
+   "detail": "grew +5.79 mi, asked for +6.0 mi (tolerance +/-3 mi)",
+   "value": 5.79,
+   "limit": 6
+  },
+  {
+   "name": "geometry.continuous",
+   "status": "pass",
+   "hard": true,
+   "detail": "continuous: no breaks. Longest single segment 280 m",
+   "value": 0,
+   "limit": 0
+  },
+  {
+   "name": "geometry.repeat",
+   "status": "pass",
+   "hard": false,
+   "detail": "8% of the route rides the same road twice (the app rejects loops above 25%); mirror score 2% -- not an out-and-back",
+   "value": 0.075,
+   "limit": 0.25
+  }
+ ],
+ "log_tail": "Parsed (claude-haiku-4-5, 2427in/91out tokens): {'request_type': 'edit_route', 'edit': {'mode': 'extend', 'place': None, 'places': None, 'radius_m': 1000, 'miles_delta': 6, 'target_miles': None, 'connect_return': False, 'revert_first': False}}\nEditing: evals\\results\\postfix\\work\\E1\\route_22mi_ride_1_loop_brouter.gpx\nExtending by ~6 mi\n  brouter: trimmed 5.4 mi of out-and-back spurs\n  brouter: trimmed 0.5 mi of out-and-back spurs\n  brouter: trimmed 1.7 mi of out-and-back spurs\n  brouter: trimmed 10.2 mi of out-and-back spurs\n  brouter: trimmed 10.2 mi of out-and-back spurs\n  brouter: trimmed 1.0 mi of out-and-back spurs\nwrote evals\\results\\postfix\\work\\E1\\preview.html (2 routes)\nReplaced 1.9 mi with 7.7 mi across 1 detour(s) (+5.8 mi)\nEdited route: 27.1 mi, 1184 ft, 8% repeat -> evals\\results\\postfix\\work\\E1\\route_22mi_ride_1_loop_brouter_edit1.gpx\nDone \u2014  extend 6mi: now 27.1 mi (+5.8 mi).\n",
+ "run": "postfix",
+ "repeat": 1,
+ "cases_version": "routegen-eval-v1",
+ "timestamp": "2026-09-20T10:40:30",
+ "verdict_history": [],
+ "rescored_at": "2026-09-20T11:30:43"
+}

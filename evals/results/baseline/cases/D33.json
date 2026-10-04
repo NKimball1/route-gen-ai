@@ -1,0 +1,165 @@
+{
+ "id": "D33",
+ "split": "dev",
+ "category": "edit",
+ "tier": "live",
+ "scope": "supported",
+ "session": "E2",
+ "step": 2,
+ "text": "trim it down to 25 miles total",
+ "start": "Verona, WI",
+ "why": "An ABSOLUTE target, not a delta -- the service computes the delta from the route's current length.",
+ "expect": {
+  "request_type": "edit_route",
+  "outcome": "success",
+  "parse": {
+   "edit.target_or_delta": {
+    "equals": true
+   }
+  },
+  "route": {
+   "target_miles": 25,
+   "distance_tolerance": 0.18,
+   "loop": null
+  }
+ },
+ "verdict": "pass",
+ "fail_reasons": [],
+ "parsed": {
+  "request_type": "edit_route",
+  "address": null,
+  "route": null,
+  "interval": null,
+  "edit": {
+   "mode": "shorten",
+   "place": null,
+   "places": null,
+   "radius_m": 1000,
+   "miles_delta": null,
+   "target_miles": 25,
+   "connect_return": false,
+   "revert_first": false
+  },
+  "notes": ""
+ },
+ "notes": "",
+ "outcome_ok": true,
+ "summary": "Done \u2014  shorten 11mi: now 25.3 mi (-10.3 mi).",
+ "kind": "edit",
+ "n_candidates": 2,
+ "error": null,
+ "traceback": "",
+ "seconds": 1.68,
+ "parse_cached": false,
+ "parse_tokens": {
+  "input": 2192,
+  "output": 92
+ },
+ "measured": {
+  "gpx_path": "evals/results/baseline/work/E2/route_35mi_ride_1_loop_brouter_edit1.gpx",
+  "gpx_valid": true,
+  "gpx_error": null,
+  "n_points": 740,
+  "distance_mi": 25.35,
+  "app_reported_mi": 25.3,
+  "ascent_ft_app": 1435.0,
+  "ascent_ft_independent": 1478.0,
+  "loop_closure_m": 0.0,
+  "start_proximity_m": 1.9,
+  "end_proximity_m": 1.9,
+  "via_distances_m": {},
+  "avoid_on_road_m": {},
+  "max_point_gap_m": 616.8,
+  "duplicate_points": 2,
+  "repeat_frac": 0.003,
+  "mirror_frac": 0.0,
+  "teleports": [],
+  "gaps_confirmed_road": [],
+  "gaps_unknown": [],
+  "has_elevation": true
+ },
+ "checks": [
+  {
+   "name": "outcome.no_crash",
+   "status": "pass",
+   "hard": true,
+   "detail": "handled without an unhandled exception",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "outcome.succeeded",
+   "status": "pass",
+   "hard": true,
+   "detail": "ok=True, 2 candidate(s): Done \u2014  shorten 11mi: now 25.3 mi (-10.3 mi).",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.request_type",
+   "status": "pass",
+   "hard": true,
+   "detail": "got 'edit_route', expected 'edit_route'",
+   "value": "edit_route",
+   "limit": "edit_route"
+  },
+  {
+   "name": "parse.target_or_delta",
+   "status": "pass",
+   "hard": true,
+   "detail": "target_miles=25 miles_delta=None",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "gpx.valid",
+   "status": "pass",
+   "hard": true,
+   "detail": "well-formed, 740 points, elevation present",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "route.distance",
+   "status": "pass",
+   "hard": true,
+   "detail": "25.35 mi vs target 25 mi (+1.4%, tolerance +/-18%)",
+   "value": 25.35,
+   "limit": 25
+  },
+  {
+   "name": "geometry.continuous",
+   "status": "pass",
+   "hard": true,
+   "detail": "continuous: no breaks. Longest single segment 617 m",
+   "value": 0,
+   "limit": 0
+  },
+  {
+   "name": "geometry.repeat",
+   "status": "pass",
+   "hard": false,
+   "detail": "0% of the route rides the same road twice (the app rejects loops above 25%); mirror score 0% -- not an out-and-back",
+   "value": 0.003,
+   "limit": 0.25
+  }
+ ],
+ "log_tail": "Parsed (claude-haiku-4-5, 2192in/92out tokens): {'request_type': 'edit_route', 'edit': {'mode': 'shorten', 'place': None, 'places': None, 'radius_m': 1000, 'miles_delta': None, 'target_miles': 25, 'connect_return': False, 'revert_first': False}}\nEditing: evals\\results\\baseline\\work\\E2\\route_35mi_ride_1_loop_brouter.gpx\nCurrent route is 35.7 mi; shortening by 10.7 mi\nShortening by ~11 mi\nwrote evals\\results\\baseline\\work\\E2\\preview.html (2 routes)\nReplaced 19.9 mi with 9.6 mi across 1 detour(s) (-10.3 mi)\nEdited route: 25.3 mi, 1435 ft, 0% repeat -> evals\\results\\baseline\\work\\E2\\route_35mi_ride_1_loop_brouter_edit1.gpx\nDone \u2014  shorten 11mi: now 25.3 mi (-10.3 mi).\n",
+ "run": "baseline",
+ "repeat": 1,
+ "cases_version": "routegen-eval-v1",
+ "timestamp": "2026-09-20T09:48:04",
+ "verdict_history": [
+  {
+   "was": "fail",
+   "now": "pass",
+   "was_reasons": [
+    "geometry.continuous"
+   ],
+   "at": "2026-09-20T09:49:15"
+  }
+ ],
+ "rescored_at": "2026-09-20T11:30:41",
+ "scorer_error": null,
+ "candidate_labels": []
+}

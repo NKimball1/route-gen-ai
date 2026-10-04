@@ -1,0 +1,176 @@
+{
+ "id": "H03",
+ "split": "heldout",
+ "category": "distance_target",
+ "tier": "live",
+ "scope": "supported",
+ "session": null,
+ "step": null,
+ "text": "two hours of riding from Sun Prairie WI",
+ "start": "Sun Prairie, WI",
+ "why": "Held out: duration converted to distance at the assumed 16 mph.",
+ "expect": {
+  "request_type": "route",
+  "outcome": "success",
+  "parse": {
+   "route.distance_miles": {
+    "range": [
+     26,
+     38
+    ]
+   }
+  },
+  "route": {
+   "target_miles": "from_parse",
+   "loop": null
+  }
+ },
+ "verdict": "pass",
+ "fail_reasons": [],
+ "parsed": {
+  "request_type": "route",
+  "address": "Sun Prairie, WI",
+  "route": {
+   "distance_miles": 32,
+   "max_climb_ft": null,
+   "maximize_climb": false,
+   "minimize_climb": false,
+   "shape": "both",
+   "avoid_places": [],
+   "via_places": []
+  },
+  "interval": null,
+  "edit": null,
+  "notes": "Assumed 16 mph average pace for two-hour duration, yielding approximately 32 miles."
+ },
+ "notes": "Assumed 16 mph average pace for two-hour duration, yielding approximately 32 miles.",
+ "outcome_ok": true,
+ "summary": "10 route(s) \u2014 best: #1 loop: 32.0 mi, 929 ft, 0% repeat",
+ "kind": "route",
+ "n_candidates": 10,
+ "candidate_labels": [
+  "#1 loop: 32.0 mi, 929 ft, 0% repeat",
+  "#2 outback: 32.0 mi, 1025 ft, 0% repeat",
+  "#3 loop: 32.0 mi, 1238 ft, 0% repeat",
+  "#4 outback: 31.9 mi, 1168 ft, 0% repeat",
+  "#5 loop: 31.8 mi, 1217 ft, 10% repeat",
+  "#6 outback: 31.4 mi, 1045 ft, 0% repeat, 0.1 mi major",
+  "#7 loop: 30.9 mi, 1021 ft, 3% repeat, 0.3 mi major",
+  "#8 outback: 33.8 mi, 1244 ft, 0% repeat",
+  "#9 loop: 34.4 mi, 1130 ft, 0% repeat, 0.2 mi major",
+  "#10 outback: 27.5 mi, 1266 ft, 0% repeat"
+ ],
+ "error": null,
+ "traceback": "",
+ "seconds": 8.88,
+ "scorer_error": null,
+ "parse_cached": false,
+ "parse_tokens": {
+  "input": 2428,
+  "output": 111
+ },
+ "measured": {
+  "gpx_path": "evals/results/postfix/work/H03/route_32mi_ride_1_loop_brouter.gpx",
+  "gpx_valid": true,
+  "gpx_error": null,
+  "n_points": 728,
+  "distance_mi": 32.0,
+  "app_reported_mi": 32.0,
+  "ascent_ft_app": 929.0,
+  "ascent_ft_independent": 874.0,
+  "loop_closure_m": 0.0,
+  "start_proximity_m": 3.4,
+  "end_proximity_m": 3.4,
+  "via_distances_m": {},
+  "avoid_on_road_m": {},
+  "max_point_gap_m": 1165.6,
+  "duplicate_points": 0,
+  "repeat_frac": 0.003,
+  "mirror_frac": 0.0,
+  "teleports": [],
+  "gaps_confirmed_road": [],
+  "gaps_unknown": [],
+  "has_elevation": true
+ },
+ "checks": [
+  {
+   "name": "outcome.no_crash",
+   "status": "pass",
+   "hard": true,
+   "detail": "handled without an unhandled exception",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "outcome.succeeded",
+   "status": "pass",
+   "hard": true,
+   "detail": "ok=True, 10 candidate(s): 10 route(s) \u2014 best: #1 loop: 32.0 mi, 929 ft, 0% repeat",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.request_type",
+   "status": "pass",
+   "hard": true,
+   "detail": "got 'route', expected 'route'",
+   "value": "route",
+   "limit": "route"
+  },
+  {
+   "name": "parse.distance_miles",
+   "status": "pass",
+   "hard": true,
+   "detail": "32 vs [26, 38]",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "gpx.valid",
+   "status": "pass",
+   "hard": true,
+   "detail": "well-formed, 728 points, elevation present",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "route.distance",
+   "status": "pass",
+   "hard": true,
+   "detail": "32.00 mi vs target 32 mi (+0.0%, tolerance +/-15%)",
+   "value": 32.0,
+   "limit": 32
+  },
+  {
+   "name": "route.starts_where_asked",
+   "status": "pass",
+   "hard": true,
+   "detail": "begins 3 m from the geocoded start (limit 600 m)",
+   "value": 3.4,
+   "limit": 600.0
+  },
+  {
+   "name": "geometry.continuous",
+   "status": "pass",
+   "hard": true,
+   "detail": "continuous: no breaks. Longest single segment 1166 m",
+   "value": 0,
+   "limit": 0
+  },
+  {
+   "name": "geometry.repeat",
+   "status": "pass",
+   "hard": false,
+   "detail": "0% of the route rides the same road twice (the app rejects loops above 25%); mirror score 0% -- not an out-and-back",
+   "value": 0.003,
+   "limit": 0.25
+  }
+ ],
+ "log_tail": "Parsed (claude-haiku-4-5, 2428in/111out tokens): {'request_type': 'route', 'address': 'Sun Prairie, WI', 'route': {'distance_miles': 32, 'max_climb_ft': None, 'maximize_climb': False, 'minimize_climb': False, 'shape': 'both', 'avoid_places': [], 'via_places': []}, 'notes': 'Assumed 16 mph average pace for two-hour duration, yielding approximately 32 miles.'}\nNote: couldn't map: Assumed 16 mph average pace for two-hour duration, yielding approximately 32 miles.\n(skipping ors: ORS_API_KEY not set)\nStart: Sun Prairie, Dane County, Wisconsin, United States (43.18328, -89.21283)\nGenerating 6 loop candidates via brouter...\n  brouter: trimmed 3.7 mi of out-and-back spurs\n  brouter: trimmed 2.3 mi of out-and-back spurs\n  brouter: trimmed 4.4 mi of out-and-back spurs\n  brouter: trimmed 1.4 mi of out-and-back spurs\n  brouter: trimmed 3.1 mi of out-and-back spurs\n  brouter: trimmed 12.3 mi of out-and-back spurs\n  brouter: trimmed 3.0 mi of out-and-back spurs\n  brouter: trimmed 18.3 mi of out-and-back spurs\n  brouter: trimmed 1.7 mi of out-and-back spurs\n  brouter: trimmed 1.5 mi of out-and-back spurs\n  brouter: trimmed 1.7 mi of out-and-back spurs\n  brouter: trimmed 7.6 mi of out-and-back spurs\n  brouter: trimmed 7.1 mi of out-and-back spurs\n  brouter: trimmed 5.1 mi of out-and-back spurs\nGenerating 6 outback candidates via brouter...\n  reject [brouter bearing=120 cw scale=0.98]: distance 22.3 mi outside \u00b115% of target\n  reject [brouter outback bearing=240 scale=0.80]: distance 25.0 mi outside \u00b115% of target\n\nrank provider shape      miles  climb ft  repeat  major  file\n1    brouter  loop        32.0       929      0%      0  evals\\results\\postfix\\work\\H03\\route_32mi_ride_1_loop_brouter.gpx\n2    brouter  outback     32.0      1025     n/a      0  evals\\results\\postfix\\work\\H03\\route_32mi_ride_2_outback_brouter.gpx\n3    brouter  loop        32.0      1238      0%      0  evals\\results\\postfix\\work\\H03\\route_32mi_ride_3_loop_brouter.gpx\n4    brouter  outback     31.9      1168     n/a      0  evals\\results\\postfix\\work\\H03\\route_32mi_ride_4_outback_brouter.gpx\n5    brouter  loop        31.8      1217     10%      0  evals\\results\\postfix\\work\\H03\\route_32mi_ride_5_loop_brouter.gpx\n6    brouter  outback     31.4      1045     n/a  0.1mi  evals\\results\\postfix\\work\\H03\\route_32mi_ride_6_outback_brouter.gpx\n7    brouter  loop        30.9      1021      3%  0.3mi  evals\\results\\postfix\\work\\H03\\route_32mi_ride_7_loop_brouter.gpx\n8    brouter  outback     33.8      1244     n/a      0  evals\\results\\postfix\\work\\H03\\route_32mi_ride_8_outback_brouter.gpx\n9    brouter  loop        34.4      1130      0%  0.2mi  evals\\results\\postfix\\work\\H03\\route_32mi_ride_9_loop_brouter.gpx\n10   brouter  outback     27.5      1266     n/a      0  evals\\results\\postfix\\work\\H03\\route_32mi_ride_10_outback_brouter.gpx\nwrote evals\\results\\postfix\\work\\H03\\preview.html (10 routes)\n\nBest: rank 1 \u2014 32.0 mi, 929 ft climbing (brouter, bearing=0 cw scale=1.14)\n",
+ "run": "postfix",
+ "repeat": 1,
+ "cases_version": "routegen-eval-v1",
+ "timestamp": "2026-09-20T10:36:22",
+ "verdict_history": [],
+ "rescored_at": "2026-09-20T11:30:43"
+}

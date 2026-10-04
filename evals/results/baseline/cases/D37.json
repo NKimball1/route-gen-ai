@@ -1,0 +1,103 @@
+{
+ "id": "D37",
+ "split": "dev",
+ "category": "provider_failure",
+ "tier": "offline",
+ "scope": "supported",
+ "session": null,
+ "step": null,
+ "text": "a 20 mile loop from Monona Terrace Madison WI",
+ "start": "Monona Terrace, Madison WI",
+ "why": "Geocoder unreachable. Probes whether a dead Nominatim surfaces as a usable message or as an unhandled exception.",
+ "expect": {
+  "request_type": "route",
+  "outcome": "decline",
+  "parse": {},
+  "route": {
+   "loop": null
+  }
+ },
+ "verdict": "fail",
+ "fail_reasons": [
+  "outcome.no_crash"
+ ],
+ "parsed": {
+  "address": "Monona Terrace, Madison, WI",
+  "edit": null,
+  "interval": null,
+  "notes": "",
+  "request_type": "route",
+  "route": {
+   "avoid_places": [],
+   "distance_miles": 20,
+   "max_climb_ft": null,
+   "maximize_climb": false,
+   "minimize_climb": false,
+   "shape": "loop",
+   "via_places": []
+  }
+ },
+ "notes": "",
+ "outcome_ok": null,
+ "summary": null,
+ "kind": null,
+ "n_candidates": 0,
+ "error": "ConnectionError: HTTPConnectionPool(host='127.0.0.1', port=9): Max retries exceeded with url: /search?q=Monona+Terrace%2C+Madison%2C+WI&format=json&limit=1 (Caused by NewConnectionError(\"HTTPConnection(host='127.0.0.1', port=9): Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it\"))",
+ "traceback": "rive\\Desktop\\route gen ai\\routes\\geocode.py\", line 47, in geocode\n    results = _nominatim_get({\"q\": address, \"format\": \"json\", \"limit\": 1})\n              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"routes\\geocode.py\", line 42, in _nominatim_get\n    raise last or RuntimeError(\"Nominatim: no attempts were made\")\n  File \"routes\\geocode.py\", line 31, in _nominatim_get\n    resp = requests.get(NOMINATIM_URL, params=params,\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \".venv\\Lib\\site-packages\\requests\\api.py\", line 87, in get\n    return request(\"get\", url, params=params, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \".venv\\Lib\\site-packages\\requests\\api.py\", line 71, in request\n    return session.request(method=method, url=url, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \".venv\\Lib\\site-packages\\requests\\sessions.py\", line 651, in request\n    resp = self.send(prep, **send_kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \".venv\\Lib\\site-packages\\requests\\sessions.py\", line 784, in send\n    r = adapter.send(request, **kwargs)\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \".venv\\Lib\\site-packages\\requests\\adapters.py\", line 729, in send\n    raise ConnectionError(e, request=request)\nrequests.exceptions.ConnectionError: HTTPConnectionPool(host='127.0.0.1', port=9): Max retries exceeded with url: /search?q=Monona+Terrace%2C+Madison%2C+WI&format=json&limit=1 (Caused by NewConnectionError(\"HTTPConnection(host='127.0.0.1', port=9): Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it\"))\n",
+ "seconds": 2.15,
+ "parse_cached": true,
+ "parse_tokens": {
+  "input": 2199,
+  "output": 95
+ },
+ "measured": {
+  "gpx_path": null,
+  "gpx_valid": null,
+  "gpx_error": null,
+  "n_points": null,
+  "distance_mi": null,
+  "app_reported_mi": null,
+  "ascent_ft_app": null,
+  "ascent_ft_independent": null,
+  "loop_closure_m": null,
+  "start_proximity_m": null,
+  "end_proximity_m": null,
+  "via_distances_m": {},
+  "avoid_on_road_m": {},
+  "max_point_gap_m": null,
+  "duplicate_points": null,
+  "repeat_frac": null,
+  "mirror_frac": null,
+  "teleports": [],
+  "gaps_confirmed_road": [],
+  "gaps_unknown": [],
+  "has_elevation": null
+ },
+ "checks": [
+  {
+   "name": "outcome.no_crash",
+   "status": "fail",
+   "hard": true,
+   "detail": "the request raised out of the service layer: ConnectionError: HTTPConnectionPool(host='127.0.0.1', port=9): Max retries exceeded with url: /search?q=Monona+Terrace%2C+Madison%2C+WI&format=json&limit=1 (Caused by NewConnectionError(\"HTTPConnection(host='127.0.0.1', port=9): Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it\"))",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.request_type",
+   "status": "pass",
+   "hard": true,
+   "detail": "got 'route', expected 'route'",
+   "value": "route",
+   "limit": "route"
+  }
+ ],
+ "log_tail": "Parsed (claude-haiku-4-5, 2199in/95out tokens): {'address': 'Monona Terrace, Madison, WI', 'request_type': 'route', 'route': {'avoid_places': [], 'distance_miles': 20, 'max_climb_ft': None, 'maximize_climb': False, 'minimize_climb': False, 'shape': 'loop', 'via_places': []}}\n(skipping ors: ORS_API_KEY not set)\n",
+ "run": "baseline",
+ "repeat": 1,
+ "cases_version": "routegen-eval-v1",
+ "timestamp": "2026-09-20T09:42:00",
+ "verdict_history": [],
+ "rescored_at": "2026-09-20T11:30:41",
+ "scorer_error": null,
+ "candidate_labels": []
+}

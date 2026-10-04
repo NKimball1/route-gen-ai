@@ -1,0 +1,200 @@
+{
+ "id": "H09",
+ "split": "heldout",
+ "category": "avoid",
+ "tier": "live",
+ "scope": "supported",
+ "session": null,
+ "step": null,
+ "text": "25 mile loop from the Wisconsin State Capitol Madison WI, nothing on East Washington Avenue",
+ "start": "Wisconsin State Capitol, Madison WI",
+ "why": "Held out: avoid a major arterial that starts right at the start point.",
+ "expect": {
+  "request_type": "route",
+  "outcome": "success",
+  "parse": {
+   "route.distance_miles": {
+    "range": [
+     23,
+     27
+    ]
+   },
+   "route.avoid_places": {
+    "len_min": 1
+   }
+  },
+  "route": {
+   "target_miles": 25,
+   "loop": true,
+   "avoid": [
+    "East Washington Avenue, Madison WI"
+   ],
+   "avoid_clearance_m": 250
+  }
+ },
+ "verdict": "pass",
+ "fail_reasons": [],
+ "parsed": {
+  "request_type": "route",
+  "address": "Wisconsin State Capitol Madison WI",
+  "route": {
+   "distance_miles": 25,
+   "max_climb_ft": null,
+   "maximize_climb": false,
+   "minimize_climb": false,
+   "shape": "loop",
+   "avoid_places": [
+    "East Washington Avenue Madison WI"
+   ],
+   "via_places": []
+  },
+  "interval": null,
+  "edit": null,
+  "notes": ""
+ },
+ "notes": "",
+ "outcome_ok": true,
+ "summary": "5 route(s) \u2014 best: #1 loop: 24.8 mi, 971 ft, 0% repeat",
+ "kind": "route",
+ "n_candidates": 5,
+ "error": null,
+ "traceback": "",
+ "seconds": 9.16,
+ "parse_cached": false,
+ "parse_tokens": {
+  "input": 2202,
+  "output": 83
+ },
+ "measured": {
+  "gpx_path": "evals/results/baseline/work/H09/route_25mi_ride_1_loop_brouter.gpx",
+  "gpx_valid": true,
+  "gpx_error": null,
+  "n_points": 1176,
+  "distance_mi": 24.76,
+  "app_reported_mi": 24.8,
+  "ascent_ft_app": 971.0,
+  "ascent_ft_independent": 942.0,
+  "loop_closure_m": 0.0,
+  "start_proximity_m": 0.1,
+  "end_proximity_m": 0.1,
+  "via_distances_m": {},
+  "avoid_on_road_m": {
+   "East Washington Avenue, Madison WI": 14.3
+  },
+  "max_point_gap_m": 547.7,
+  "duplicate_points": 0,
+  "repeat_frac": 0.003,
+  "mirror_frac": 0.0,
+  "teleports": [],
+  "gaps_confirmed_road": [],
+  "gaps_unknown": [],
+  "has_elevation": true
+ },
+ "checks": [
+  {
+   "name": "outcome.no_crash",
+   "status": "pass",
+   "hard": true,
+   "detail": "handled without an unhandled exception",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "outcome.succeeded",
+   "status": "pass",
+   "hard": true,
+   "detail": "ok=True, 5 candidate(s): 5 route(s) \u2014 best: #1 loop: 24.8 mi, 971 ft, 0% repeat",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.request_type",
+   "status": "pass",
+   "hard": true,
+   "detail": "got 'route', expected 'route'",
+   "value": "route",
+   "limit": "route"
+  },
+  {
+   "name": "parse.distance_miles",
+   "status": "pass",
+   "hard": true,
+   "detail": "25 vs [23, 27]",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.avoid_places",
+   "status": "pass",
+   "hard": true,
+   "detail": "1 item(s), need >= 1",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "gpx.valid",
+   "status": "pass",
+   "hard": true,
+   "detail": "well-formed, 1176 points, elevation present",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "route.distance",
+   "status": "pass",
+   "hard": true,
+   "detail": "24.76 mi vs target 25 mi (+1.0%, tolerance +/-15%)",
+   "value": 24.76,
+   "limit": 25
+  },
+  {
+   "name": "route.loop_closure",
+   "status": "pass",
+   "hard": true,
+   "detail": "start-to-finish gap 0 m (limit 250 m)",
+   "value": 0.0,
+   "limit": 250.0
+  },
+  {
+   "name": "route.starts_where_asked",
+   "status": "pass",
+   "hard": true,
+   "detail": "begins 0 m from the geocoded start (limit 600 m)",
+   "value": 0.1,
+   "limit": 600.0
+  },
+  {
+   "name": "route.avoid[East Washington Avenue, Madison WI]",
+   "status": "pass",
+   "hard": false,
+   "detail": "14 m still ridden on it (limit 200 m)",
+   "value": 14.3,
+   "limit": 200.0
+  },
+  {
+   "name": "geometry.continuous",
+   "status": "pass",
+   "hard": true,
+   "detail": "continuous: no breaks. Longest single segment 548 m",
+   "value": 0,
+   "limit": 0
+  },
+  {
+   "name": "geometry.repeat",
+   "status": "pass",
+   "hard": false,
+   "detail": "0% of the route rides the same road twice (the app rejects loops above 25%); mirror score 0% -- not an out-and-back",
+   "value": 0.003,
+   "limit": 0.25
+  }
+ ],
+ "log_tail": "Parsed (claude-haiku-4-5, 2202in/83out tokens): {'request_type': 'route', 'address': 'Wisconsin State Capitol Madison WI', 'route': {'distance_miles': 25, 'max_climb_ft': None, 'maximize_climb': False, 'minimize_climb': False, 'shape': 'loop', 'avoid_places': ['East Washington Avenue Madison WI'], 'via_places': []}}\nAvoiding: East Washington Avenue, Schenk-Atwood-Starkweather-Yahara, Madison, Dane County, Wisconsin, 53701, United States (r=800 m)\n(skipping ors: ORS_API_KEY not set)\nStart: Wisconsin State Capitol, 2, East Main Street, First Settlement, Downtown, Madison, Dane County, Wisconsin, 53703, United States (43.07469, -89.38417)\nGenerating 6 loop candidates via brouter...\n  brouter: trimmed 3.0 mi of out-and-back spurs\n  brouter: trimmed 3.1 mi of out-and-back spurs\n  brouter: trimmed 1.7 mi of out-and-back spurs\n  brouter: trimmed 5.6 mi of out-and-back spurs\n  brouter: trimmed 6.7 mi of out-and-back spurs\n  brouter: trimmed 1.0 mi of out-and-back spurs\n  brouter: trimmed 0.5 mi of out-and-back spurs\n  brouter: trimmed 1.3 mi of out-and-back spurs\n  reject [brouter bearing=0 cw scale=1.00]: 0.7 mi on major highways (trunk/primary)\n\nrank provider shape      miles  climb ft  repeat  major  file\n1    brouter  loop        24.8       971      0%      0  evals\\results\\baseline\\work\\H09\\route_25mi_ride_1_loop_brouter.gpx\n2    brouter  loop        25.8      1065      0%      0  evals\\results\\baseline\\work\\H09\\route_25mi_ride_2_loop_brouter.gpx\n3    brouter  loop        25.8       987      1%      0  evals\\results\\baseline\\work\\H09\\route_25mi_ride_3_loop_brouter.gpx\n4    brouter  loop        23.4       964      1%      0  evals\\results\\baseline\\work\\H09\\route_25mi_ride_4_loop_brouter.gpx\n5    brouter  loop        23.3       907      3%      0  evals\\results\\baseline\\work\\H09\\route_25mi_ride_5_loop_brouter.gpx\nwrote evals\\results\\baseline\\work\\H09\\preview.html (5 routes)\n\nBest: rank 1 \u2014 24.8 mi, 971 ft climbing (brouter, bearing=300 ccw scale=1.00)\n",
+ "run": "baseline",
+ "repeat": 1,
+ "cases_version": "routegen-eval-v1",
+ "timestamp": "2026-09-20T09:44:48",
+ "verdict_history": [],
+ "rescored_at": "2026-09-20T11:30:42",
+ "scorer_error": null,
+ "candidate_labels": []
+}

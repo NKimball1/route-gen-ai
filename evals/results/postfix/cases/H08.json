@@ -1,0 +1,195 @@
+{
+ "id": "H08",
+ "split": "heldout",
+ "category": "via",
+ "tier": "live",
+ "scope": "supported",
+ "session": null,
+ "step": null,
+ "text": "28 mile ride from Verona WI that swings through Paoli WI",
+ "start": "Verona, WI",
+ "why": "Held out: single waypoint, 'swings through' phrasing.",
+ "expect": {
+  "request_type": "route",
+  "outcome": "success",
+  "parse": {
+   "route.distance_miles": {
+    "range": [
+     25,
+     31
+    ]
+   },
+   "route.via_places": {
+    "len_min": 1
+   }
+  },
+  "route": {
+   "target_miles": 28,
+   "loop": null,
+   "via": [
+    "Paoli, WI"
+   ],
+   "via_tolerance_m": 2500
+  }
+ },
+ "verdict": "pass",
+ "fail_reasons": [],
+ "parsed": {
+  "request_type": "route",
+  "address": "Verona, WI",
+  "route": {
+   "distance_miles": 28,
+   "max_climb_ft": null,
+   "maximize_climb": false,
+   "minimize_climb": false,
+   "shape": "both",
+   "avoid_places": [],
+   "via_places": [
+    "Paoli, WI"
+   ]
+  },
+  "interval": null,
+  "edit": null,
+  "notes": ""
+ },
+ "notes": "",
+ "outcome_ok": true,
+ "summary": "2 route(s) \u2014 best: #1 loop: 28.9 mi, 1642 ft, 1% repeat, 0.2 mi major",
+ "kind": "route",
+ "n_candidates": 2,
+ "candidate_labels": [
+  "#1 loop: 28.9 mi, 1642 ft, 1% repeat, 0.2 mi major",
+  "#2 loop: 27.6 mi, 1719 ft, 0% repeat"
+ ],
+ "error": null,
+ "traceback": "",
+ "seconds": 10.55,
+ "scorer_error": null,
+ "parse_cached": false,
+ "parse_tokens": {
+  "input": 2439,
+  "output": 83
+ },
+ "measured": {
+  "gpx_path": "evals/results/postfix/work/H08/route_28mi_ride_1_loop_brouter.gpx",
+  "gpx_valid": true,
+  "gpx_error": null,
+  "n_points": 862,
+  "distance_mi": 28.85,
+  "app_reported_mi": 28.9,
+  "ascent_ft_app": 1641.0,
+  "ascent_ft_independent": 1688.0,
+  "loop_closure_m": 0.0,
+  "start_proximity_m": 1.9,
+  "end_proximity_m": 1.9,
+  "via_distances_m": {
+   "Paoli, WI": 47.3
+  },
+  "avoid_on_road_m": {},
+  "max_point_gap_m": 616.8,
+  "duplicate_points": 0,
+  "repeat_frac": 0.007,
+  "mirror_frac": 0.005,
+  "teleports": [],
+  "gaps_confirmed_road": [],
+  "gaps_unknown": [],
+  "has_elevation": true
+ },
+ "checks": [
+  {
+   "name": "outcome.no_crash",
+   "status": "pass",
+   "hard": true,
+   "detail": "handled without an unhandled exception",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "outcome.succeeded",
+   "status": "pass",
+   "hard": true,
+   "detail": "ok=True, 2 candidate(s): 2 route(s) \u2014 best: #1 loop: 28.9 mi, 1642 ft, 1% repeat, 0.2 mi major",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.request_type",
+   "status": "pass",
+   "hard": true,
+   "detail": "got 'route', expected 'route'",
+   "value": "route",
+   "limit": "route"
+  },
+  {
+   "name": "parse.distance_miles",
+   "status": "pass",
+   "hard": true,
+   "detail": "28 vs [25, 31]",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.via_places",
+   "status": "pass",
+   "hard": true,
+   "detail": "1 item(s), need >= 1",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "gpx.valid",
+   "status": "pass",
+   "hard": true,
+   "detail": "well-formed, 862 points, elevation present",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "route.distance",
+   "status": "pass",
+   "hard": true,
+   "detail": "28.85 mi vs target 28 mi (+3.0%, tolerance +/-15%)",
+   "value": 28.85,
+   "limit": 28
+  },
+  {
+   "name": "route.starts_where_asked",
+   "status": "pass",
+   "hard": true,
+   "detail": "begins 2 m from the geocoded start (limit 600 m)",
+   "value": 1.9,
+   "limit": 600.0
+  },
+  {
+   "name": "route.via[Paoli, WI]",
+   "status": "pass",
+   "hard": true,
+   "detail": "closest approach 47 m (limit 2500 m)",
+   "value": 47.3,
+   "limit": 2500
+  },
+  {
+   "name": "geometry.continuous",
+   "status": "pass",
+   "hard": true,
+   "detail": "continuous: no breaks. Longest single segment 617 m",
+   "value": 0,
+   "limit": 0
+  },
+  {
+   "name": "geometry.repeat",
+   "status": "pass",
+   "hard": false,
+   "detail": "1% of the route rides the same road twice (the app rejects loops above 25%); mirror score 0% -- not an out-and-back",
+   "value": 0.007,
+   "limit": 0.25
+  }
+ ],
+ "log_tail": "Parsed (claude-haiku-4-5, 2439in/83out tokens): {'request_type': 'route', 'address': 'Verona, WI', 'route': {'distance_miles': 28, 'max_climb_ft': None, 'maximize_climb': False, 'minimize_climb': False, 'shape': 'both', 'avoid_places': [], 'via_places': ['Paoli, WI']}}\nVia: Paoli, Town of Montrose, Dane County, Wisconsin, United States\n(skipping ors: ORS_API_KEY not set)\nStart: Verona, Dane County, Wisconsin, United States (42.99055, -89.53356)\nGenerating 6 loop via 'Paoli, WI' candidates via brouter...\n  brouter: trimmed 2.2 mi of out-and-back spurs\n  brouter: trimmed 0.6 mi of out-and-back spurs\n  brouter: trimmed 12.4 mi of out-and-back spurs\n  brouter: trimmed 1.5 mi of out-and-back spurs\n  brouter: trimmed 4.3 mi of out-and-back spurs\n  brouter: trimmed 2.0 mi of out-and-back spurs\n  brouter: trimmed 2.0 mi of out-and-back spurs\n  brouter: trimmed 5.1 mi of out-and-back spurs\n  3 natural loop(s) pass through all via places\n  brouter: trimmed 8.3 mi of out-and-back spurs\n  brouter: trimmed 5.2 mi of out-and-back spurs\n  brouter: trimmed 10.1 mi of out-and-back spurs\n  brouter: trimmed 29.1 mi of out-and-back spurs\n  brouter: trimmed 3.8 mi of out-and-back spurs\n  brouter: trimmed 10.1 mi of out-and-back spurs\n  brouter: trimmed 29.5 mi of out-and-back spurs\n  brouter: trimmed 8.3 mi of out-and-back spurs\n  brouter: trimmed 4.5 mi of out-and-back spurs\n  brouter: trimmed 3.5 mi of out-and-back spurs\n  reject [brouter sweep bearing=124 ccw scale=1.33]: distance 33.3 mi outside \u00b115% of target\n  reject [brouter sweep bearing=224 cw scale=1.21]: 0.6 mi on major highways (trunk/primary)\n  reject [brouter via leg=0 side=+ r=9.2mi]: distance 33.4 mi outside \u00b115% of target\n  reject [brouter via leg=0 side=- r=14.9mi]: distance 39.9 mi outside \u00b115% of target\n  reject [brouter via leg=1 side=+ r=15.1mi]: distance 44.1 mi outside \u00b115% of target\n\nrank provider shape      miles  climb ft  repeat  major  file\n1    brouter  loop        28.9      1642      1%  0.2mi  evals\\results\\postfix\\work\\H08\\route_28mi_ride_1_loop_brouter.gpx\n2    brouter  loop        27.6      1719      0%      0  evals\\results\\postfix\\work\\H08\\route_28mi_ride_2_loop_brouter.gpx\nwrote evals\\results\\postfix\\work\\H08\\preview.html (2 routes)\n\nBest: rank 1 \u2014 28.9 mi, 1642 ft climbing (brouter, sweep bearing=189 cw scale=1.19)\n",
+ "run": "postfix",
+ "repeat": 1,
+ "cases_version": "routegen-eval-v1",
+ "timestamp": "2026-09-20T10:38:53",
+ "verdict_history": [],
+ "rescored_at": "2026-09-20T11:30:43"
+}

@@ -1,0 +1,204 @@
+{
+ "id": "H12",
+ "split": "heldout",
+ "category": "interval_spot",
+ "tier": "live",
+ "scope": "supported",
+ "session": null,
+ "step": null,
+ "text": "somewhere within half an hour of Middleton WI to do 3x12 sweet spot",
+ "start": "Middleton, WI",
+ "why": "Held out: sweet-spot maps to a flat stretch; travel budget stated in words.",
+ "expect": {
+  "request_type": "interval_spot",
+  "outcome": "success",
+  "parse": {
+   "interval.reps": {
+    "equals": 3
+   },
+   "interval.rep_minutes": {
+    "range": [
+     10,
+     14
+    ]
+   },
+   "interval.kind": {
+    "in": [
+     "flat"
+    ]
+   },
+   "interval.max_travel_minutes": {
+    "range": [
+     25,
+     35
+    ]
+   }
+  },
+  "route": {
+   "target_miles": null,
+   "loop": false
+  }
+ },
+ "verdict": "pass",
+ "fail_reasons": [],
+ "parsed": {
+  "address": null,
+  "edit": null,
+  "interval": {
+   "kind": "flat",
+   "max_travel_minutes": 30,
+   "rep_minutes": 12,
+   "reps": 3
+  },
+  "notes": "User specified Middleton WI as the location for the interval spot search.",
+  "request_type": "interval_spot",
+  "route": null
+ },
+ "notes": "User specified Middleton WI as the location for the interval spot search.",
+ "outcome_ok": true,
+ "summary": "Found 3 interval spot(s) \u2014 best: #1: 4.0 mi @ -0.0%, 0 stops, 4.8 mi out. A 12-minute flat rep needs about 4.0 mi of road.",
+ "kind": "interval_spot",
+ "n_candidates": 3,
+ "candidate_labels": [
+  "#1: 4.0 mi @ -0.0%, 0 stops, 4.8 mi out",
+  "#2: 4.0 mi @ -0.0%, 0 stops, 3.7 mi out",
+  "#3: 4.0 mi @ -0.0%, 0 stops, 1.4 mi out"
+ ],
+ "error": null,
+ "traceback": "",
+ "seconds": 103.45,
+ "scorer_error": null,
+ "parse_cached": true,
+ "parse_tokens": {
+  "input": 2439,
+  "output": 70
+ },
+ "measured": {
+  "gpx_path": "evals/results/postfix/work/H12/spot_flat_3x12_1.gpx",
+  "gpx_valid": true,
+  "gpx_error": null,
+  "n_points": 42,
+  "distance_mi": 3.88,
+  "app_reported_mi": 4.0,
+  "ascent_ft_app": 77.0,
+  "ascent_ft_independent": 83.0,
+  "loop_closure_m": 5328.8,
+  "start_proximity_m": 5709.4,
+  "end_proximity_m": 10551.4,
+  "via_distances_m": {},
+  "avoid_on_road_m": {},
+  "max_point_gap_m": 345.8,
+  "duplicate_points": 0,
+  "repeat_frac": 0.0,
+  "mirror_frac": 0.005,
+  "teleports": [],
+  "gaps_confirmed_road": [],
+  "gaps_unknown": [],
+  "has_elevation": true
+ },
+ "checks": [
+  {
+   "name": "outcome.no_crash",
+   "status": "pass",
+   "hard": true,
+   "detail": "handled without an unhandled exception",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "outcome.succeeded",
+   "status": "pass",
+   "hard": true,
+   "detail": "ok=True, 3 candidate(s): Found 3 interval spot(s) \u2014 best: #1: 4.0 mi @ -0.0%, 0 stops, 4.8 mi out. A 12-minute flat rep needs about 4.0 mi of road.",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.request_type",
+   "status": "pass",
+   "hard": true,
+   "detail": "got 'interval_spot', expected 'interval_spot'",
+   "value": "interval_spot",
+   "limit": "interval_spot"
+  },
+  {
+   "name": "parse.reps",
+   "status": "pass",
+   "hard": true,
+   "detail": "3 vs expected 3",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.rep_minutes",
+   "status": "pass",
+   "hard": true,
+   "detail": "12 vs [10, 14]",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.kind",
+   "status": "pass",
+   "hard": true,
+   "detail": "'flat' vs allowed ['flat']",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.max_travel_minutes",
+   "status": "pass",
+   "hard": true,
+   "detail": "30 vs [25, 35]",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "gpx.valid",
+   "status": "pass",
+   "hard": true,
+   "detail": "well-formed, 42 points, elevation present",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "geometry.continuous",
+   "status": "pass",
+   "hard": true,
+   "detail": "continuous: no breaks. Longest single segment 346 m",
+   "value": 0,
+   "limit": 0
+  },
+  {
+   "name": "geometry.repeat",
+   "status": "pass",
+   "hard": false,
+   "detail": "0% of the route rides the same road twice (the app rejects loops above 25%); mirror score 0% -- not an out-and-back",
+   "value": 0.0,
+   "limit": 0.25
+  },
+  {
+   "name": "spot.within_travel_budget",
+   "status": "pass",
+   "hard": true,
+   "detail": "stretch begins 5.7 km from the start; the stated budget of 30 min allows 12.1 km at the app's assumed 15 mph travel pace",
+   "value": 5709.0,
+   "limit": 12070.0
+  },
+  {
+   "name": "spot.long_enough_for_a_rep",
+   "status": "pass",
+   "hard": false,
+   "detail": "3.88 mi of road for a 12-minute flat rep, which needs about 4.00 mi at the app's assumed pace (1 lap(s) per rep)",
+   "value": 3.88,
+   "limit": 4.0
+  }
+ ],
+ "log_tail": "Parsed (claude-haiku-4-5, 2439in/70out tokens): {'interval': {'kind': 'flat', 'max_travel_minutes': 30, 'rep_minutes': 12, 'reps': 3}, 'notes': 'User specified Middleton WI as the location for the interval spot search.', 'request_type': 'interval_spot'}\nNote: couldn't map: User specified Middleton WI as the location for the interval spot search.\nStart: Middleton, Dane County, Wisconsin, 53562, United States (43.09629, -89.51196)\nLooking for a flat stretch ~4.0 mi long within ~8 mi (30 min easy riding)...\n  overpass overpass-api.de: failed (504 Server Error: Gateway Timeout for url: https://overpass-api.de/api/interpreter)\n  overpass overpass.kumi.systems: failed (HTTPSConnectionPool(host='overpass.kumi.systems', port=443): Read timed out. (read timeout=90))\n  warning: no traffic-control data (Overpass down?) \u2014 scoring without interruption counts\n\nrank  len mi  grade %    \u00b1%  turns/km  stops  ride out mi  file\n1        4.0     -0.0   1.6       0.5      0          4.8  evals\\results\\postfix\\work\\H12\\spot_flat_3x12_1.gpx\n2        4.0     -0.0   1.8       0.8      0          3.7  evals\\results\\postfix\\work\\H12\\spot_flat_3x12_2.gpx\n3        4.0     -0.0   1.8       0.6      0          1.4  evals\\results\\postfix\\work\\H12\\spot_flat_3x12_3.gpx\nwrote evals\\results\\postfix\\work\\H12\\preview.html (3 routes)\n\nBest: 4.0 mi at -0.0%, 4.8 mi ride out\n",
+ "run": "postfix",
+ "repeat": 1,
+ "cases_version": "routegen-eval-v1",
+ "timestamp": "2026-09-20T11:03:26",
+ "verdict_history": [],
+ "rescored_at": "2026-09-20T11:30:43"
+}

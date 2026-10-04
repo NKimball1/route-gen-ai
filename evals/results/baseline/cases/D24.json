@@ -1,0 +1,133 @@
+{
+ "id": "D24",
+ "split": "dev",
+ "category": "infeasible",
+ "tier": "live",
+ "scope": "supported",
+ "session": null,
+ "step": null,
+ "text": "a 30 mile loop starting in Denver Colorado",
+ "start": "Denver, CO",
+ "why": "Outside the loaded routing tiles (southern Wisconsin). Probes the provider-has-no-data failure path.",
+ "expect": {
+  "request_type": "route",
+  "outcome": "decline",
+  "parse": {
+   "route.distance_miles": {
+    "range": [
+     27,
+     33
+    ]
+   }
+  },
+  "route": {
+   "target_miles": 30,
+   "loop": null
+  }
+ },
+ "verdict": "pass",
+ "fail_reasons": [],
+ "parsed": {
+  "request_type": "route",
+  "address": "Denver, Colorado",
+  "route": {
+   "distance_miles": 30,
+   "max_climb_ft": null,
+   "maximize_climb": false,
+   "minimize_climb": false,
+   "shape": "loop",
+   "avoid_places": [],
+   "via_places": []
+  },
+  "interval": null,
+  "edit": null,
+  "notes": ""
+ },
+ "notes": "",
+ "outcome_ok": false,
+ "summary": "No route met the constraints \u2014 try a looser target or different distance.",
+ "kind": "route",
+ "n_candidates": 0,
+ "error": null,
+ "traceback": "",
+ "seconds": 2.48,
+ "parse_cached": false,
+ "parse_tokens": {
+  "input": 2193,
+  "output": 87
+ },
+ "measured": {
+  "gpx_path": null,
+  "gpx_valid": null,
+  "gpx_error": null,
+  "n_points": null,
+  "distance_mi": null,
+  "app_reported_mi": null,
+  "ascent_ft_app": null,
+  "ascent_ft_independent": null,
+  "loop_closure_m": null,
+  "start_proximity_m": null,
+  "end_proximity_m": null,
+  "via_distances_m": {},
+  "avoid_on_road_m": {},
+  "max_point_gap_m": null,
+  "duplicate_points": null,
+  "repeat_frac": null,
+  "mirror_frac": null,
+  "teleports": [],
+  "gaps_confirmed_road": [],
+  "gaps_unknown": [],
+  "has_elevation": null
+ },
+ "checks": [
+  {
+   "name": "outcome.no_crash",
+   "status": "pass",
+   "hard": true,
+   "detail": "handled without an unhandled exception",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "outcome.declined",
+   "status": "pass",
+   "hard": true,
+   "detail": "ok=False, 0 candidate(s): No route met the constraints \u2014 try a looser target or different distance.",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "outcome.explained",
+   "status": "pass",
+   "hard": true,
+   "detail": "user-facing explanation: No route met the constraints \u2014 try a looser target or different distance.",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.request_type",
+   "status": "pass",
+   "hard": true,
+   "detail": "got 'route', expected 'route'",
+   "value": "route",
+   "limit": "route"
+  },
+  {
+   "name": "parse.distance_miles",
+   "status": "pass",
+   "hard": true,
+   "detail": "30 vs [27, 33]",
+   "value": null,
+   "limit": null
+  }
+ ],
+ "log_tail": "Parsed (claude-haiku-4-5, 2193in/87out tokens): {'request_type': 'route', 'address': 'Denver, Colorado', 'route': {'distance_miles': 30, 'max_climb_ft': None, 'maximize_climb': False, 'minimize_climb': False, 'shape': 'loop', 'avoid_places': [], 'via_places': []}}\n(skipping ors: ORS_API_KEY not set)\nStart: Denver, Colorado, United States (39.73924, -104.98486)\nGenerating 6 loop candidates via brouter...\n  brouter: request failed (400 Client Error: Bad Request for url: http://localhost:17777/brouter?lonlats=-104.984862%2C39.739236%7C-105.051480%2C39.790406%7C-104.984862%2C39.841613%7C-104.918244%2C39.790406%7C-104.984862%2C39.739236&profile=fastbike-quiet&alternativeidx=0&format=geojson)\n  brouter: request failed (400 Client Error: Bad Request for url: http://localhost:17777/brouter?lonlats=-104.984862%2C39.739236%7C-104.893916%2C39.720481%7C-104.869498%2C39.790396%7C-104.960509%2C39.809142%7C-104.984862%2C39.739236&profile=fastbike-quiet&alternativeidx=0&format=geojson)\n  brouter: request failed (400 Client Error: Bad Request for url: http://localhost:17777/brouter?lonlats=-104.984862%2C39.739236%7C-104.893941%2C39.757954%7C-104.869627%2C39.688020%7C-104.960484%2C39.669293%7C-104.984862%2C39.739236&profile=fastbike-quiet&alternativeidx=0&format=geojson)\n  brouter: request failed (400 Client Error: Bad Request for url: http://localhost:17777/brouter?lonlats=-104.984862%2C39.739236%7C-105.051381%2C39.688029%7C-104.984862%2C39.636860%7C-104.918343%2C39.688029%7C-104.984862%2C39.739236&profile=fastbike-quiet&alternativeidx=0&format=geojson)\n  brouter: request failed (400 Client Error: Bad Request for url: http://localhost:17777/brouter?lonlats=-104.984862%2C39.739236%7C-105.009240%2C39.669293%7C-105.100097%2C39.688020%7C-105.075783%2C39.757954%7C-104.984862%2C39.739236&profile=fastbike-quiet&alternativeidx=0&format=geojson)\n  brouter: request failed (400 Client Error: Bad Request for url: http://localhost:17777/brouter?lonlats=-104.984862%2C39.739236%7C-105.009215%2C39.809142%7C-105.100226%2C39.790396%7C-105.075808%2C39.720481%7C-104.984862%2C39.739236&profile=fastbike-quiet&alternativeidx=0&format=geojson)\nNo candidate met the constraints. Try more candidates or a looser target.\n",
+ "run": "baseline",
+ "repeat": 1,
+ "cases_version": "routegen-eval-v1",
+ "timestamp": "2026-09-20T09:41:30",
+ "verdict_history": [],
+ "rescored_at": "2026-09-20T11:30:41",
+ "scorer_error": null,
+ "candidate_labels": []
+}

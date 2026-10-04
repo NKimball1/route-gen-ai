@@ -1,0 +1,179 @@
+{
+ "id": "D25",
+ "split": "dev",
+ "category": "out_of_scope",
+ "tier": "live",
+ "scope": "out_of_scope",
+ "session": null,
+ "step": null,
+ "text": "a 30 mile gravel loop from Cross Plains WI, mostly unpaved roads",
+ "start": "Cross Plains, WI",
+ "why": "Surface preference is NOT a supported constraint. Honest behavior is to flag it, not silently ignore it.",
+ "expect": {
+  "request_type": "route",
+  "outcome": "success_with_caveat",
+  "parse": {
+   "notes": {
+    "nonempty": true
+   }
+  },
+  "route": {
+   "target_miles": 30,
+   "loop": null
+  }
+ },
+ "verdict": "pass",
+ "fail_reasons": [],
+ "parsed": {
+  "request_type": "route",
+  "address": "Cross Plains, WI",
+  "route": {
+   "distance_miles": 30,
+   "max_climb_ft": null,
+   "maximize_climb": false,
+   "minimize_climb": false,
+   "shape": "loop",
+   "avoid_places": [],
+   "via_places": []
+  },
+  "interval": null,
+  "edit": null,
+  "notes": "User prefers mostly unpaved/gravel roads"
+ },
+ "notes": "User prefers mostly unpaved/gravel roads",
+ "outcome_ok": true,
+ "summary": "3 route(s) \u2014 best: #1 loop: 30.4 mi, 1940 ft, 0% repeat, 0.2 mi major",
+ "kind": "route",
+ "n_candidates": 3,
+ "error": null,
+ "traceback": "",
+ "seconds": 4.73,
+ "parse_cached": false,
+ "parse_tokens": {
+  "input": 2201,
+  "output": 85
+ },
+ "measured": {
+  "gpx_path": "evals/results/baseline/work/D25/route_30mi_ride_1_loop_brouter.gpx",
+  "gpx_valid": true,
+  "gpx_error": null,
+  "n_points": 982,
+  "distance_mi": 30.36,
+  "app_reported_mi": 30.4,
+  "ascent_ft_app": 1942.0,
+  "ascent_ft_independent": 1976.0,
+  "loop_closure_m": 0.0,
+  "start_proximity_m": 17.2,
+  "end_proximity_m": 17.2,
+  "via_distances_m": {},
+  "avoid_on_road_m": {},
+  "max_point_gap_m": 669.0,
+  "duplicate_points": 0,
+  "repeat_frac": 0.002,
+  "mirror_frac": 0.0,
+  "teleports": [],
+  "gaps_confirmed_road": [],
+  "gaps_unknown": [],
+  "has_elevation": true
+ },
+ "checks": [
+  {
+   "name": "outcome.no_crash",
+   "status": "pass",
+   "hard": true,
+   "detail": "handled without an unhandled exception",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "outcome.succeeded",
+   "status": "pass",
+   "hard": true,
+   "detail": "ok=True, 3 candidate(s): 3 route(s) \u2014 best: #1 loop: 30.4 mi, 1940 ft, 0% repeat, 0.2 mi major",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "outcome.flagged_unsupported",
+   "status": "pass",
+   "hard": true,
+   "detail": "unsupported part reported to the user: User prefers mostly unpaved/gravel roads",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.request_type",
+   "status": "pass",
+   "hard": true,
+   "detail": "got 'route', expected 'route'",
+   "value": "route",
+   "limit": "route"
+  },
+  {
+   "name": "parse.notes",
+   "status": "pass",
+   "hard": true,
+   "detail": "present",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "gpx.valid",
+   "status": "pass",
+   "hard": true,
+   "detail": "well-formed, 982 points, elevation present",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "route.distance",
+   "status": "pass",
+   "hard": true,
+   "detail": "30.36 mi vs target 30 mi (+1.2%, tolerance +/-15%)",
+   "value": 30.36,
+   "limit": 30
+  },
+  {
+   "name": "route.starts_where_asked",
+   "status": "pass",
+   "hard": true,
+   "detail": "begins 17 m from the geocoded start (limit 600 m)",
+   "value": 17.2,
+   "limit": 600.0
+  },
+  {
+   "name": "geometry.continuous",
+   "status": "pass",
+   "hard": true,
+   "detail": "continuous: no breaks. Longest single segment 669 m",
+   "value": 0,
+   "limit": 0
+  },
+  {
+   "name": "geometry.repeat",
+   "status": "pass",
+   "hard": false,
+   "detail": "0% of the route rides the same road twice (the app rejects loops above 25%); mirror score 0% -- not an out-and-back",
+   "value": 0.002,
+   "limit": 0.25
+  }
+ ],
+ "log_tail": "Parsed (claude-haiku-4-5, 2201in/85out tokens): {'request_type': 'route', 'address': 'Cross Plains, WI', 'route': {'distance_miles': 30, 'max_climb_ft': None, 'maximize_climb': False, 'minimize_climb': False, 'shape': 'loop', 'avoid_places': [], 'via_places': []}, 'notes': 'User prefers mostly unpaved/gravel roads'}\nNote: couldn't map: User prefers mostly unpaved/gravel roads\n(skipping ors: ORS_API_KEY not set)\nStart: Village of Cross Plains, Dane County, Wisconsin, 53528, United States (43.11170, -89.64522)\nGenerating 6 loop candidates via brouter...\n  brouter: trimmed 1.9 mi of out-and-back spurs\n  brouter: trimmed 5.3 mi of out-and-back spurs\n  brouter: trimmed 1.6 mi of out-and-back spurs\n  brouter: trimmed 4.3 mi of out-and-back spurs\n  brouter: trimmed 4.4 mi of out-and-back spurs\n  brouter: trimmed 5.3 mi of out-and-back spurs\n  brouter: trimmed 5.4 mi of out-and-back spurs\n  brouter: trimmed 3.0 mi of out-and-back spurs\n  brouter: trimmed 1.5 mi of out-and-back spurs\n  brouter: trimmed 4.2 mi of out-and-back spurs\n  brouter: trimmed 1.4 mi of out-and-back spurs\n  brouter: trimmed 2.8 mi of out-and-back spurs\n  reject [brouter bearing=0 cw scale=1.00]: 1.0 mi on major highways (trunk/primary)\n  reject [brouter bearing=60 ccw scale=1.13]: 1.1 mi on major highways (trunk/primary)\n  reject [brouter bearing=300 ccw scale=1.08]: 1.3 mi on major highways (trunk/primary)\n\nrank provider shape      miles  climb ft  repeat  major  file\n1    brouter  loop        30.4      1940      0%  0.2mi  evals\\results\\baseline\\work\\D25\\route_30mi_ride_1_loop_brouter.gpx\n2    brouter  loop        31.3      1789      0%  0.0mi  evals\\results\\baseline\\work\\D25\\route_30mi_ride_2_loop_brouter.gpx\n3    brouter  loop        34.1      1853      1%  0.2mi  evals\\results\\baseline\\work\\D25\\route_30mi_ride_3_loop_brouter.gpx\nwrote evals\\results\\baseline\\work\\D25\\preview.html (3 routes)\n\nBest: rank 1 \u2014 30.4 mi, 1940 ft climbing (brouter, bearing=180 ccw scale=1.12)\n",
+ "run": "baseline",
+ "repeat": 1,
+ "cases_version": "routegen-eval-v1",
+ "timestamp": "2026-09-20T09:41:35",
+ "verdict_history": [
+  {
+   "was": "fail",
+   "now": "pass",
+   "was_reasons": [
+    "geometry.continuous"
+   ],
+   "at": "2026-09-20T09:49:14"
+  }
+ ],
+ "rescored_at": "2026-09-20T11:30:41",
+ "scorer_error": null,
+ "candidate_labels": []
+}

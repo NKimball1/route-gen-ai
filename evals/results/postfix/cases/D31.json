@@ -1,0 +1,127 @@
+{
+ "id": "D31",
+ "split": "dev",
+ "category": "edit",
+ "tier": "live",
+ "scope": "supported",
+ "session": "E1",
+ "step": 5,
+ "text": "undo that",
+ "start": "Olin Park, Madison WI",
+ "why": "Plain undo, no replacement -- must parse as request_type 'undo', not as an edit.",
+ "expect": {
+  "request_type": "undo",
+  "outcome": "success",
+  "parse": {},
+  "route": {
+   "loop": null
+  }
+ },
+ "verdict": "pass",
+ "fail_reasons": [],
+ "parsed": {
+  "request_type": "undo",
+  "address": null,
+  "route": null,
+  "interval": null,
+  "edit": null,
+  "notes": ""
+ },
+ "notes": "",
+ "outcome_ok": true,
+ "summary": "Undone \u2014 back to route_22mi_ride_1_loop_brouter_edit1.gpx.",
+ "kind": "edit",
+ "n_candidates": 1,
+ "candidate_labels": [
+  "route_22mi_ride_1_loop_brouter_edit1.gpx \u2014 27.1 mi, 1184 ft (edit: extend 6mi)"
+ ],
+ "error": null,
+ "traceback": "",
+ "seconds": 0.97,
+ "scorer_error": null,
+ "parse_cached": false,
+ "parse_tokens": {
+  "input": 2422,
+  "output": 37
+ },
+ "measured": {
+  "gpx_path": "evals/results/postfix/work/E1/route_22mi_ride_1_loop_brouter_edit1.gpx",
+  "gpx_valid": true,
+  "gpx_error": null,
+  "n_points": 1767,
+  "distance_mi": 27.19,
+  "app_reported_mi": 27.1,
+  "ascent_ft_app": 1185.0,
+  "ascent_ft_independent": 1180.0,
+  "loop_closure_m": 1.3,
+  "start_proximity_m": 0.3,
+  "end_proximity_m": 1.5,
+  "via_distances_m": {},
+  "avoid_on_road_m": {},
+  "max_point_gap_m": 280.2,
+  "duplicate_points": 2,
+  "repeat_frac": 0.075,
+  "mirror_frac": 0.02,
+  "teleports": [],
+  "gaps_confirmed_road": [],
+  "gaps_unknown": [],
+  "has_elevation": true
+ },
+ "checks": [
+  {
+   "name": "outcome.no_crash",
+   "status": "pass",
+   "hard": true,
+   "detail": "handled without an unhandled exception",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "outcome.succeeded",
+   "status": "pass",
+   "hard": true,
+   "detail": "ok=True, 1 candidate(s): Undone \u2014 back to route_22mi_ride_1_loop_brouter_edit1.gpx.",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.request_type",
+   "status": "pass",
+   "hard": true,
+   "detail": "got 'undo', expected 'undo'",
+   "value": "undo",
+   "limit": "undo"
+  },
+  {
+   "name": "gpx.valid",
+   "status": "pass",
+   "hard": true,
+   "detail": "well-formed, 1767 points, elevation present",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "geometry.continuous",
+   "status": "pass",
+   "hard": true,
+   "detail": "continuous: no breaks. Longest single segment 280 m",
+   "value": 0,
+   "limit": 0
+  },
+  {
+   "name": "geometry.repeat",
+   "status": "pass",
+   "hard": false,
+   "detail": "8% of the route rides the same road twice (the app rejects loops above 25%); mirror score 2% -- not an out-and-back",
+   "value": 0.075,
+   "limit": 0.25
+  }
+ ],
+ "log_tail": "Parsed (claude-haiku-4-5, 2422in/37out tokens): {'request_type': 'undo'}\nUndone \u2014 back to route_22mi_ride_1_loop_brouter_edit1.gpx.\n",
+ "run": "postfix",
+ "repeat": 1,
+ "cases_version": "routegen-eval-v1",
+ "timestamp": "2026-09-20T10:40:35",
+ "verdict_history": [],
+ "rescored_at": "2026-09-20T11:30:43"
+}

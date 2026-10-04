@@ -1,0 +1,171 @@
+{
+ "id": "D22",
+ "split": "dev",
+ "category": "ambiguous",
+ "tier": "live",
+ "scope": "supported",
+ "session": null,
+ "step": null,
+ "text": "30 mile loop from Monona Terrace Madison WI, as flat as possible but also as much climbing as you can get",
+ "start": "Monona Terrace, Madison WI",
+ "why": "Directly contradictory. The system must not set BOTH maximize_climb and minimize_climb, and should say something about the conflict.",
+ "expect": {
+  "request_type": "route",
+  "outcome": "either",
+  "parse": {
+   "route.not_both_climb_flags": {
+    "equals": true
+   }
+  },
+  "route": {
+   "target_miles": 30,
+   "loop": null
+  }
+ },
+ "verdict": "pass",
+ "fail_reasons": [],
+ "parsed": {
+  "request_type": "route",
+  "address": "Monona Terrace, Madison, WI",
+  "route": {
+   "distance_miles": 30,
+   "max_climb_ft": null,
+   "maximize_climb": true,
+   "minimize_climb": false,
+   "shape": "loop",
+   "avoid_places": [],
+   "via_places": []
+  },
+  "interval": null,
+  "edit": null,
+  "notes": "User requested both 'as flat as possible' and 'as much climbing as you can get' \u2014 these are contradictory. Prioritizing maximize_climb per explicit request; if user wants flat instead, clarify."
+ },
+ "notes": "User requested both 'as flat as possible' and 'as much climbing as you can get' \u2014 these are contradictory. Prioritizing maximize_climb per explicit request; if user wants flat instead, clarify.",
+ "outcome_ok": true,
+ "summary": "12 route(s) \u2014 best: #1 loop: 31.6 mi, 1800 ft, 4% repeat",
+ "kind": "route",
+ "n_candidates": 12,
+ "error": null,
+ "traceback": "",
+ "seconds": 176.24,
+ "parse_cached": false,
+ "parse_tokens": {
+  "input": 2212,
+  "output": 142
+ },
+ "measured": {
+  "gpx_path": "evals/results/baseline/work/D22/route_30mi_maxclimb_1_loop_brouter.gpx",
+  "gpx_valid": true,
+  "gpx_error": null,
+  "n_points": 1719,
+  "distance_mi": 31.56,
+  "app_reported_mi": 31.6,
+  "ascent_ft_app": 1799.0,
+  "ascent_ft_independent": 1859.0,
+  "loop_closure_m": 0.0,
+  "start_proximity_m": 14.6,
+  "end_proximity_m": 14.6,
+  "via_distances_m": {},
+  "avoid_on_road_m": {},
+  "max_point_gap_m": 616.5,
+  "duplicate_points": 0,
+  "repeat_frac": 0.038,
+  "mirror_frac": 0.03,
+  "teleports": [],
+  "gaps_confirmed_road": [],
+  "gaps_unknown": [],
+  "has_elevation": true
+ },
+ "checks": [
+  {
+   "name": "outcome.no_crash",
+   "status": "pass",
+   "hard": true,
+   "detail": "handled without an unhandled exception",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "outcome.handled",
+   "status": "pass",
+   "hard": false,
+   "detail": "ok=True, 12 candidate(s): 12 route(s) \u2014 best: #1 loop: 31.6 mi, 1800 ft, 4% repeat",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.request_type",
+   "status": "pass",
+   "hard": true,
+   "detail": "got 'route', expected 'route'",
+   "value": "route",
+   "limit": "route"
+  },
+  {
+   "name": "parse.not_both_climb_flags",
+   "status": "pass",
+   "hard": true,
+   "detail": "maximize=True minimize=False",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "gpx.valid",
+   "status": "pass",
+   "hard": true,
+   "detail": "well-formed, 1719 points, elevation present",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "route.distance",
+   "status": "pass",
+   "hard": true,
+   "detail": "31.56 mi vs target 30 mi (+5.2%, tolerance +/-15%)",
+   "value": 31.56,
+   "limit": 30
+  },
+  {
+   "name": "route.starts_where_asked",
+   "status": "pass",
+   "hard": true,
+   "detail": "begins 15 m from the geocoded start (limit 600 m)",
+   "value": 14.6,
+   "limit": 600.0
+  },
+  {
+   "name": "geometry.continuous",
+   "status": "pass",
+   "hard": true,
+   "detail": "continuous: no breaks. Longest single segment 616 m",
+   "value": 0,
+   "limit": 0
+  },
+  {
+   "name": "geometry.repeat",
+   "status": "pass",
+   "hard": false,
+   "detail": "4% of the route rides the same road twice (the app rejects loops above 25%); mirror score 3% -- not an out-and-back",
+   "value": 0.038,
+   "limit": 0.25
+  }
+ ],
+ "log_tail": "k spurs\n  brouter: trimmed 15.2 mi of out-and-back spurs\n  brouter: trimmed 5.1 mi of out-and-back spurs\n  brouter: trimmed 2.0 mi of out-and-back spurs\n  brouter: trimmed 0.4 mi of out-and-back spurs\n  brouter: trimmed 1.9 mi of out-and-back spurs\nGenerating 6 loop via 'climb 40m @ 2.7%' candidates via brouter...\n  brouter: trimmed 5.0 mi of out-and-back spurs\n  brouter: trimmed 6.7 mi of out-and-back spurs\n  brouter: trimmed 0.4 mi of out-and-back spurs\n  brouter: trimmed 7.0 mi of out-and-back spurs\n  brouter: trimmed 2.6 mi of out-and-back spurs\n  brouter: trimmed 2.5 mi of out-and-back spurs\n  brouter: trimmed 2.2 mi of out-and-back spurs\n  reject [brouter bearing=120 cw scale=1.04]: distance 23.3 mi outside \u00b115% of target\n  reject [brouter via leg=1 side=+ r=6.1mi]: distance 41.2 mi outside \u00b115% of target\n  reject [brouter via leg=1 side=- r=2.8mi]: 34% of the route rides the same road twice\n  reject [brouter via leg=1 side=+ r=2.8mi]: 35% of the route rides the same road twice\n  reject [brouter via leg=1 side=- r=4.3mi]: 42% of the route rides the same road twice\n  reject [brouter via leg=1 side=+ r=4.1mi]: 29% of the route rides the same road twice\n  reject [brouter via leg=1 side=- r=39.4mi]: distance 109.1 mi outside \u00b115% of target\n  reject [brouter via leg=0 side=+ r=19.1mi]: distance 59.4 mi outside \u00b115% of target\n  reject [brouter via leg=1 side=+ r=3.9mi]: 31% of the route rides the same road twice\n  reject [brouter via leg=1 side=- r=3.9mi]: 30% of the route rides the same road twice\n  reject [brouter via direct]: 32% of the route rides the same road twice\n  reject [brouter via direct]: 32% of the route rides the same road twice\n\nrank provider shape      miles  climb ft  repeat  major  file\n1    brouter  loop        31.6      1800      4%      0  evals\\results\\baseline\\work\\D22\\route_30mi_maxclimb_1_loop_brouter.gpx\n2    brouter  loop        29.2      1581      9%      0  evals\\results\\baseline\\work\\D22\\route_30mi_maxclimb_2_loop_brouter.gpx\n3    brouter  loop        30.4      1571      3%      0  evals\\results\\baseline\\work\\D22\\route_30mi_maxclimb_3_loop_brouter.gpx\n4    brouter  loop        31.3      1519      1%      0  evals\\results\\baseline\\work\\D22\\route_30mi_maxclimb_4_loop_brouter.gpx\n5    brouter  loop        30.5      1510      6%      0  evals\\results\\baseline\\work\\D22\\route_30mi_maxclimb_5_loop_brouter.gpx\n6    brouter  loop        30.2      1494      5%      0  evals\\results\\baseline\\work\\D22\\route_30mi_maxclimb_6_loop_brouter.gpx\n7    brouter  loop        27.5      1440      5%      0  evals\\results\\baseline\\work\\D22\\route_30mi_maxclimb_7_loop_brouter.gpx\n8    brouter  loop        31.7      1410      1%      0  evals\\results\\baseline\\work\\D22\\route_30mi_maxclimb_8_loop_brouter.gpx\n9    brouter  loop        31.0      1351      1%  0.4mi  evals\\results\\baseline\\work\\D22\\route_30mi_maxclimb_9_loop_brouter.gpx\n10   brouter  loop        30.0      1185      1%      0  evals\\results\\baseline\\work\\D22\\route_30mi_maxclimb_10_loop_brouter.gpx\n11   brouter  loop        30.1      1173      1%      0  evals\\results\\baseline\\work\\D22\\route_30mi_maxclimb_11_loop_brouter.gpx\n12   brouter  loop        30.8      1079      1%      0  evals\\results\\baseline\\work\\D22\\route_30mi_maxclimb_12_loop_brouter.gpx\nwrote evals\\results\\baseline\\work\\D22\\preview.html (12 routes)\n\nBest: rank 1 \u2014 31.6 mi, 1800 ft climbing (brouter, via leg=0 side=+ r=5.3mi)\n",
+ "run": "baseline",
+ "repeat": 1,
+ "cases_version": "routegen-eval-v1",
+ "timestamp": "2026-09-20T09:40:18",
+ "verdict_history": [
+  {
+   "was": "fail",
+   "now": "pass",
+   "was_reasons": [
+    "geometry.continuous"
+   ],
+   "at": "2026-09-20T09:49:14"
+  }
+ ],
+ "rescored_at": "2026-09-20T11:30:41",
+ "scorer_error": null,
+ "candidate_labels": []
+}

@@ -1,0 +1,230 @@
+{
+ "id": "H10",
+ "split": "heldout",
+ "category": "multi_constraint",
+ "tier": "live",
+ "scope": "supported",
+ "session": null,
+ "step": null,
+ "text": "I want 45 miles from Cross Plains WI, through Black Earth, under 2000 feet of climbing, and off Highway 14",
+ "start": "Cross Plains, WI",
+ "why": "Held out: the hardest combination in the set -- distance + waypoint + hard climb cap + avoid.",
+ "expect": {
+  "request_type": "route",
+  "outcome": "either",
+  "parse": {
+   "route.distance_miles": {
+    "range": [
+     42,
+     48
+    ]
+   },
+   "route.via_places": {
+    "len_min": 1
+   },
+   "route.max_climb_ft": {
+    "range": [
+     1800,
+     2200
+    ]
+   },
+   "route.avoid_places": {
+    "len_min": 1
+   }
+  },
+  "route": {
+   "target_miles": 45,
+   "loop": null,
+   "max_climb_ft": 2000,
+   "via": [
+    "Black Earth, WI"
+   ],
+   "via_tolerance_m": 2500
+  }
+ },
+ "verdict": "pass",
+ "fail_reasons": [],
+ "parsed": {
+  "request_type": "route",
+  "address": "Cross Plains, WI",
+  "route": {
+   "distance_miles": 45,
+   "max_climb_ft": 2000,
+   "maximize_climb": false,
+   "minimize_climb": false,
+   "shape": "both",
+   "avoid_places": [
+    "Highway 14, Wisconsin"
+   ],
+   "via_places": [
+    "Black Earth, Wisconsin"
+   ]
+  },
+  "interval": null,
+  "edit": null,
+  "notes": ""
+ },
+ "notes": "",
+ "outcome_ok": true,
+ "summary": "1 route(s) \u2014 best: #1 loop: 41.0 mi, 1991 ft, 0% repeat, 0.1 mi major",
+ "kind": "route",
+ "n_candidates": 1,
+ "candidate_labels": [
+  "#1 loop: 41.0 mi, 1991 ft, 0% repeat, 0.1 mi major"
+ ],
+ "error": null,
+ "traceback": "",
+ "seconds": 7.14,
+ "scorer_error": null,
+ "parse_cached": false,
+ "parse_tokens": {
+  "input": 2449,
+  "output": 102
+ },
+ "measured": {
+  "gpx_path": "evals/results/postfix/work/H10/route_45mi_ride_1_loop_brouter.gpx",
+  "gpx_valid": true,
+  "gpx_error": null,
+  "n_points": 2636,
+  "distance_mi": 40.8,
+  "app_reported_mi": 41.0,
+  "ascent_ft_app": 1990.0,
+  "ascent_ft_independent": 1906.0,
+  "loop_closure_m": 0.0,
+  "start_proximity_m": 17.2,
+  "end_proximity_m": 17.2,
+  "via_distances_m": {
+   "Black Earth, WI": 475.2
+  },
+  "avoid_on_road_m": {},
+  "max_point_gap_m": 25.1,
+  "duplicate_points": 1,
+  "repeat_frac": 0.001,
+  "mirror_frac": 0.0,
+  "teleports": [],
+  "gaps_confirmed_road": [],
+  "gaps_unknown": [],
+  "has_elevation": true
+ },
+ "checks": [
+  {
+   "name": "outcome.no_crash",
+   "status": "pass",
+   "hard": true,
+   "detail": "handled without an unhandled exception",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "outcome.handled",
+   "status": "pass",
+   "hard": false,
+   "detail": "ok=True, 1 candidate(s): 1 route(s) \u2014 best: #1 loop: 41.0 mi, 1991 ft, 0% repeat, 0.1 mi major",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.request_type",
+   "status": "pass",
+   "hard": true,
+   "detail": "got 'route', expected 'route'",
+   "value": "route",
+   "limit": "route"
+  },
+  {
+   "name": "parse.distance_miles",
+   "status": "pass",
+   "hard": true,
+   "detail": "45 vs [42, 48]",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.via_places",
+   "status": "pass",
+   "hard": true,
+   "detail": "1 item(s), need >= 1",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.max_climb_ft",
+   "status": "pass",
+   "hard": true,
+   "detail": "2000 vs [1800, 2200]",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.avoid_places",
+   "status": "pass",
+   "hard": true,
+   "detail": "1 item(s), need >= 1",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "gpx.valid",
+   "status": "pass",
+   "hard": true,
+   "detail": "well-formed, 2636 points, elevation present",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "route.distance",
+   "status": "pass",
+   "hard": true,
+   "detail": "40.80 mi vs target 45 mi (+9.3%, tolerance +/-15%)",
+   "value": 40.8,
+   "limit": 45
+  },
+  {
+   "name": "route.starts_where_asked",
+   "status": "pass",
+   "hard": true,
+   "detail": "begins 17 m from the geocoded start (limit 600 m)",
+   "value": 17.2,
+   "limit": 600.0
+  },
+  {
+   "name": "route.climb_cap",
+   "status": "pass",
+   "hard": true,
+   "detail": "1990 ft vs cap 2000 ft (app model; independent unsmoothed sum 1906 ft)",
+   "value": 1990.0,
+   "limit": 2000
+  },
+  {
+   "name": "route.via[Black Earth, WI]",
+   "status": "pass",
+   "hard": true,
+   "detail": "closest approach 475 m (limit 2500 m)",
+   "value": 475.2,
+   "limit": 2500
+  },
+  {
+   "name": "geometry.continuous",
+   "status": "pass",
+   "hard": true,
+   "detail": "continuous: no breaks. Longest single segment 25 m",
+   "value": 0,
+   "limit": 0
+  },
+  {
+   "name": "geometry.repeat",
+   "status": "pass",
+   "hard": false,
+   "detail": "0% of the route rides the same road twice (the app rejects loops above 25%); mirror score 0% -- not an out-and-back",
+   "value": 0.001,
+   "limit": 0.25
+  }
+ ],
+ "log_tail": "Parsed (claude-haiku-4-5, 2449in/102out tokens): {'request_type': 'route', 'address': 'Cross Plains, WI', 'route': {'distance_miles': 45, 'max_climb_ft': 2000, 'maximize_climb': False, 'minimize_climb': False, 'shape': 'both', 'avoid_places': ['Highway 14, Wisconsin'], 'via_places': ['Black Earth, Wisconsin']}}\nAvoiding: University of Wisconsin-Platteville Richland, 1200, US Highway 14 West, Richland Center, Richland County, Wisconsin, 53581, United States (r=800 m)\nVia: Black Earth, Dane County, Wisconsin, United States\n(skipping ors: ORS_API_KEY not set)\nStart: Village of Cross Plains, Dane County, Wisconsin, 53528, United States (43.11170, -89.64522)\nGenerating 6 loop via 'Black Earth, Wisconsin' candidates via brouter...\n  brouter: trimmed 3.9 mi of out-and-back spurs\n  brouter: trimmed 9.4 mi of out-and-back spurs\n  brouter: trimmed 13.1 mi of out-and-back spurs\n  brouter: trimmed 9.6 mi of out-and-back spurs\n  brouter: trimmed 5.6 mi of out-and-back spurs\n  brouter: trimmed 31.3 mi of out-and-back spurs\n  brouter: trimmed 1.1 mi of out-and-back spurs\n  brouter: trimmed 2.3 mi of out-and-back spurs\n  4 natural loop(s) pass through all via places\n  brouter: trimmed 7.8 mi of out-and-back spurs\n  brouter: trimmed 34.0 mi of out-and-back spurs\n  brouter: trimmed 16.3 mi of out-and-back spurs\n  brouter: trimmed 7.7 mi of out-and-back spurs\n  brouter: trimmed 10.4 mi of out-and-back spurs\n  reject [brouter sweep bearing=240 ccw scale=1.26]: ascent 2047 ft exceeds cap\n  reject [brouter sweep bearing=275 ccw scale=1.28]: ascent 2470 ft exceeds cap\n  reject [brouter sweep bearing=305 cw scale=1.24]: ascent 2508 ft exceeds cap\n  reject [brouter via leg=0 side=+ r=13.4mi]: ascent 2781 ft exceeds cap\n  reject [brouter via leg=0 side=- r=13.4mi]: distance 12.7 mi outside \u00b115% of target\n  reject [brouter via leg=1 side=+ r=15.3mi]: ascent 2259 ft exceeds cap\n\nrank provider shape      miles  climb ft  repeat  major  file\n1    brouter  loop        41.0      1991      0%  0.1mi  evals\\results\\postfix\\work\\H10\\route_45mi_ride_1_loop_brouter.gpx\nwrote evals\\results\\postfix\\work\\H10\\preview.html (1 routes)\n\nBest: rank 1 \u2014 41.0 mi, 1991 ft climbing (brouter, sweep bearing=340 cw scale=1.11)\n",
+ "run": "postfix",
+ "repeat": 1,
+ "cases_version": "routegen-eval-v1",
+ "timestamp": "2026-09-20T10:39:10",
+ "verdict_history": [],
+ "rescored_at": "2026-09-20T11:30:43"
+}

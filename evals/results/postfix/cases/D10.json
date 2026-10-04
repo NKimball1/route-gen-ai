@@ -1,0 +1,190 @@
+{
+ "id": "D10",
+ "split": "dev",
+ "category": "climb_min",
+ "tier": "live",
+ "scope": "supported",
+ "session": null,
+ "step": null,
+ "text": "30 mile ride from Monona Terrace Madison WI with less than 1000 feet of climbing",
+ "start": "Monona Terrace, Madison WI",
+ "why": "A HARD climb ceiling -- the ranker must reject every candidate above it.",
+ "expect": {
+  "request_type": "route",
+  "outcome": "success",
+  "parse": {
+   "route.distance_miles": {
+    "range": [
+     28,
+     32
+    ]
+   },
+   "route.max_climb_ft": {
+    "range": [
+     900,
+     1100
+    ]
+   }
+  },
+  "route": {
+   "target_miles": 30,
+   "loop": null,
+   "max_climb_ft": 1000
+  }
+ },
+ "verdict": "pass",
+ "fail_reasons": [],
+ "parsed": {
+  "request_type": "route",
+  "address": "Monona Terrace, Madison, WI",
+  "route": {
+   "distance_miles": 30,
+   "max_climb_ft": 1000,
+   "maximize_climb": false,
+   "minimize_climb": true,
+   "shape": "both",
+   "avoid_places": [],
+   "via_places": []
+  },
+  "interval": null,
+  "edit": null,
+  "notes": ""
+ },
+ "notes": "",
+ "outcome_ok": true,
+ "summary": "1 route(s) \u2014 best: #1 outback: 30.8 mi, 968 ft, 0% repeat",
+ "kind": "route",
+ "n_candidates": 1,
+ "candidate_labels": [
+  "#1 outback: 30.8 mi, 968 ft, 0% repeat"
+ ],
+ "error": null,
+ "traceback": "",
+ "seconds": 17.47,
+ "parse_cached": false,
+ "parse_tokens": {
+  "input": 2444,
+  "output": 97
+ },
+ "measured": {
+  "gpx_path": "evals/results/postfix/work/D10/route_30mi_minclimb_1_outback_brouter.gpx",
+  "gpx_valid": true,
+  "gpx_error": null,
+  "n_points": 1143,
+  "distance_mi": 30.76,
+  "app_reported_mi": 30.8,
+  "ascent_ft_app": 961.0,
+  "ascent_ft_independent": 963.0,
+  "loop_closure_m": 0.0,
+  "start_proximity_m": 14.6,
+  "end_proximity_m": 14.6,
+  "via_distances_m": {},
+  "avoid_on_road_m": {},
+  "max_point_gap_m": 766.2,
+  "duplicate_points": 0,
+  "repeat_frac": 0.479,
+  "mirror_frac": 1.0,
+  "teleports": [],
+  "gaps_confirmed_road": [],
+  "gaps_unknown": [],
+  "has_elevation": true
+ },
+ "checks": [
+  {
+   "name": "outcome.no_crash",
+   "status": "pass",
+   "hard": true,
+   "detail": "handled without an unhandled exception",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "outcome.succeeded",
+   "status": "pass",
+   "hard": true,
+   "detail": "ok=True, 1 candidate(s): 1 route(s) \u2014 best: #1 outback: 30.8 mi, 968 ft, 0% repeat",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.request_type",
+   "status": "pass",
+   "hard": true,
+   "detail": "got 'route', expected 'route'",
+   "value": "route",
+   "limit": "route"
+  },
+  {
+   "name": "parse.distance_miles",
+   "status": "pass",
+   "hard": true,
+   "detail": "30 vs [28, 32]",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.max_climb_ft",
+   "status": "pass",
+   "hard": true,
+   "detail": "1000 vs [900, 1100]",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "gpx.valid",
+   "status": "pass",
+   "hard": true,
+   "detail": "well-formed, 1143 points, elevation present",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "route.distance",
+   "status": "pass",
+   "hard": true,
+   "detail": "30.76 mi vs target 30 mi (+2.5%, tolerance +/-15%)",
+   "value": 30.76,
+   "limit": 30
+  },
+  {
+   "name": "route.starts_where_asked",
+   "status": "pass",
+   "hard": true,
+   "detail": "begins 15 m from the geocoded start (limit 600 m)",
+   "value": 14.6,
+   "limit": 600.0
+  },
+  {
+   "name": "route.climb_cap",
+   "status": "pass",
+   "hard": true,
+   "detail": "961 ft vs cap 1000 ft (app model; independent unsmoothed sum 963 ft)",
+   "value": 961.0,
+   "limit": 1000
+  },
+  {
+   "name": "geometry.continuous",
+   "status": "pass",
+   "hard": true,
+   "detail": "continuous: no breaks. Longest single segment 766 m",
+   "value": 0,
+   "limit": 0
+  },
+  {
+   "name": "geometry.repeat",
+   "status": "info",
+   "hard": false,
+   "detail": "48% repeated road, but the track is 100% its own reverse -- this is an out-and-back, where repetition is the shape, not a defect",
+   "value": 0.479,
+   "limit": null
+  }
+ ],
+ "log_tail": "Parsed (claude-haiku-4-5, 2444in/97out tokens): {'request_type': 'route', 'address': 'Monona Terrace, Madison, WI', 'route': {'distance_miles': 30, 'max_climb_ft': 1000, 'maximize_climb': False, 'minimize_climb': True, 'shape': 'both', 'avoid_places': [], 'via_places': []}}\n(skipping ors: ORS_API_KEY not set)\nStart: Monona Terrace, Capital City State Trail, Bassett, Madison, Dane County, Wisconsin, 53788, United States (43.07167, -89.38002)\nGenerating 6 loop candidates via brouter...\n  brouter: trimmed 3.4 mi of out-and-back spurs\n  brouter: trimmed 1.6 mi of out-and-back spurs\n  brouter: trimmed 0.7 mi of out-and-back spurs\n  brouter: trimmed 8.1 mi of out-and-back spurs\n  brouter: trimmed 0.7 mi of out-and-back spurs\n  brouter: trimmed 6.3 mi of out-and-back spurs\n  brouter: trimmed 4.9 mi of out-and-back spurs\n  brouter: trimmed 0.8 mi of out-and-back spurs\n  brouter: trimmed 0.7 mi of out-and-back spurs\n  brouter: trimmed 1.5 mi of out-and-back spurs\n  brouter: trimmed 0.7 mi of out-and-back spurs\n  brouter: trimmed 0.6 mi of out-and-back spurs\n  brouter: trimmed 0.8 mi of out-and-back spurs\nGenerating 6 outback candidates via brouter...\n  reject [brouter bearing=0 cw scale=1.00]: ascent 1351 ft exceeds cap\n  reject [brouter bearing=60 ccw scale=1.13]: ascent 1079 ft exceeds cap\n  reject [brouter bearing=120 cw scale=1.04]: distance 23.3 mi outside \u00b115% of target\n  reject [brouter bearing=180 ccw scale=1.09]: ascent 1185 ft exceeds cap\n  reject [brouter bearing=240 cw scale=1.22]: ascent 1410 ft exceeds cap\n  reject [brouter bearing=300 ccw scale=1.13]: ascent 1173 ft exceeds cap\n  reject [brouter outback bearing=0 scale=0.80]: ascent 1068 ft exceeds cap\n  reject [brouter outback bearing=60 scale=1.09]: ascent 1053 ft exceeds cap\n  reject [brouter outback bearing=180 scale=0.91]: ascent 1181 ft exceeds cap\n  reject [brouter outback bearing=240 scale=1.06]: ascent 1160 ft exceeds cap\n  reject [brouter outback bearing=300 scale=1.00]: ascent 1628 ft exceeds cap\n\nrank provider shape      miles  climb ft  repeat  major  file\n1    brouter  outback     30.8       968     n/a      0  evals\\results\\postfix\\work\\D10\\route_30mi_minclimb_1_outback_brouter.gpx\nwrote evals\\results\\postfix\\work\\D10\\preview.html (1 routes)\n\nBest: rank 1 \u2014 30.8 mi, 968 ft climbing (brouter, outback bearing=120 scale=1.00)\n",
+ "run": "postfix",
+ "repeat": 1,
+ "cases_version": "routegen-eval-v1",
+ "timestamp": "2026-09-20T10:14:17",
+ "verdict_history": [],
+ "scorer_error": null,
+ "rescored_at": "2026-09-20T11:30:42"
+}

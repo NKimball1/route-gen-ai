@@ -1,0 +1,187 @@
+{
+ "id": "D01",
+ "split": "dev",
+ "category": "simple_loop",
+ "tier": "live",
+ "scope": "supported",
+ "session": null,
+ "step": null,
+ "text": "give me an easy 12 mile loop from Monona Terrace, Madison WI",
+ "start": "Monona Terrace, Madison WI",
+ "why": "The floor case: a short loop from a named public start.",
+ "expect": {
+  "request_type": "route",
+  "outcome": "success",
+  "parse": {
+   "route.distance_miles": {
+    "range": [
+     10,
+     14
+    ]
+   },
+   "route.shape": {
+    "in": [
+     "loop",
+     "both"
+    ]
+   }
+  },
+  "route": {
+   "target_miles": 12,
+   "loop": true
+  }
+ },
+ "verdict": "pass",
+ "fail_reasons": [],
+ "parsed": {
+  "request_type": "route",
+  "address": "Monona Terrace, Madison, WI",
+  "route": {
+   "distance_miles": 12,
+   "max_climb_ft": null,
+   "maximize_climb": false,
+   "minimize_climb": true,
+   "shape": "loop",
+   "avoid_places": [],
+   "via_places": []
+  },
+  "interval": null,
+  "edit": null,
+  "notes": ""
+ },
+ "notes": "",
+ "outcome_ok": true,
+ "summary": "4 route(s) \u2014 best: #1 loop: 11.5 mi, 390 ft, 3% repeat",
+ "kind": "route",
+ "n_candidates": 4,
+ "error": null,
+ "traceback": "",
+ "seconds": 12.28,
+ "parse_cached": false,
+ "parse_tokens": {
+  "input": 2203,
+  "output": 95
+ },
+ "measured": {
+  "gpx_path": "evals/results/baseline/work/D01/route_12mi_minclimb_1_loop_brouter.gpx",
+  "gpx_valid": true,
+  "gpx_error": null,
+  "n_points": 704,
+  "distance_mi": 11.51,
+  "app_reported_mi": 11.5,
+  "ascent_ft_app": 390.0,
+  "ascent_ft_independent": 389.0,
+  "loop_closure_m": 0.0,
+  "start_proximity_m": 14.6,
+  "end_proximity_m": 14.6,
+  "via_distances_m": {},
+  "avoid_on_road_m": {},
+  "max_point_gap_m": 288.4,
+  "duplicate_points": 0,
+  "repeat_frac": 0.033,
+  "mirror_frac": 0.035,
+  "teleports": [],
+  "gaps_confirmed_road": [],
+  "gaps_unknown": [],
+  "has_elevation": true
+ },
+ "checks": [
+  {
+   "name": "outcome.no_crash",
+   "status": "pass",
+   "hard": true,
+   "detail": "handled without an unhandled exception",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "outcome.succeeded",
+   "status": "pass",
+   "hard": true,
+   "detail": "ok=True, 4 candidate(s): 4 route(s) \u2014 best: #1 loop: 11.5 mi, 390 ft, 3% repeat",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.request_type",
+   "status": "pass",
+   "hard": true,
+   "detail": "got 'route', expected 'route'",
+   "value": "route",
+   "limit": "route"
+  },
+  {
+   "name": "parse.distance_miles",
+   "status": "pass",
+   "hard": true,
+   "detail": "12 vs [10, 14]",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.shape",
+   "status": "pass",
+   "hard": true,
+   "detail": "'loop' vs allowed ['loop', 'both']",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "gpx.valid",
+   "status": "pass",
+   "hard": true,
+   "detail": "well-formed, 704 points, elevation present",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "route.distance",
+   "status": "pass",
+   "hard": true,
+   "detail": "11.51 mi vs target 12 mi (+4.1%, tolerance +/-15%)",
+   "value": 11.51,
+   "limit": 12
+  },
+  {
+   "name": "route.loop_closure",
+   "status": "pass",
+   "hard": true,
+   "detail": "start-to-finish gap 0 m (limit 250 m)",
+   "value": 0.0,
+   "limit": 250.0
+  },
+  {
+   "name": "route.starts_where_asked",
+   "status": "pass",
+   "hard": true,
+   "detail": "begins 15 m from the geocoded start (limit 600 m)",
+   "value": 14.6,
+   "limit": 600.0
+  },
+  {
+   "name": "geometry.continuous",
+   "status": "pass",
+   "hard": true,
+   "detail": "continuous: no breaks. Longest single segment 288 m",
+   "value": 0,
+   "limit": 0
+  },
+  {
+   "name": "geometry.repeat",
+   "status": "pass",
+   "hard": false,
+   "detail": "3% of the route rides the same road twice (the app rejects loops above 25%); mirror score 4% -- not an out-and-back",
+   "value": 0.033,
+   "limit": 0.25
+  }
+ ],
+ "log_tail": "Parsed (claude-haiku-4-5, 2203in/95out tokens): {'request_type': 'route', 'address': 'Monona Terrace, Madison, WI', 'route': {'distance_miles': 12, 'max_climb_ft': None, 'maximize_climb': False, 'minimize_climb': True, 'shape': 'loop', 'avoid_places': [], 'via_places': []}}\n(skipping ors: ORS_API_KEY not set)\nStart: Monona Terrace, Capital City State Trail, Bassett, Madison, Dane County, Wisconsin, 53788, United States (43.07167, -89.38002)\nGenerating 6 loop candidates via brouter...\n  brouter: trimmed 8.4 mi of out-and-back spurs\n  brouter: trimmed 7.2 mi of out-and-back spurs\n  brouter: trimmed 0.4 mi of out-and-back spurs\n  brouter: trimmed 6.0 mi of out-and-back spurs\n  brouter: trimmed 1.2 mi of out-and-back spurs\n  brouter: trimmed 0.8 mi of out-and-back spurs\n  brouter: trimmed 2.9 mi of out-and-back spurs\n  brouter: trimmed 1.5 mi of out-and-back spurs\n  brouter: trimmed 0.6 mi of out-and-back spurs\n  brouter: trimmed 0.6 mi of out-and-back spurs\n  brouter: trimmed 0.3 mi of out-and-back spurs\n  brouter: trimmed 5.7 mi of out-and-back spurs\n  brouter: trimmed 0.7 mi of out-and-back spurs\n  brouter: trimmed 4.0 mi of out-and-back spurs\n  reject [brouter bearing=60 ccw scale=1.41]: distance 15.5 mi outside \u00b115% of target\n  reject [brouter bearing=300 ccw scale=0.72]: distance 7.1 mi outside \u00b115% of target\n\nrank provider shape      miles  climb ft  repeat  major  file\n1    brouter  loop        11.5       390      3%      0  evals\\results\\baseline\\work\\D01\\route_12mi_minclimb_1_loop_brouter.gpx\n2    brouter  loop        10.9       466      1%      0  evals\\results\\baseline\\work\\D01\\route_12mi_minclimb_2_loop_brouter.gpx\n3    brouter  loop        13.5       486      7%      0  evals\\results\\baseline\\work\\D01\\route_12mi_minclimb_3_loop_brouter.gpx\n4    brouter  loop        12.3       494      2%      0  evals\\results\\baseline\\work\\D01\\route_12mi_minclimb_4_loop_brouter.gpx\nwrote evals\\results\\baseline\\work\\D01\\preview.html (4 routes)\n\nBest: rank 1 \u2014 11.5 mi, 390 ft climbing (brouter, bearing=120 cw scale=1.00)\n",
+ "run": "baseline",
+ "repeat": 1,
+ "cases_version": "routegen-eval-v1",
+ "timestamp": "2026-09-20T09:31:20",
+ "verdict_history": [],
+ "rescored_at": "2026-09-20T11:30:41",
+ "scorer_error": null,
+ "candidate_labels": []
+}

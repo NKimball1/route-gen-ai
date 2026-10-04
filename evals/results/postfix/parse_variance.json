@@ -1,0 +1,2201 @@
+{
+ "records": [
+  {
+   "id": "D01",
+   "repeat": 1,
+   "verdict": "pass",
+   "fail_reasons": [],
+   "parsed": {
+    "request_type": "route",
+    "address": "Monona Terrace, Madison, WI",
+    "route": {
+     "distance_miles": 12,
+     "max_climb_ft": null,
+     "maximize_climb": false,
+     "minimize_climb": true,
+     "shape": "loop",
+     "avoid_places": [],
+     "via_places": []
+    },
+    "interval": null,
+    "edit": null,
+    "notes": "User requested an easy loop, interpreted as minimizing climbing."
+   },
+   "checks": [
+    {
+     "name": "parse.request_type",
+     "status": "pass",
+     "hard": true,
+     "detail": "got 'route', expected 'route'",
+     "value": "route",
+     "limit": "route"
+    },
+    {
+     "name": "parse.distance_miles",
+     "status": "pass",
+     "hard": true,
+     "detail": "12 vs [10, 14]",
+     "value": null,
+     "limit": null
+    },
+    {
+     "name": "parse.shape",
+     "status": "pass",
+     "hard": true,
+     "detail": "'loop' vs allowed ['loop', 'both']",
+     "value": null,
+     "limit": null
+    }
+   ]
+  },
+  {
+   "id": "D10",
+   "repeat": 1,
+   "verdict": "pass",
+   "fail_reasons": [],
+   "parsed": {
+    "request_type": "route",
+    "address": "Monona Terrace Madison WI",
+    "route": {
+     "distance_miles": 30,
+     "max_climb_ft": 1000,
+     "maximize_climb": false,
+     "minimize_climb": false,
+     "shape": "both",
+     "avoid_places": [],
+     "via_places": []
+    },
+    "interval": null,
+    "edit": null,
+    "notes": ""
+   },
+   "checks": [
+    {
+     "name": "parse.request_type",
+     "status": "pass",
+     "hard": true,
+     "detail": "got 'route', expected 'route'",
+     "value": "route",
+     "limit": "route"
+    },
+    {
+     "name": "parse.distance_miles",
+     "status": "pass",
+     "hard": true,
+     "detail": "30 vs [28, 32]",
+     "value": null,
+     "limit": null
+    },
+    {
+     "name": "parse.max_climb_ft",
+     "status": "pass",
+     "hard": true,
+     "detail": "1000 vs [900, 1100]",
+     "value": null,
+     "limit": null
+    }
+   ]
+  },
+  {
+   "id": "D13",
+   "repeat": 1,
+   "verdict": "pass",
+   "fail_reasons": [],
+   "parsed": {
+    "request_type": "route",
+    "address": "Middleton, WI",
+    "route": {
+     "distance_miles": 35,
+     "max_climb_ft": null,
+     "maximize_climb": false,
+     "minimize_climb": false,
+     "shape": "both",
+     "avoid_places": [],
+     "via_places": [
+      "Cross Plains, WI",
+      "Black Earth, WI"
+     ]
+    },
+    "interval": null,
+    "edit": null,
+    "notes": ""
+   },
+   "checks": [
+    {
+     "name": "parse.request_type",
+     "status": "pass",
+     "hard": true,
+     "detail": "got 'route', expected 'route'",
+     "value": "route",
+     "limit": "route"
+    },
+    {
+     "name": "parse.distance_miles",
+     "status": "pass",
+     "hard": true,
+     "detail": "35 vs [32, 38]",
+     "value": null,
+     "limit": null
+    },
+    {
+     "name": "parse.via_places",
+     "status": "pass",
+     "hard": true,
+     "detail": "2 item(s), need >= 2",
+     "value": null,
+     "limit": null
+    }
+   ]
+  },
+  {
+   "id": "D15",
+   "repeat": 1,
+   "verdict": "pass",
+   "fail_reasons": [],
+   "parsed": {
+    "request_type": "route",
+    "address": "Memorial Union, Madison, WI",
+    "route": {
+     "distance_miles": 22,
+     "max_climb_ft": null,
+     "maximize_climb": false,
+     "minimize_climb": false,
+     "shape": "loop",
+     "avoid_places": [
+      "Whitney Way, Madison, WI"
+     ],
+     "via_places": []
+    },
+    "interval": null,
+    "edit": null,
+    "notes": ""
+   },
+   "checks": [
+    {
+     "name": "parse.request_type",
+     "status": "pass",
+     "hard": true,
+     "detail": "got 'route', expected 'route'",
+     "value": "route",
+     "limit": "route"
+    },
+    {
+     "name": "parse.distance_miles",
+     "status": "pass",
+     "hard": true,
+     "detail": "22 vs [20, 24]",
+     "value": null,
+     "limit": null
+    },
+    {
+     "name": "parse.avoid_places",
+     "status": "pass",
+     "hard": true,
+     "detail": "1 item(s), need >= 1",
+     "value": null,
+     "limit": null
+    }
+   ]
+  },
+  {
+   "id": "D20",
+   "repeat": 1,
+   "verdict": "pass",
+   "fail_reasons": [],
+   "parsed": {
+    "request_type": "route",
+    "address": null,
+    "route": {
+     "distance_miles": 10,
+     "max_climb_ft": null,
+     "maximize_climb": false,
+     "minimize_climb": false,
+     "shape": "both",
+     "avoid_places": [],
+     "via_places": []
+    },
+    "interval": null,
+    "edit": null,
+    "notes": "User provided no distance preference; defaulting to 10 miles. Adjust distance as needed."
+   },
+   "checks": [
+    {
+     "name": "parse.request_type",
+     "status": "pass",
+     "hard": true,
+     "detail": "got 'route', expected 'route'",
+     "value": "route",
+     "limit": "route"
+    },
+    {
+     "name": "parse.distance_miles",
+     "status": "pass",
+     "hard": true,
+     "detail": "10 vs [5, 60]",
+     "value": null,
+     "limit": null
+    }
+   ]
+  },
+  {
+   "id": "D21",
+   "repeat": 1,
+   "verdict": "pass",
+   "fail_reasons": [],
+   "parsed": {
+    "request_type": "route",
+    "address": "Olin Park, Madison, WI",
+    "route": {
+     "distance_miles": 10,
+     "max_climb_ft": 300,
+     "maximize_climb": false,
+     "minimize_climb": true,
+     "shape": "loop",
+     "avoid_places": [],
+     "via_places": []
+    },
+    "interval": null,
+    "edit": null,
+    "notes": "Short easy spin with minimal climbing"
+   },
+   "checks": [
+    {
+     "name": "parse.request_type",
+     "status": "pass",
+     "hard": true,
+     "detail": "got 'route', expected 'route'",
+     "value": "route",
+     "limit": "route"
+    },
+    {
+     "name": "parse.distance_miles",
+     "status": "pass",
+     "hard": true,
+     "detail": "10 vs [4, 20]",
+     "value": null,
+     "limit": null
+    }
+   ]
+  },
+  {
+   "id": "H10",
+   "repeat": 1,
+   "verdict": "pass",
+   "fail_reasons": [],
+   "parsed": {
+    "request_type": "route",
+    "address": "Cross Plains, WI",
+    "route": {
+     "distance_miles": 45,
+     "max_climb_ft": 2000,
+     "maximize_climb": false,
+     "minimize_climb": false,
+     "shape": "both",
+     "avoid_places": [
+      "Highway 14"
+     ],
+     "via_places": [
+      "Black Earth, WI"
+     ]
+    },
+    "interval": null,
+    "edit": null,
+    "notes": ""
+   },
+   "checks": [
+    {
+     "name": "parse.request_type",
+     "status": "pass",
+     "hard": true,
+     "detail": "got 'route', expected 'route'",
+     "value": "route",
+     "limit": "route"
+    },
+    {
+     "name": "parse.distance_miles",
+     "status": "pass",
+     "hard": true,
+     "detail": "45 vs [42, 48]",
+     "value": null,
+     "limit": null
+    },
+    {
+     "name": "parse.via_places",
+     "status": "pass",
+     "hard": true,
+     "detail": "1 item(s), need >= 1",
+     "value": null,
+     "limit": null
+    },
+    {
+     "name": "parse.max_climb_ft",
+     "status": "pass",
+     "hard": true,
+     "detail": "2000 vs [1800, 2200]",
+     "value": null,
+     "limit": null
+    },
+    {
+     "name": "parse.avoid_places",
+     "status": "pass",
+     "hard": true,
+     "detail": "1 item(s), need >= 1",
+     "value": null,
+     "limit": null
+    }
+   ]
+  },
+  {
+   "id": "H13",
+   "repeat": 1,
+   "verdict": "pass",
+   "fail_reasons": [],
+   "parsed": {
+    "request_type": "route",
+    "address": "Olin Park, Madison, WI",
+    "route": {
+     "distance_miles": 10,
+     "max_climb_ft": null,
+     "maximize_climb": false,
+     "minimize_climb": false,
+     "shape": "loop",
+     "avoid_places": [],
+     "via_places": []
+    },
+    "interval": null,
+    "edit": null,
+    "notes": "User has approximately 60 minutes available with possible extension. Estimated 10 miles at 16 mph average for 1 hour; can be adjusted longer if time permits."
+   },
+   "checks": [
+    {
+     "name": "parse.request_type",
+     "status": "pass",
+     "hard": true,
+     "detail": "got 'route', expected 'route'",
+     "value": "route",
+     "limit": "route"
+    },
+    {
+     "name": "parse.distance_miles",
+     "status": "pass",
+     "hard": true,
+     "detail": "10 vs [10, 40]",
+     "value": null,
+     "limit": null
+    }
+   ]
+  },
+  {
+   "id": "H23",
+   "repeat": 1,
+   "verdict": "fail",
+   "fail_reasons": [
+    "parse.request_type",
+    "parse.mode",
+    "parse.places_len_min"
+   ],
+   "parsed": {
+    "request_type": "route",
+    "address": null,
+    "route": {
+     "distance_miles": 15,
+     "max_climb_ft": null,
+     "maximize_climb": false,
+     "minimize_climb": false,
+     "shape": "loop",
+     "avoid_places": [],
+     "via_places": [
+      "Vilas Park, Madison, Wisconsin",
+      "University of Wisconsin\u2013Madison Arboretum, Madison, Wisconsin"
+     ]
+    },
+    "interval": null,
+    "edit": null,
+    "notes": "User did not specify total distance; assuming 15 miles as a reasonable loop through both parks from home."
+   },
+   "checks": [
+    {
+     "name": "parse.request_type",
+     "status": "fail",
+     "hard": true,
+     "detail": "got 'route', expected 'edit_route'",
+     "value": "route",
+     "limit": "edit_route"
+    },
+    {
+     "name": "parse.mode",
+     "status": "fail",
+     "hard": true,
+     "detail": "None vs allowed ['via']",
+     "value": null,
+     "limit": null
+    },
+    {
+     "name": "parse.places_len_min",
+     "status": "fail",
+     "hard": true,
+     "detail": "0 place string(s): []",
+     "value": null,
+     "limit": null
+    }
+   ]
+  },
+  {
+   "id": "D01",
+   "repeat": 2,
+   "verdict": "pass",
+   "fail_reasons": [],
+   "parsed": {
+    "request_type": "route",
+    "address": "Monona Terrace, Madison, WI",
+    "route": {
+     "distance_miles": 12,
+     "max_climb_ft": null,
+     "maximize_climb": false,
+     "minimize_climb": true,
+     "shape": "loop",
+     "avoid_places": [],
+     "via_places": []
+    },
+    "interval": null,
+    "edit": null,
+    "notes": "User requested an easy loop, interpreted as minimizing climbing."
+   },
+   "checks": [
+    {
+     "name": "parse.request_type",
+     "status": "pass",
+     "hard": true,
+     "detail": "got 'route', expected 'route'",
+     "value": "route",
+     "limit": "route"
+    },
+    {
+     "name": "parse.distance_miles",
+     "status": "pass",
+     "hard": true,
+     "detail": "12 vs [10, 14]",
+     "value": null,
+     "limit": null
+    },
+    {
+     "name": "parse.shape",
+     "status": "pass",
+     "hard": true,
+     "detail": "'loop' vs allowed ['loop', 'both']",
+     "value": null,
+     "limit": null
+    }
+   ]
+  },
+  {
+   "id": "D10",
+   "repeat": 2,
+   "verdict": "pass",
+   "fail_reasons": [],
+   "parsed": {
+    "request_type": "route",
+    "address": "Monona Terrace, Madison, WI",
+    "route": {
+     "distance_miles": 30,
+     "max_climb_ft": 1000,
+     "maximize_climb": false,
+     "minimize_climb": true,
+     "shape": "both",
+     "avoid_places": [],
+     "via_places": []
+    },
+    "interval": null,
+    "edit": null,
+    "notes": ""
+   },
+   "checks": [
+    {
+     "name": "parse.request_type",
+     "status": "pass",
+     "hard": true,
+     "detail": "got 'route', expected 'route'",
+     "value": "route",
+     "limit": "route"
+    },
+    {
+     "name": "parse.distance_miles",
+     "status": "pass",
+     "hard": true,
+     "detail": "30 vs [28, 32]",
+     "value": null,
+     "limit": null
+    },
+    {
+     "name": "parse.max_climb_ft",
+     "status": "pass",
+     "hard": true,
+     "detail": "1000 vs [900, 1100]",
+     "value": null,
+     "limit": null
+    }
+   ]
+  },
+  {
+   "id": "D13",
+   "repeat": 2,
+   "verdict": "pass",
+   "fail_reasons": [],
+   "parsed": {
+    "request_type": "route",
+    "address": "Middleton, WI",
+    "route": {
+     "distance_miles": 35,
+     "max_climb_ft": null,
+     "maximize_climb": false,
+     "minimize_climb": false,
+     "shape": "both",
+     "avoid_places": [],
+     "via_places": [
+      "Cross Plains, WI",
+      "Black Earth, WI"
+     ]
+    },
+    "interval": null,
+    "edit": null,
+    "notes": ""
+   },
+   "checks": [
+    {
+     "name": "parse.request_type",
+     "status": "pass",
+     "hard": true,
+     "detail": "got 'route', expected 'route'",
+     "value": "route",
+     "limit": "route"
+    },
+    {
+     "name": "parse.distance_miles",
+     "status": "pass",
+     "hard": true,
+     "detail": "35 vs [32, 38]",
+     "value": null,
+     "limit": null
+    },
+    {
+     "name": "parse.via_places",
+     "status": "pass",
+     "hard": true,
+     "detail": "2 item(s), need >= 2",
+     "value": null,
+     "limit": null
+    }
+   ]
+  },
+  {
+   "id": "D15",
+   "repeat": 2,
+   "verdict": "pass",
+   "fail_reasons": [],
+   "parsed": {
+    "request_type": "route",
+    "address": "Memorial Union Madison WI",
+    "route": {
+     "distance_miles": 22,
+     "max_climb_ft": null,
+     "maximize_climb": false,
+     "minimize_climb": false,
+     "shape": "loop",
+     "avoid_places": [
+      "Whitney Way Madison WI"
+     ],
+     "via_places": []
+    },
+    "interval": null,
+    "edit": null,
+    "notes": ""
+   },
+   "checks": [
+    {
+     "name": "parse.request_type",
+     "status": "pass",
+     "hard": true,
+     "detail": "got 'route', expected 'route'",
+     "value": "route",
+     "limit": "route"
+    },
+    {
+     "name": "parse.distance_miles",
+     "status": "pass",
+     "hard": true,
+     "detail": "22 vs [20, 24]",
+     "value": null,
+     "limit": null
+    },
+    {
+     "name": "parse.avoid_places",
+     "status": "pass",
+     "hard": true,
+     "detail": "1 item(s), need >= 1",
+     "value": null,
+     "limit": null
+    }
+   ]
+  },
+  {
+   "id": "D20",
+   "repeat": 2,
+   "verdict": "pass",
+   "fail_reasons": [],
+   "parsed": {
+    "request_type": "route",
+    "address": null,
+    "route": {
+     "distance_miles": 15,
+     "max_climb_ft": null,
+     "maximize_climb": false,
+     "minimize_climb": false,
+     "shape": "both",
+     "avoid_places": [],
+     "via_places": []
+    },
+    "interval": null,
+    "edit": null,
+    "notes": "User did not specify distance or duration. Default 15-mile ride assumed."
+   },
+   "checks": [
+    {
+     "name": "parse.request_type",
+     "status": "pass",
+     "hard": true,
+     "detail": "got 'route', expected 'route'",
+     "value": "route",
+     "limit": "route"
+    },
+    {
+     "name": "parse.distance_miles",
+     "status": "pass",
+     "hard": true,
+     "detail": "15 vs [5, 60]",
+     "value": null,
+     "limit": null
+    }
+   ]
+  },
+  {
+   "id": "D21",
+   "repeat": 2,
+   "verdict": "pass",
+   "fail_reasons": [],
+   "parsed": {
+    "request_type": "route",
+    "address": "Olin Park Madison WI",
+    "route": {
+     "distance_miles": 10,
+     "max_climb_ft": 300,
+     "maximize_climb": false,
+     "minimize_climb": true,
+     "shape": "loop",
+     "avoid_places": [],
+     "via_places": []
+    },
+    "interval": null,
+    "edit": null,
+    "notes": "Easy spin with minimal elevation gain"
+   },
+   "checks": [
+    {
+     "name": "parse.request_type",
+     "status": "pass",
+     "hard": true,
+     "detail": "got 'route', expected 'route'",
+     "value": "route",
+     "limit": "route"
+    },
+    {
+     "name": "parse.distance_miles",
+     "status": "pass",
+     "hard": true,
+     "detail": "10 vs [4, 20]",
+     "value": null,
+     "limit": null
+    }
+   ]
+  },
+  {
+   "id": "H10",
+   "repeat": 2,
+   "verdict": "pass",
+   "fail_reasons": [],
+   "parsed": {
+    "request_type": "route",
+    "address": "Cross Plains, WI",
+    "route": {
+     "distance_miles": 45,
+     "max_climb_ft": 2000,
+     "maximize_climb": false,
+     "minimize_climb": false,
+     "shape": "both",
+     "avoid_places": [
+      "Highway 14"
+     ],
+     "via_places": [
+      "Black Earth, WI"
+     ]
+    },
+    "interval": null,
+    "edit": null,
+    "notes": ""
+   },
+   "checks": [
+    {
+     "name": "parse.request_type",
+     "status": "pass",
+     "hard": true,
+     "detail": "got 'route', expected 'route'",
+     "value": "route",
+     "limit": "route"
+    },
+    {
+     "name": "parse.distance_miles",
+     "status": "pass",
+     "hard": true,
+     "detail": "45 vs [42, 48]",
+     "value": null,
+     "limit": null
+    },
+    {
+     "name": "parse.via_places",
+     "status": "pass",
+     "hard": true,
+     "detail": "1 item(s), need >= 1",
+     "value": null,
+     "limit": null
+    },
+    {
+     "name": "parse.max_climb_ft",
+     "status": "pass",
+     "hard": true,
+     "detail": "2000 vs [1800, 2200]",
+     "value": null,
+     "limit": null
+    },
+    {
+     "name": "parse.avoid_places",
+     "status": "pass",
+     "hard": true,
+     "detail": "1 item(s), need >= 1",
+     "value": null,
+     "limit": null
+    }
+   ]
+  },
+  {
+   "id": "H13",
+   "repeat": 2,
+   "verdict": "pass",
+   "fail_reasons": [],
+   "parsed": {
+    "request_type": "route",
+    "address": "Olin Park Madison WI",
+    "route": {
+     "distance_miles": 16,
+     "max_climb_ft": null,
+     "maximize_climb": false,
+     "minimize_climb": false,
+     "shape": "both",
+     "avoid_places": [],
+     "via_places": []
+    },
+    "interval": null,
+    "edit": null,
+    "notes": "User has ~1 hour available with potential for longer; at 16 mph average this is ~16 miles. Tool can extend if user confirms more time available."
+   },
+   "checks": [
+    {
+     "name": "parse.request_type",
+     "status": "pass",
+     "hard": true,
+     "detail": "got 'route', expected 'route'",
+     "value": "route",
+     "limit": "route"
+    },
+    {
+     "name": "parse.distance_miles",
+     "status": "pass",
+     "hard": true,
+     "detail": "16 vs [10, 40]",
+     "value": null,
+     "limit": null
+    }
+   ]
+  },
+  {
+   "id": "H23",
+   "repeat": 2,
+   "verdict": "pass",
+   "fail_reasons": [],
+   "parsed": {
+    "request_type": "edit_route",
+    "address": null,
+    "route": null,
+    "interval": null,
+    "edit": {
+     "mode": "via",
+     "place": null,
+     "places": [
+      "Vilas Park, Madison, Wisconsin",
+      "Arboretum, Madison, Wisconsin"
+     ],
+     "radius_m": 1500,
+     "miles_delta": null,
+     "target_miles": null,
+     "connect_return": false,
+     "revert_first": false
+    },
+    "notes": ""
+   },
+   "checks": [
+    {
+     "name": "parse.request_type",
+     "status": "pass",
+     "hard": true,
+     "detail": "got 'edit_route', expected 'edit_route'",
+     "value": "edit_route",
+     "limit": "edit_route"
+    },
+    {
+     "name": "parse.mode",
+     "status": "pass",
+     "hard": true,
+     "detail": "'via' vs allowed ['via']",
+     "value": null,
+     "limit": null
+    },
+    {
+     "name": "parse.places_len_min",
+     "status": "pass",
+     "hard": true,
+     "detail": "2 place string(s): ['Vilas Park, Madison, Wisconsin', 'Arboretum, Madison, Wisconsin']",
+     "value": null,
+     "limit": null
+    }
+   ]
+  },
+  {
+   "id": "D01",
+   "repeat": 3,
+   "verdict": "pass",
+   "fail_reasons": [],
+   "parsed": {
+    "request_type": "route",
+    "address": "Monona Terrace, Madison WI",
+    "route": {
+     "distance_miles": 12,
+     "max_climb_ft": null,
+     "maximize_climb": false,
+     "minimize_climb": false,
+     "shape": "loop",
+     "avoid_places": [],
+     "via_places": []
+    },
+    "interval": null,
+    "edit": null,
+    "notes": ""
+   },
+   "checks": [
+    {
+     "name": "parse.request_type",
+     "status": "pass",
+     "hard": true,
+     "detail": "got 'route', expected 'route'",
+     "value": "route",
+     "limit": "route"
+    },
+    {
+     "name": "parse.distance_miles",
+     "status": "pass",
+     "hard": true,
+     "detail": "12 vs [10, 14]",
+     "value": null,
+     "limit": null
+    },
+    {
+     "name": "parse.shape",
+     "status": "pass",
+     "hard": true,
+     "detail": "'loop' vs allowed ['loop', 'both']",
+     "value": null,
+     "limit": null
+    }
+   ]
+  },
+  {
+   "id": "D10",
+   "repeat": 3,
+   "verdict": "pass",
+   "fail_reasons": [],
+   "parsed": {
+    "request_type": "route",
+    "address": "Monona Terrace, Madison, WI",
+    "route": {
+     "distance_miles": 30,
+     "max_climb_ft": 1000,
+     "maximize_climb": false,
+     "minimize_climb": true,
+     "shape": "both",
+     "avoid_places": [],
+     "via_places": []
+    },
+    "interval": null,
+    "edit": null,
+    "notes": ""
+   },
+   "checks": [
+    {
+     "name": "parse.request_type",
+     "status": "pass",
+     "hard": true,
+     "detail": "got 'route', expected 'route'",
+     "value": "route",
+     "limit": "route"
+    },
+    {
+     "name": "parse.distance_miles",
+     "status": "pass",
+     "hard": true,
+     "detail": "30 vs [28, 32]",
+     "value": null,
+     "limit": null
+    },
+    {
+     "name": "parse.max_climb_ft",
+     "status": "pass",
+     "hard": true,
+     "detail": "1000 vs [900, 1100]",
+     "value": null,
+     "limit": null
+    }
+   ]
+  },
+  {
+   "id": "D13",
+   "repeat": 3,
+   "verdict": "pass",
+   "fail_reasons": [],
+   "parsed": {
+    "request_type": "route",
+    "address": "Middleton, WI",
+    "route": {
+     "distance_miles": 35,
+     "max_climb_ft": null,
+     "maximize_climb": false,
+     "minimize_climb": false,
+     "shape": "both",
+     "avoid_places": [],
+     "via_places": [
+      "Cross Plains, WI",
+      "Black Earth, WI"
+     ]
+    },
+    "interval": null,
+    "edit": null,
+    "notes": ""
+   },
+   "checks": [
+    {
+     "name": "parse.request_type",
+     "status": "pass",
+     "hard": true,
+     "detail": "got 'route', expected 'route'",
+     "value": "route",
+     "limit": "route"
+    },
+    {
+     "name": "parse.distance_miles",
+     "status": "pass",
+     "hard": true,
+     "detail": "35 vs [32, 38]",
+     "value": null,
+     "limit": null
+    },
+    {
+     "name": "parse.via_places",
+     "status": "pass",
+     "hard": true,
+     "detail": "2 item(s), need >= 2",
+     "value": null,
+     "limit": null
+    }
+   ]
+  },
+  {
+   "id": "D15",
+   "repeat": 3,
+   "verdict": "pass",
+   "fail_reasons": [],
+   "parsed": {
+    "request_type": "route",
+    "address": "Memorial Union Madison WI",
+    "route": {
+     "distance_miles": 22,
+     "max_climb_ft": null,
+     "maximize_climb": false,
+     "minimize_climb": false,
+     "shape": "loop",
+     "avoid_places": [
+      "Whitney Way Madison WI"
+     ],
+     "via_places": []
+    },
+    "interval": null,
+    "edit": null,
+    "notes": ""
+   },
+   "checks": [
+    {
+     "name": "parse.request_type",
+     "status": "pass",
+     "hard": true,
+     "detail": "got 'route', expected 'route'",
+     "value": "route",
+     "limit": "route"
+    },
+    {
+     "name": "parse.distance_miles",
+     "status": "pass",
+     "hard": true,
+     "detail": "22 vs [20, 24]",
+     "value": null,
+     "limit": null
+    },
+    {
+     "name": "parse.avoid_places",
+     "status": "pass",
+     "hard": true,
+     "detail": "1 item(s), need >= 1",
+     "value": null,
+     "limit": null
+    }
+   ]
+  },
+  {
+   "id": "D20",
+   "repeat": 3,
+   "verdict": "fail",
+   "fail_reasons": [
+    "parse.distance_miles"
+   ],
+   "parsed": {
+    "request_type": "route",
+    "address": null,
+    "route": {
+     "distance_miles": 0,
+     "max_climb_ft": null,
+     "maximize_climb": false,
+     "minimize_climb": false,
+     "shape": "both",
+     "avoid_places": [],
+     "via_places": []
+    },
+    "interval": null,
+    "edit": null,
+    "notes": "User did not specify a distance, duration, or any route preferences. Please provide distance (in miles or duration) and starting address."
+   },
+   "checks": [
+    {
+     "name": "parse.request_type",
+     "status": "pass",
+     "hard": true,
+     "detail": "got 'route', expected 'route'",
+     "value": "route",
+     "limit": "route"
+    },
+    {
+     "name": "parse.distance_miles",
+     "status": "fail",
+     "hard": true,
+     "detail": "0 vs [5, 60]",
+     "value": null,
+     "limit": null
+    }
+   ]
+  },
+  {
+   "id": "D21",
+   "repeat": 3,
+   "verdict": "pass",
+   "fail_reasons": [],
+   "parsed": {
+    "request_type": "route",
+    "address": "Olin Park Madison WI",
+    "route": {
+     "distance_miles": 10,
+     "max_climb_ft": 300,
+     "maximize_climb": false,
+     "minimize_climb": true,
+     "shape": "loop",
+     "avoid_places": [],
+     "via_places": []
+    },
+    "interval": null,
+    "edit": null,
+    "notes": "User described as 'short easy spin' - interpreted as ~10 miles with minimal elevation"
+   },
+   "checks": [
+    {
+     "name": "parse.request_type",
+     "status": "pass",
+     "hard": true,
+     "detail": "got 'route', expected 'route'",
+     "value": "route",
+     "limit": "route"
+    },
+    {
+     "name": "parse.distance_miles",
+     "status": "pass",
+     "hard": true,
+     "detail": "10 vs [4, 20]",
+     "value": null,
+     "limit": null
+    }
+   ]
+  },
+  {
+   "id": "H10",
+   "repeat": 3,
+   "verdict": "pass",
+   "fail_reasons": [],
+   "parsed": {
+    "request_type": "route",
+    "address": "Cross Plains, WI",
+    "route": {
+     "distance_miles": 45,
+     "max_climb_ft": 2000,
+     "maximize_climb": false,
+     "minimize_climb": false,
+     "shape": "both",
+     "avoid_places": [
+      "Highway 14, Wisconsin"
+     ],
+     "via_places": [
+      "Black Earth, WI"
+     ]
+    },
+    "interval": null,
+    "edit": null,
+    "notes": ""
+   },
+   "checks": [
+    {
+     "name": "parse.request_type",
+     "status": "pass",
+     "hard": true,
+     "detail": "got 'route', expected 'route'",
+     "value": "route",
+     "limit": "route"
+    },
+    {
+     "name": "parse.distance_miles",
+     "status": "pass",
+     "hard": true,
+     "detail": "45 vs [42, 48]",
+     "value": null,
+     "limit": null
+    },
+    {
+     "name": "parse.via_places",
+     "status": "pass",
+     "hard": true,
+     "detail": "1 item(s), need >= 1",
+     "value": null,
+     "limit": null
+    },
+    {
+     "name": "parse.max_climb_ft",
+     "status": "pass",
+     "hard": true,
+     "detail": "2000 vs [1800, 2200]",
+     "value": null,
+     "limit": null
+    },
+    {
+     "name": "parse.avoid_places",
+     "status": "pass",
+     "hard": true,
+     "detail": "1 item(s), need >= 1",
+     "value": null,
+     "limit": null
+    }
+   ]
+  },
+  {
+   "id": "H13",
+   "repeat": 3,
+   "verdict": "pass",
+   "fail_reasons": [],
+   "parsed": {
+    "request_type": "route",
+    "address": "Olin Park, Madison, WI",
+    "route": {
+     "distance_miles": 10,
+     "max_climb_ft": null,
+     "maximize_climb": false,
+     "minimize_climb": false,
+     "shape": "loop",
+     "avoid_places": [],
+     "via_places": []
+    },
+    "interval": null,
+    "edit": null,
+    "notes": "User has ~1 hour available with flexibility for longer; estimated 10 miles at 16 mph average (1 hour). Can adjust distance upward if user confirms more time."
+   },
+   "checks": [
+    {
+     "name": "parse.request_type",
+     "status": "pass",
+     "hard": true,
+     "detail": "got 'route', expected 'route'",
+     "value": "route",
+     "limit": "route"
+    },
+    {
+     "name": "parse.distance_miles",
+     "status": "pass",
+     "hard": true,
+     "detail": "10 vs [10, 40]",
+     "value": null,
+     "limit": null
+    }
+   ]
+  },
+  {
+   "id": "H23",
+   "repeat": 3,
+   "verdict": "pass",
+   "fail_reasons": [],
+   "parsed": {
+    "request_type": "edit_route",
+    "address": null,
+    "route": null,
+    "interval": null,
+    "edit": {
+     "mode": "via",
+     "place": null,
+     "places": [
+      "Vilas Park, Madison, Wisconsin",
+      "University of Wisconsin Arboretum, Madison, Wisconsin"
+     ],
+     "radius_m": 1500,
+     "miles_delta": null,
+     "target_miles": null,
+     "connect_return": false,
+     "revert_first": false
+    },
+    "notes": ""
+   },
+   "checks": [
+    {
+     "name": "parse.request_type",
+     "status": "pass",
+     "hard": true,
+     "detail": "got 'edit_route', expected 'edit_route'",
+     "value": "edit_route",
+     "limit": "edit_route"
+    },
+    {
+     "name": "parse.mode",
+     "status": "pass",
+     "hard": true,
+     "detail": "'via' vs allowed ['via']",
+     "value": null,
+     "limit": null
+    },
+    {
+     "name": "parse.places_len_min",
+     "status": "pass",
+     "hard": true,
+     "detail": "2 place string(s): ['Vilas Park, Madison, Wisconsin', 'University of Wisconsin Arboretum, Madison, Wisconsin']",
+     "value": null,
+     "limit": null
+    }
+   ]
+  },
+  {
+   "id": "D01",
+   "repeat": 4,
+   "verdict": "pass",
+   "fail_reasons": [],
+   "parsed": {
+    "request_type": "route",
+    "address": "Monona Terrace, Madison, WI",
+    "route": {
+     "distance_miles": 12,
+     "max_climb_ft": null,
+     "maximize_climb": false,
+     "minimize_climb": false,
+     "shape": "loop",
+     "avoid_places": [],
+     "via_places": []
+    },
+    "interval": null,
+    "edit": null,
+    "notes": "User requested an easy route; no specific climb preference given."
+   },
+   "checks": [
+    {
+     "name": "parse.request_type",
+     "status": "pass",
+     "hard": true,
+     "detail": "got 'route', expected 'route'",
+     "value": "route",
+     "limit": "route"
+    },
+    {
+     "name": "parse.distance_miles",
+     "status": "pass",
+     "hard": true,
+     "detail": "12 vs [10, 14]",
+     "value": null,
+     "limit": null
+    },
+    {
+     "name": "parse.shape",
+     "status": "pass",
+     "hard": true,
+     "detail": "'loop' vs allowed ['loop', 'both']",
+     "value": null,
+     "limit": null
+    }
+   ]
+  },
+  {
+   "id": "D10",
+   "repeat": 4,
+   "verdict": "pass",
+   "fail_reasons": [],
+   "parsed": {
+    "request_type": "route",
+    "address": "Monona Terrace, Madison, WI",
+    "route": {
+     "distance_miles": 30,
+     "max_climb_ft": 1000,
+     "maximize_climb": false,
+     "minimize_climb": true,
+     "shape": "both",
+     "avoid_places": [],
+     "via_places": []
+    },
+    "interval": null,
+    "edit": null,
+    "notes": ""
+   },
+   "checks": [
+    {
+     "name": "parse.request_type",
+     "status": "pass",
+     "hard": true,
+     "detail": "got 'route', expected 'route'",
+     "value": "route",
+     "limit": "route"
+    },
+    {
+     "name": "parse.distance_miles",
+     "status": "pass",
+     "hard": true,
+     "detail": "30 vs [28, 32]",
+     "value": null,
+     "limit": null
+    },
+    {
+     "name": "parse.max_climb_ft",
+     "status": "pass",
+     "hard": true,
+     "detail": "1000 vs [900, 1100]",
+     "value": null,
+     "limit": null
+    }
+   ]
+  },
+  {
+   "id": "D13",
+   "repeat": 4,
+   "verdict": "pass",
+   "fail_reasons": [],
+   "parsed": {
+    "request_type": "route",
+    "address": "Middleton, WI",
+    "route": {
+     "distance_miles": 35,
+     "max_climb_ft": null,
+     "maximize_climb": false,
+     "minimize_climb": false,
+     "shape": "both",
+     "avoid_places": [],
+     "via_places": [
+      "Cross Plains, WI",
+      "Black Earth, WI"
+     ]
+    },
+    "interval": null,
+    "edit": null,
+    "notes": ""
+   },
+   "checks": [
+    {
+     "name": "parse.request_type",
+     "status": "pass",
+     "hard": true,
+     "detail": "got 'route', expected 'route'",
+     "value": "route",
+     "limit": "route"
+    },
+    {
+     "name": "parse.distance_miles",
+     "status": "pass",
+     "hard": true,
+     "detail": "35 vs [32, 38]",
+     "value": null,
+     "limit": null
+    },
+    {
+     "name": "parse.via_places",
+     "status": "pass",
+     "hard": true,
+     "detail": "2 item(s), need >= 2",
+     "value": null,
+     "limit": null
+    }
+   ]
+  },
+  {
+   "id": "D15",
+   "repeat": 4,
+   "verdict": "pass",
+   "fail_reasons": [],
+   "parsed": {
+    "request_type": "route",
+    "address": "Memorial Union Madison WI",
+    "route": {
+     "distance_miles": 22,
+     "max_climb_ft": null,
+     "maximize_climb": false,
+     "minimize_climb": false,
+     "shape": "loop",
+     "avoid_places": [
+      "Whitney Way Madison WI"
+     ],
+     "via_places": []
+    },
+    "interval": null,
+    "edit": null,
+    "notes": ""
+   },
+   "checks": [
+    {
+     "name": "parse.request_type",
+     "status": "pass",
+     "hard": true,
+     "detail": "got 'route', expected 'route'",
+     "value": "route",
+     "limit": "route"
+    },
+    {
+     "name": "parse.distance_miles",
+     "status": "pass",
+     "hard": true,
+     "detail": "22 vs [20, 24]",
+     "value": null,
+     "limit": null
+    },
+    {
+     "name": "parse.avoid_places",
+     "status": "pass",
+     "hard": true,
+     "detail": "1 item(s), need >= 1",
+     "value": null,
+     "limit": null
+    }
+   ]
+  },
+  {
+   "id": "D20",
+   "repeat": 4,
+   "verdict": "pass",
+   "fail_reasons": [],
+   "parsed": {
+    "request_type": "route",
+    "address": null,
+    "route": {
+     "distance_miles": 20,
+     "max_climb_ft": null,
+     "maximize_climb": false,
+     "minimize_climb": false,
+     "shape": "both",
+     "avoid_places": [],
+     "via_places": []
+    },
+    "interval": null,
+    "edit": null,
+    "notes": "User did not specify distance or duration; defaulting to 20 miles. User did not specify shape preference; using 'both' to allow loop or out-and-back."
+   },
+   "checks": [
+    {
+     "name": "parse.request_type",
+     "status": "pass",
+     "hard": true,
+     "detail": "got 'route', expected 'route'",
+     "value": "route",
+     "limit": "route"
+    },
+    {
+     "name": "parse.distance_miles",
+     "status": "pass",
+     "hard": true,
+     "detail": "20 vs [5, 60]",
+     "value": null,
+     "limit": null
+    }
+   ]
+  },
+  {
+   "id": "D21",
+   "repeat": 4,
+   "verdict": "pass",
+   "fail_reasons": [],
+   "parsed": {
+    "request_type": "route",
+    "address": "Olin Park, Madison, WI",
+    "route": {
+     "distance_miles": 10,
+     "max_climb_ft": 300,
+     "maximize_climb": false,
+     "minimize_climb": true,
+     "shape": "loop",
+     "avoid_places": [],
+     "via_places": []
+    },
+    "interval": null,
+    "edit": null,
+    "notes": "Short easy spin with minimal elevation gain"
+   },
+   "checks": [
+    {
+     "name": "parse.request_type",
+     "status": "pass",
+     "hard": true,
+     "detail": "got 'route', expected 'route'",
+     "value": "route",
+     "limit": "route"
+    },
+    {
+     "name": "parse.distance_miles",
+     "status": "pass",
+     "hard": true,
+     "detail": "10 vs [4, 20]",
+     "value": null,
+     "limit": null
+    }
+   ]
+  },
+  {
+   "id": "H10",
+   "repeat": 4,
+   "verdict": "pass",
+   "fail_reasons": [],
+   "parsed": {
+    "request_type": "route",
+    "address": "Cross Plains, WI",
+    "route": {
+     "distance_miles": 45,
+     "max_climb_ft": 2000,
+     "maximize_climb": false,
+     "minimize_climb": false,
+     "shape": "both",
+     "avoid_places": [
+      "Highway 14, Wisconsin"
+     ],
+     "via_places": [
+      "Black Earth, WI"
+     ]
+    },
+    "interval": null,
+    "edit": null,
+    "notes": ""
+   },
+   "checks": [
+    {
+     "name": "parse.request_type",
+     "status": "pass",
+     "hard": true,
+     "detail": "got 'route', expected 'route'",
+     "value": "route",
+     "limit": "route"
+    },
+    {
+     "name": "parse.distance_miles",
+     "status": "pass",
+     "hard": true,
+     "detail": "45 vs [42, 48]",
+     "value": null,
+     "limit": null
+    },
+    {
+     "name": "parse.via_places",
+     "status": "pass",
+     "hard": true,
+     "detail": "1 item(s), need >= 1",
+     "value": null,
+     "limit": null
+    },
+    {
+     "name": "parse.max_climb_ft",
+     "status": "pass",
+     "hard": true,
+     "detail": "2000 vs [1800, 2200]",
+     "value": null,
+     "limit": null
+    },
+    {
+     "name": "parse.avoid_places",
+     "status": "pass",
+     "hard": true,
+     "detail": "1 item(s), need >= 1",
+     "value": null,
+     "limit": null
+    }
+   ]
+  },
+  {
+   "id": "H13",
+   "repeat": 4,
+   "verdict": "pass",
+   "fail_reasons": [],
+   "parsed": {
+    "request_type": "route",
+    "address": "Olin Park Madison WI",
+    "route": {
+     "distance_miles": 16,
+     "max_climb_ft": null,
+     "maximize_climb": false,
+     "minimize_climb": false,
+     "shape": "loop",
+     "avoid_places": [],
+     "via_places": []
+    },
+    "interval": null,
+    "edit": null,
+    "notes": "User has about an hour available; 16 miles at ~16 mph average fits that window with flexibility for longer if time permits. Adjust distance upward if more time becomes available."
+   },
+   "checks": [
+    {
+     "name": "parse.request_type",
+     "status": "pass",
+     "hard": true,
+     "detail": "got 'route', expected 'route'",
+     "value": "route",
+     "limit": "route"
+    },
+    {
+     "name": "parse.distance_miles",
+     "status": "pass",
+     "hard": true,
+     "detail": "16 vs [10, 40]",
+     "value": null,
+     "limit": null
+    }
+   ]
+  },
+  {
+   "id": "H23",
+   "repeat": 4,
+   "verdict": "pass",
+   "fail_reasons": [],
+   "parsed": {
+    "request_type": "edit_route",
+    "address": null,
+    "route": null,
+    "interval": null,
+    "edit": {
+     "mode": "via",
+     "place": null,
+     "places": [
+      "Vilas Park, Madison, Wisconsin",
+      "University of Wisconsin Arboretum, Madison, Wisconsin"
+     ],
+     "radius_m": 1500,
+     "miles_delta": null,
+     "target_miles": null,
+     "connect_return": false,
+     "revert_first": false
+    },
+    "notes": ""
+   },
+   "checks": [
+    {
+     "name": "parse.request_type",
+     "status": "pass",
+     "hard": true,
+     "detail": "got 'edit_route', expected 'edit_route'",
+     "value": "edit_route",
+     "limit": "edit_route"
+    },
+    {
+     "name": "parse.mode",
+     "status": "pass",
+     "hard": true,
+     "detail": "'via' vs allowed ['via']",
+     "value": null,
+     "limit": null
+    },
+    {
+     "name": "parse.places_len_min",
+     "status": "pass",
+     "hard": true,
+     "detail": "2 place string(s): ['Vilas Park, Madison, Wisconsin', 'University of Wisconsin Arboretum, Madison, Wisconsin']",
+     "value": null,
+     "limit": null
+    }
+   ]
+  },
+  {
+   "id": "D01",
+   "repeat": 5,
+   "verdict": "pass",
+   "fail_reasons": [],
+   "parsed": {
+    "request_type": "route",
+    "address": "Monona Terrace, Madison, WI",
+    "route": {
+     "distance_miles": 12,
+     "max_climb_ft": null,
+     "maximize_climb": false,
+     "minimize_climb": true,
+     "shape": "loop",
+     "avoid_places": [],
+     "via_places": []
+    },
+    "interval": null,
+    "edit": null,
+    "notes": "User requested an easy loop, interpreted as minimizing climbing."
+   },
+   "checks": [
+    {
+     "name": "parse.request_type",
+     "status": "pass",
+     "hard": true,
+     "detail": "got 'route', expected 'route'",
+     "value": "route",
+     "limit": "route"
+    },
+    {
+     "name": "parse.distance_miles",
+     "status": "pass",
+     "hard": true,
+     "detail": "12 vs [10, 14]",
+     "value": null,
+     "limit": null
+    },
+    {
+     "name": "parse.shape",
+     "status": "pass",
+     "hard": true,
+     "detail": "'loop' vs allowed ['loop', 'both']",
+     "value": null,
+     "limit": null
+    }
+   ]
+  },
+  {
+   "id": "D10",
+   "repeat": 5,
+   "verdict": "pass",
+   "fail_reasons": [],
+   "parsed": {
+    "request_type": "route",
+    "address": "Monona Terrace, Madison, WI",
+    "route": {
+     "distance_miles": 30,
+     "max_climb_ft": 1000,
+     "maximize_climb": false,
+     "minimize_climb": true,
+     "shape": "both",
+     "avoid_places": [],
+     "via_places": []
+    },
+    "interval": null,
+    "edit": null,
+    "notes": ""
+   },
+   "checks": [
+    {
+     "name": "parse.request_type",
+     "status": "pass",
+     "hard": true,
+     "detail": "got 'route', expected 'route'",
+     "value": "route",
+     "limit": "route"
+    },
+    {
+     "name": "parse.distance_miles",
+     "status": "pass",
+     "hard": true,
+     "detail": "30 vs [28, 32]",
+     "value": null,
+     "limit": null
+    },
+    {
+     "name": "parse.max_climb_ft",
+     "status": "pass",
+     "hard": true,
+     "detail": "1000 vs [900, 1100]",
+     "value": null,
+     "limit": null
+    }
+   ]
+  },
+  {
+   "id": "D13",
+   "repeat": 5,
+   "verdict": "pass",
+   "fail_reasons": [],
+   "parsed": {
+    "request_type": "route",
+    "address": "Middleton, WI",
+    "route": {
+     "distance_miles": 35,
+     "max_climb_ft": null,
+     "maximize_climb": false,
+     "minimize_climb": false,
+     "shape": "both",
+     "avoid_places": [],
+     "via_places": [
+      "Cross Plains, WI",
+      "Black Earth, WI"
+     ]
+    },
+    "interval": null,
+    "edit": null,
+    "notes": ""
+   },
+   "checks": [
+    {
+     "name": "parse.request_type",
+     "status": "pass",
+     "hard": true,
+     "detail": "got 'route', expected 'route'",
+     "value": "route",
+     "limit": "route"
+    },
+    {
+     "name": "parse.distance_miles",
+     "status": "pass",
+     "hard": true,
+     "detail": "35 vs [32, 38]",
+     "value": null,
+     "limit": null
+    },
+    {
+     "name": "parse.via_places",
+     "status": "pass",
+     "hard": true,
+     "detail": "2 item(s), need >= 2",
+     "value": null,
+     "limit": null
+    }
+   ]
+  },
+  {
+   "id": "D15",
+   "repeat": 5,
+   "verdict": "pass",
+   "fail_reasons": [],
+   "parsed": {
+    "request_type": "route",
+    "address": "Memorial Union Madison WI",
+    "route": {
+     "distance_miles": 22,
+     "max_climb_ft": null,
+     "maximize_climb": false,
+     "minimize_climb": false,
+     "shape": "loop",
+     "avoid_places": [
+      "Whitney Way Madison WI"
+     ],
+     "via_places": []
+    },
+    "interval": null,
+    "edit": null,
+    "notes": ""
+   },
+   "checks": [
+    {
+     "name": "parse.request_type",
+     "status": "pass",
+     "hard": true,
+     "detail": "got 'route', expected 'route'",
+     "value": "route",
+     "limit": "route"
+    },
+    {
+     "name": "parse.distance_miles",
+     "status": "pass",
+     "hard": true,
+     "detail": "22 vs [20, 24]",
+     "value": null,
+     "limit": null
+    },
+    {
+     "name": "parse.avoid_places",
+     "status": "pass",
+     "hard": true,
+     "detail": "1 item(s), need >= 1",
+     "value": null,
+     "limit": null
+    }
+   ]
+  },
+  {
+   "id": "D20",
+   "repeat": 5,
+   "verdict": "pass",
+   "fail_reasons": [],
+   "parsed": {
+    "request_type": "route",
+    "address": null,
+    "route": {
+     "distance_miles": 15,
+     "max_climb_ft": null,
+     "maximize_climb": false,
+     "minimize_climb": false,
+     "shape": "both",
+     "avoid_places": [],
+     "via_places": []
+    },
+    "interval": null,
+    "edit": null,
+    "notes": "No distance specified; defaulting to 15 miles. Please clarify desired distance, climbing preference, or route shape (loop vs out-and-back)."
+   },
+   "checks": [
+    {
+     "name": "parse.request_type",
+     "status": "pass",
+     "hard": true,
+     "detail": "got 'route', expected 'route'",
+     "value": "route",
+     "limit": "route"
+    },
+    {
+     "name": "parse.distance_miles",
+     "status": "pass",
+     "hard": true,
+     "detail": "15 vs [5, 60]",
+     "value": null,
+     "limit": null
+    }
+   ]
+  },
+  {
+   "id": "D21",
+   "repeat": 5,
+   "verdict": "pass",
+   "fail_reasons": [],
+   "parsed": {
+    "request_type": "route",
+    "address": "Olin Park, Madison, WI",
+    "route": {
+     "distance_miles": 10,
+     "max_climb_ft": 500,
+     "maximize_climb": false,
+     "minimize_climb": true,
+     "shape": "loop",
+     "avoid_places": [],
+     "via_places": []
+    },
+    "interval": null,
+    "edit": null,
+    "notes": "Short easy spin - interpreted as ~10 miles with minimal climbing"
+   },
+   "checks": [
+    {
+     "name": "parse.request_type",
+     "status": "pass",
+     "hard": true,
+     "detail": "got 'route', expected 'route'",
+     "value": "route",
+     "limit": "route"
+    },
+    {
+     "name": "parse.distance_miles",
+     "status": "pass",
+     "hard": true,
+     "detail": "10 vs [4, 20]",
+     "value": null,
+     "limit": null
+    }
+   ]
+  },
+  {
+   "id": "H10",
+   "repeat": 5,
+   "verdict": "pass",
+   "fail_reasons": [],
+   "parsed": {
+    "request_type": "route",
+    "address": "Cross Plains, WI",
+    "route": {
+     "distance_miles": 45,
+     "max_climb_ft": 2000,
+     "maximize_climb": false,
+     "minimize_climb": false,
+     "shape": "both",
+     "avoid_places": [
+      "Highway 14, Wisconsin"
+     ],
+     "via_places": [
+      "Black Earth, WI"
+     ]
+    },
+    "interval": null,
+    "edit": null,
+    "notes": ""
+   },
+   "checks": [
+    {
+     "name": "parse.request_type",
+     "status": "pass",
+     "hard": true,
+     "detail": "got 'route', expected 'route'",
+     "value": "route",
+     "limit": "route"
+    },
+    {
+     "name": "parse.distance_miles",
+     "status": "pass",
+     "hard": true,
+     "detail": "45 vs [42, 48]",
+     "value": null,
+     "limit": null
+    },
+    {
+     "name": "parse.via_places",
+     "status": "pass",
+     "hard": true,
+     "detail": "1 item(s), need >= 1",
+     "value": null,
+     "limit": null
+    },
+    {
+     "name": "parse.max_climb_ft",
+     "status": "pass",
+     "hard": true,
+     "detail": "2000 vs [1800, 2200]",
+     "value": null,
+     "limit": null
+    },
+    {
+     "name": "parse.avoid_places",
+     "status": "pass",
+     "hard": true,
+     "detail": "1 item(s), need >= 1",
+     "value": null,
+     "limit": null
+    }
+   ]
+  },
+  {
+   "id": "H13",
+   "repeat": 5,
+   "verdict": "pass",
+   "fail_reasons": [],
+   "parsed": {
+    "request_type": "route",
+    "address": "Olin Park, Madison, WI",
+    "route": {
+     "distance_miles": 10,
+     "max_climb_ft": null,
+     "maximize_climb": false,
+     "minimize_climb": false,
+     "shape": "loop",
+     "avoid_places": [],
+     "via_places": []
+    },
+    "interval": null,
+    "edit": null,
+    "notes": "User has approximately 1 hour available with potential for longer; estimated 10 miles at 16 mph for 1 hour, but tool should offer loop options that can extend to fill more time if user prefers"
+   },
+   "checks": [
+    {
+     "name": "parse.request_type",
+     "status": "pass",
+     "hard": true,
+     "detail": "got 'route', expected 'route'",
+     "value": "route",
+     "limit": "route"
+    },
+    {
+     "name": "parse.distance_miles",
+     "status": "pass",
+     "hard": true,
+     "detail": "10 vs [10, 40]",
+     "value": null,
+     "limit": null
+    }
+   ]
+  },
+  {
+   "id": "H23",
+   "repeat": 5,
+   "verdict": "fail",
+   "fail_reasons": [
+    "parse.request_type",
+    "parse.mode",
+    "parse.places_len_min"
+   ],
+   "parsed": {
+    "request_type": "route",
+    "address": null,
+    "route": {
+     "distance_miles": 15,
+     "max_climb_ft": null,
+     "maximize_climb": false,
+     "minimize_climb": false,
+     "shape": "loop",
+     "avoid_places": [],
+     "via_places": [
+      "Vilas Park, Madison, Wisconsin",
+      "University of Wisconsin\u2013Madison Arboretum, Madison, Wisconsin"
+     ]
+    },
+    "interval": null,
+    "edit": null,
+    "notes": "User did not specify total route distance; defaulting to 15 miles. Adjust distance_miles as needed for desired ride length."
+   },
+   "checks": [
+    {
+     "name": "parse.request_type",
+     "status": "fail",
+     "hard": true,
+     "detail": "got 'route', expected 'edit_route'",
+     "value": "route",
+     "limit": "edit_route"
+    },
+    {
+     "name": "parse.mode",
+     "status": "fail",
+     "hard": true,
+     "detail": "None vs allowed ['via']",
+     "value": null,
+     "limit": null
+    },
+    {
+     "name": "parse.places_len_min",
+     "status": "fail",
+     "hard": true,
+     "detail": "0 place string(s): []",
+     "value": null,
+     "limit": null
+    }
+   ]
+  }
+ ],
+ "repeats": 5,
+ "parse_calls_live": 45,
+ "parse_cost_usd": 0.132955,
+ "timestamp": "2026-09-20T10:50:48"
+}

@@ -1,0 +1,150 @@
+{
+ "id": "H11",
+ "split": "heldout",
+ "category": "multi_constraint",
+ "tier": "live",
+ "scope": "supported",
+ "session": null,
+ "step": null,
+ "text": "32 mile flat-ish loop from Sun Prairie WI that goes by Lake Mills WI",
+ "start": "Sun Prairie, WI",
+ "why": "Held out: soft flat preference plus a waypoint roughly a third of the ride away.",
+ "expect": {
+  "request_type": "route",
+  "outcome": "either",
+  "parse": {
+   "route.distance_miles": {
+    "range": [
+     29,
+     35
+    ]
+   },
+   "route.via_places": {
+    "len_min": 1
+   }
+  },
+  "route": {
+   "target_miles": 32,
+   "loop": null,
+   "via": [
+    "Lake Mills, WI"
+   ],
+   "via_tolerance_m": 3000
+  }
+ },
+ "verdict": "pass",
+ "fail_reasons": [],
+ "parsed": {
+  "request_type": "route",
+  "address": "Sun Prairie, WI",
+  "route": {
+   "distance_miles": 32,
+   "max_climb_ft": null,
+   "maximize_climb": false,
+   "minimize_climb": true,
+   "shape": "loop",
+   "avoid_places": [],
+   "via_places": [
+    "Lake Mills, WI"
+   ]
+  },
+  "interval": null,
+  "edit": null,
+  "notes": ""
+ },
+ "notes": "",
+ "outcome_ok": false,
+ "summary": "No route met the constraints \u2014 try a looser target or different distance.",
+ "kind": "route",
+ "n_candidates": 0,
+ "candidate_labels": [],
+ "error": null,
+ "traceback": "",
+ "seconds": 3.66,
+ "scorer_error": null,
+ "parse_cached": false,
+ "parse_tokens": {
+  "input": 2440,
+  "output": 95
+ },
+ "measured": {
+  "gpx_path": null,
+  "gpx_valid": null,
+  "gpx_error": null,
+  "n_points": null,
+  "distance_mi": null,
+  "app_reported_mi": null,
+  "ascent_ft_app": null,
+  "ascent_ft_independent": null,
+  "loop_closure_m": null,
+  "start_proximity_m": null,
+  "end_proximity_m": null,
+  "via_distances_m": {},
+  "avoid_on_road_m": {},
+  "max_point_gap_m": null,
+  "duplicate_points": null,
+  "repeat_frac": null,
+  "mirror_frac": null,
+  "teleports": [],
+  "gaps_confirmed_road": [],
+  "gaps_unknown": [],
+  "has_elevation": null
+ },
+ "checks": [
+  {
+   "name": "outcome.no_crash",
+   "status": "pass",
+   "hard": true,
+   "detail": "handled without an unhandled exception",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "outcome.handled",
+   "status": "pass",
+   "hard": false,
+   "detail": "ok=False, 0 candidate(s): No route met the constraints \u2014 try a looser target or different distance.",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "outcome.explained",
+   "status": "pass",
+   "hard": true,
+   "detail": "user-facing explanation: No route met the constraints \u2014 try a looser target or different distance.",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.request_type",
+   "status": "pass",
+   "hard": true,
+   "detail": "got 'route', expected 'route'",
+   "value": "route",
+   "limit": "route"
+  },
+  {
+   "name": "parse.distance_miles",
+   "status": "pass",
+   "hard": true,
+   "detail": "32 vs [29, 35]",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.via_places",
+   "status": "pass",
+   "hard": true,
+   "detail": "1 item(s), need >= 1",
+   "value": null,
+   "limit": null
+  }
+ ],
+ "log_tail": "Parsed (claude-haiku-4-5, 2440in/95out tokens): {'request_type': 'route', 'address': 'Sun Prairie, WI', 'route': {'distance_miles': 32, 'max_climb_ft': None, 'maximize_climb': False, 'minimize_climb': True, 'shape': 'loop', 'avoid_places': [], 'via_places': ['Lake Mills, WI']}}\nVia: Lake Mills, Jefferson County, Wisconsin, 53551, United States\n(skipping ors: ORS_API_KEY not set)\nStart: Sun Prairie, Dane County, Wisconsin, United States (43.18328, -89.21283)\nGenerating 6 loop via 'Lake Mills, WI' candidates via brouter...\n  brouter: trimmed 3.0 mi of out-and-back spurs\n  brouter: trimmed 7.1 mi of out-and-back spurs\n  brouter: trimmed 1.3 mi of out-and-back spurs\n  brouter: trimmed 3.0 mi of out-and-back spurs\n  brouter: trimmed 4.2 mi of out-and-back spurs\n  brouter: trimmed 1.4 mi of out-and-back spurs\n  brouter: trimmed 0.5 mi of out-and-back spurs\n  brouter: trimmed 9.7 mi of out-and-back spurs\n  reject [brouter via direct]: distance 51.7 mi outside \u00b115% of target\nNo candidate met the constraints. Try more candidates or a looser target.\n",
+ "run": "postfix",
+ "repeat": 1,
+ "cases_version": "routegen-eval-v1",
+ "timestamp": "2026-09-20T10:39:13",
+ "verdict_history": [],
+ "rescored_at": "2026-09-20T11:30:43"
+}

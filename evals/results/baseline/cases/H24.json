@@ -1,0 +1,103 @@
+{
+ "id": "H24",
+ "split": "heldout",
+ "category": "edit",
+ "tier": "live",
+ "scope": "supported",
+ "session": "E4",
+ "step": 3,
+ "text": "undo",
+ "start": "Memorial Union, Madison WI",
+ "why": "Held out: bare one-word undo.",
+ "expect": {
+  "request_type": "undo",
+  "outcome": "success",
+  "parse": {},
+  "route": {
+   "loop": null
+  }
+ },
+ "verdict": "fail",
+ "fail_reasons": [
+  "outcome.succeeded"
+ ],
+ "parsed": {
+  "request_type": "undo",
+  "address": null,
+  "route": null,
+  "interval": null,
+  "edit": null,
+  "notes": ""
+ },
+ "notes": "",
+ "outcome_ok": false,
+ "summary": "Nothing to undo \u2014 this is the earliest version.",
+ "kind": "error",
+ "n_candidates": 0,
+ "error": null,
+ "traceback": "",
+ "seconds": 0.82,
+ "parse_cached": false,
+ "parse_tokens": {
+  "input": 2185,
+  "output": 30
+ },
+ "measured": {
+  "gpx_path": null,
+  "gpx_valid": null,
+  "gpx_error": null,
+  "n_points": null,
+  "distance_mi": null,
+  "app_reported_mi": null,
+  "ascent_ft_app": null,
+  "ascent_ft_independent": null,
+  "loop_closure_m": null,
+  "start_proximity_m": null,
+  "end_proximity_m": null,
+  "via_distances_m": {},
+  "avoid_on_road_m": {},
+  "max_point_gap_m": null,
+  "duplicate_points": null,
+  "repeat_frac": null,
+  "mirror_frac": null,
+  "teleports": [],
+  "gaps_confirmed_road": [],
+  "gaps_unknown": [],
+  "has_elevation": null
+ },
+ "checks": [
+  {
+   "name": "outcome.no_crash",
+   "status": "pass",
+   "hard": true,
+   "detail": "handled without an unhandled exception",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "outcome.succeeded",
+   "status": "fail",
+   "hard": true,
+   "detail": "ok=False, 0 candidate(s): Nothing to undo \u2014 this is the earliest version.",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.request_type",
+   "status": "pass",
+   "hard": true,
+   "detail": "got 'undo', expected 'undo'",
+   "value": "undo",
+   "limit": "undo"
+  }
+ ],
+ "log_tail": "Parsed (claude-haiku-4-5, 2185in/30out tokens): {'request_type': 'undo'}\nNothing to undo \u2014 this is the earliest version.\n",
+ "run": "baseline",
+ "repeat": 1,
+ "cases_version": "routegen-eval-v1",
+ "timestamp": "2026-09-20T09:49:03",
+ "verdict_history": [],
+ "rescored_at": "2026-09-20T11:30:42",
+ "scorer_error": null,
+ "candidate_labels": []
+}

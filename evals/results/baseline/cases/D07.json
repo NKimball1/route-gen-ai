@@ -1,0 +1,202 @@
+{
+ "id": "D07",
+ "split": "dev",
+ "category": "climb_max",
+ "tier": "live",
+ "scope": "supported",
+ "session": null,
+ "step": null,
+ "text": "40 mile loop from Mount Horeb WI with as much climbing as you can find",
+ "start": "Mount Horeb, WI",
+ "why": "Climb maximization triggers the peak-scouting path (Overpass + elevation search).",
+ "expect": {
+  "request_type": "route",
+  "outcome": "success",
+  "parse": {
+   "route.distance_miles": {
+    "range": [
+     37,
+     43
+    ]
+   },
+   "route.maximize_climb": {
+    "equals": true
+   }
+  },
+  "route": {
+   "target_miles": 40,
+   "loop": true,
+   "min_climb_ft": 1200
+  }
+ },
+ "verdict": "pass",
+ "fail_reasons": [],
+ "parsed": {
+  "request_type": "route",
+  "address": "Mount Horeb, WI",
+  "route": {
+   "distance_miles": 40,
+   "max_climb_ft": null,
+   "maximize_climb": true,
+   "minimize_climb": false,
+   "shape": "loop",
+   "avoid_places": [],
+   "via_places": []
+  },
+  "interval": null,
+  "edit": null,
+  "notes": ""
+ },
+ "notes": "",
+ "outcome_ok": true,
+ "summary": "7 route(s) \u2014 best: #1 loop: 39.0 mi, 2895 ft, 2% repeat, 0.4 mi major",
+ "kind": "route",
+ "n_candidates": 7,
+ "error": null,
+ "traceback": "",
+ "seconds": 25.8,
+ "parse_cached": false,
+ "parse_tokens": {
+  "input": 2203,
+  "output": 91
+ },
+ "measured": {
+  "gpx_path": "evals/results/baseline/work/D07/route_40mi_maxclimb_1_loop_brouter.gpx",
+  "gpx_valid": true,
+  "gpx_error": null,
+  "n_points": 1406,
+  "distance_mi": 38.97,
+  "app_reported_mi": 39.0,
+  "ascent_ft_app": 2895.0,
+  "ascent_ft_independent": 3010.0,
+  "loop_closure_m": 0.0,
+  "start_proximity_m": 3.5,
+  "end_proximity_m": 3.5,
+  "via_distances_m": {},
+  "avoid_on_road_m": {},
+  "max_point_gap_m": 669.0,
+  "duplicate_points": 0,
+  "repeat_frac": 0.021,
+  "mirror_frac": 0.005,
+  "teleports": [],
+  "gaps_confirmed_road": [],
+  "gaps_unknown": [],
+  "has_elevation": true
+ },
+ "checks": [
+  {
+   "name": "outcome.no_crash",
+   "status": "pass",
+   "hard": true,
+   "detail": "handled without an unhandled exception",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "outcome.succeeded",
+   "status": "pass",
+   "hard": true,
+   "detail": "ok=True, 7 candidate(s): 7 route(s) \u2014 best: #1 loop: 39.0 mi, 2895 ft, 2% repeat, 0.4 mi major",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.request_type",
+   "status": "pass",
+   "hard": true,
+   "detail": "got 'route', expected 'route'",
+   "value": "route",
+   "limit": "route"
+  },
+  {
+   "name": "parse.distance_miles",
+   "status": "pass",
+   "hard": true,
+   "detail": "40 vs [37, 43]",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.maximize_climb",
+   "status": "pass",
+   "hard": true,
+   "detail": "True vs expected True",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "gpx.valid",
+   "status": "pass",
+   "hard": true,
+   "detail": "well-formed, 1406 points, elevation present",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "route.distance",
+   "status": "pass",
+   "hard": true,
+   "detail": "38.97 mi vs target 40 mi (+2.6%, tolerance +/-15%)",
+   "value": 38.97,
+   "limit": 40
+  },
+  {
+   "name": "route.loop_closure",
+   "status": "pass",
+   "hard": true,
+   "detail": "start-to-finish gap 0 m (limit 250 m)",
+   "value": 0.0,
+   "limit": 250.0
+  },
+  {
+   "name": "route.starts_where_asked",
+   "status": "pass",
+   "hard": true,
+   "detail": "begins 4 m from the geocoded start (limit 600 m)",
+   "value": 3.5,
+   "limit": 600.0
+  },
+  {
+   "name": "route.climb_sought",
+   "status": "pass",
+   "hard": false,
+   "detail": "2895 ft on a climb-maximizing request (expected at least 1200 ft for this terrain)",
+   "value": 2895.0,
+   "limit": 1200
+  },
+  {
+   "name": "geometry.continuous",
+   "status": "pass",
+   "hard": true,
+   "detail": "continuous: no breaks. Longest single segment 669 m",
+   "value": 0,
+   "limit": 0
+  },
+  {
+   "name": "geometry.repeat",
+   "status": "pass",
+   "hard": false,
+   "detail": "2% of the route rides the same road twice (the app rejects loops above 25%); mirror score 0% -- not an out-and-back",
+   "value": 0.021,
+   "limit": 0.25
+  }
+ ],
+ "log_tail": "\n  brouter: trimmed 2.9 mi of out-and-back spurs\n  brouter: trimmed 9.5 mi of out-and-back spurs\nGenerating 6 loop via 'climb 106m @ 4.1%' candidates via brouter...\n  brouter: trimmed 9.9 mi of out-and-back spurs\n  brouter: trimmed 0.4 mi of out-and-back spurs\n  brouter: trimmed 1.7 mi of out-and-back spurs\n  brouter: trimmed 3.0 mi of out-and-back spurs\n  brouter: trimmed 0.8 mi of out-and-back spurs\n  1 natural loop(s) pass through all via places\n  brouter: trimmed 0.7 mi of out-and-back spurs\n  brouter: trimmed 4.2 mi of out-and-back spurs\n  brouter: trimmed 1.0 mi of out-and-back spurs\n  brouter: trimmed 1.2 mi of out-and-back spurs\n  brouter: trimmed 2.1 mi of out-and-back spurs\n  brouter: trimmed 16.7 mi of out-and-back spurs\n  brouter: trimmed 57.6 mi of out-and-back spurs\n  brouter: trimmed 88.0 mi of out-and-back spurs\n  brouter: trimmed 5.8 mi of out-and-back spurs\n  brouter: trimmed 6.6 mi of out-and-back spurs\n  brouter: trimmed 1.0 mi of out-and-back spurs\n  brouter: trimmed 18.5 mi of out-and-back spurs\n  brouter: trimmed 6.6 mi of out-and-back spurs\n  brouter: trimmed 4.0 mi of out-and-back spurs\n  brouter: trimmed 4.5 mi of out-and-back spurs\n  reject [brouter bearing=0 cw scale=1.10]: distance 31.4 mi outside \u00b115% of target\n  reject [brouter bearing=60 ccw scale=1.00]: 1.4 mi on major highways (trunk/primary)\n  reject [brouter bearing=180 ccw scale=1.18]: 1.2 mi on major highways (trunk/primary)\n  reject [brouter bearing=240 cw scale=1.00]: 0.9 mi on major highways (trunk/primary)\n  reject [brouter bearing=300 ccw scale=1.51]: distance 46.1 mi outside \u00b115% of target\n  reject [brouter sweep bearing=230 ccw scale=1.26]: 0.6 mi on major highways (trunk/primary)\n  reject [brouter sweep bearing=265 ccw scale=1.10]: distance 33.3 mi outside \u00b115% of target\n  reject [brouter via leg=0 side=- r=11.3mi]: distance 14.6 mi outside \u00b115% of target\n  reject [brouter via leg=0 side=- r=11.2mi]: 1.0 mi on major highways (trunk/primary)\n  reject [brouter via direct]: distance 53.1 mi outside \u00b115% of target\n  reject [brouter via direct]: distance 53.1 mi outside \u00b115% of target\n  reject [brouter via leg=0 side=- r=7.4mi]: distance 34.0 mi outside \u00b115% of target\n  reject [brouter via leg=1 side=+ r=86.6mi]: distance 155.4 mi outside \u00b115% of target\n  reject [brouter via leg=0 side=+ r=8.1mi]: distance 31.9 mi outside \u00b115% of target\n  reject [brouter via leg=0 side=- r=24.7mi]: distance 69.2 mi outside \u00b115% of target\n  reject [brouter via leg=1 side=+ r=1.4mi]: distance 27.0 mi outside \u00b115% of target\n\nrank provider shape      miles  climb ft  repeat  major  file\n1    brouter  loop        39.0      2895      2%  0.4mi  evals\\results\\baseline\\work\\D07\\route_40mi_maxclimb_1_loop_brouter.gpx\n2    brouter  loop        39.2      2852      0%      0  evals\\results\\baseline\\work\\D07\\route_40mi_maxclimb_2_loop_brouter.gpx\n3    brouter  loop        38.7      2777      2%  0.1mi  evals\\results\\baseline\\work\\D07\\route_40mi_maxclimb_3_loop_brouter.gpx\n4    brouter  loop        39.0      2447     12%  0.1mi  evals\\results\\baseline\\work\\D07\\route_40mi_maxclimb_4_loop_brouter.gpx\n5    brouter  loop        34.2      2404      9%  0.1mi  evals\\results\\baseline\\work\\D07\\route_40mi_maxclimb_5_loop_brouter.gpx\n6    brouter  loop        38.5      2283      0%      0  evals\\results\\baseline\\work\\D07\\route_40mi_maxclimb_6_loop_brouter.gpx\n7    brouter  loop        40.2      2050      1%      0  evals\\results\\baseline\\work\\D07\\route_40mi_maxclimb_7_loop_brouter.gpx\nwrote evals\\results\\baseline\\work\\D07\\preview.html (7 routes)\n\nBest: rank 1 \u2014 39.0 mi, 2895 ft climbing (brouter, via leg=0 side=+ r=11.2mi)\n",
+ "run": "baseline",
+ "repeat": 1,
+ "cases_version": "routegen-eval-v1",
+ "timestamp": "2026-09-20T09:32:51",
+ "verdict_history": [
+  {
+   "was": "fail",
+   "now": "pass",
+   "was_reasons": [
+    "geometry.continuous"
+   ],
+   "at": "2026-09-20T09:49:14"
+  }
+ ],
+ "rescored_at": "2026-09-20T11:30:41",
+ "scorer_error": null,
+ "candidate_labels": []
+}

@@ -1,0 +1,194 @@
+{
+ "id": "D08",
+ "split": "dev",
+ "category": "climb_max",
+ "tier": "live",
+ "scope": "supported",
+ "session": null,
+ "step": null,
+ "text": "give me the hilliest 25 miles you can from Verona WI",
+ "start": "Verona, WI",
+ "why": "Superlative phrasing ('hilliest') rather than the literal 'maximize climbing'.",
+ "expect": {
+  "request_type": "route",
+  "outcome": "success",
+  "parse": {
+   "route.distance_miles": {
+    "range": [
+     23,
+     27
+    ]
+   },
+   "route.maximize_climb": {
+    "equals": true
+   }
+  },
+  "route": {
+   "target_miles": 25,
+   "loop": null,
+   "min_climb_ft": 800
+  }
+ },
+ "verdict": "pass",
+ "fail_reasons": [],
+ "parsed": {
+  "request_type": "route",
+  "address": "Verona, WI",
+  "route": {
+   "distance_miles": 25,
+   "max_climb_ft": null,
+   "maximize_climb": true,
+   "minimize_climb": false,
+   "shape": "both",
+   "avoid_places": [],
+   "via_places": []
+  },
+  "interval": null,
+  "edit": null,
+  "notes": ""
+ },
+ "notes": "",
+ "outcome_ok": true,
+ "summary": "19 route(s) \u2014 best: #1 loop: 24.6 mi, 1672 ft, 1% repeat",
+ "kind": "route",
+ "n_candidates": 19,
+ "error": null,
+ "traceback": "",
+ "seconds": 38.65,
+ "parse_cached": false,
+ "parse_tokens": {
+  "input": 2200,
+  "output": 90
+ },
+ "measured": {
+  "gpx_path": "evals/results/baseline/work/D08/route_25mi_maxclimb_1_loop_brouter.gpx",
+  "gpx_valid": true,
+  "gpx_error": null,
+  "n_points": 783,
+  "distance_mi": 24.55,
+  "app_reported_mi": 24.6,
+  "ascent_ft_app": 1672.0,
+  "ascent_ft_independent": 1715.0,
+  "loop_closure_m": 0.0,
+  "start_proximity_m": 1.9,
+  "end_proximity_m": 1.9,
+  "via_distances_m": {},
+  "avoid_on_road_m": {},
+  "max_point_gap_m": 609.1,
+  "duplicate_points": 0,
+  "repeat_frac": 0.006,
+  "mirror_frac": 0.0,
+  "teleports": [],
+  "gaps_confirmed_road": [],
+  "gaps_unknown": [],
+  "has_elevation": true
+ },
+ "checks": [
+  {
+   "name": "outcome.no_crash",
+   "status": "pass",
+   "hard": true,
+   "detail": "handled without an unhandled exception",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "outcome.succeeded",
+   "status": "pass",
+   "hard": true,
+   "detail": "ok=True, 19 candidate(s): 19 route(s) \u2014 best: #1 loop: 24.6 mi, 1672 ft, 1% repeat",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.request_type",
+   "status": "pass",
+   "hard": true,
+   "detail": "got 'route', expected 'route'",
+   "value": "route",
+   "limit": "route"
+  },
+  {
+   "name": "parse.distance_miles",
+   "status": "pass",
+   "hard": true,
+   "detail": "25 vs [23, 27]",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.maximize_climb",
+   "status": "pass",
+   "hard": true,
+   "detail": "True vs expected True",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "gpx.valid",
+   "status": "pass",
+   "hard": true,
+   "detail": "well-formed, 783 points, elevation present",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "route.distance",
+   "status": "pass",
+   "hard": true,
+   "detail": "24.55 mi vs target 25 mi (+1.8%, tolerance +/-15%)",
+   "value": 24.55,
+   "limit": 25
+  },
+  {
+   "name": "route.starts_where_asked",
+   "status": "pass",
+   "hard": true,
+   "detail": "begins 2 m from the geocoded start (limit 600 m)",
+   "value": 1.9,
+   "limit": 600.0
+  },
+  {
+   "name": "route.climb_sought",
+   "status": "pass",
+   "hard": false,
+   "detail": "1672 ft on a climb-maximizing request (expected at least 800 ft for this terrain)",
+   "value": 1672.0,
+   "limit": 800
+  },
+  {
+   "name": "geometry.continuous",
+   "status": "pass",
+   "hard": true,
+   "detail": "continuous: no breaks. Longest single segment 609 m",
+   "value": 0,
+   "limit": 0
+  },
+  {
+   "name": "geometry.repeat",
+   "status": "pass",
+   "hard": false,
+   "detail": "1% of the route rides the same road twice (the app rejects loops above 25%); mirror score 0% -- not an out-and-back",
+   "value": 0.006,
+   "limit": 0.25
+  }
+ ],
+ "log_tail": " target\n  reject [brouter via leg=0 side=- r=5.8mi]: distance 19.3 mi outside \u00b115% of target\n  reject [brouter via leg=1 side=+ r=76.2mi]: distance 105.3 mi outside \u00b115% of target\n  reject [brouter via leg=0 side=+ r=9.0mi]: distance 32.5 mi outside \u00b115% of target\n  reject [brouter via leg=0 side=- r=12.3mi]: distance 32.1 mi outside \u00b115% of target\n  reject [brouter via leg=1 side=+ r=4.8mi]: distance 0.1 mi outside \u00b115% of target\n\nrank provider shape      miles  climb ft  repeat  major  file\n1    brouter  loop        24.6      1672      1%      0  evals\\results\\baseline\\work\\D08\\route_25mi_maxclimb_1_loop_brouter.gpx\n2    brouter  loop        24.6      1643      1%      0  evals\\results\\baseline\\work\\D08\\route_25mi_maxclimb_2_loop_brouter.gpx\n3    brouter  outback     24.5      1550     n/a      0  evals\\results\\baseline\\work\\D08\\route_25mi_maxclimb_3_outback_brouter.gpx\n4    brouter  loop        28.5      1517      0%      0  evals\\results\\baseline\\work\\D08\\route_25mi_maxclimb_4_loop_brouter.gpx\n5    brouter  loop        23.2      1500      3%      0  evals\\results\\baseline\\work\\D08\\route_25mi_maxclimb_5_loop_brouter.gpx\n6    brouter  loop        26.2      1364      2%      0  evals\\results\\baseline\\work\\D08\\route_25mi_maxclimb_6_loop_brouter.gpx\n7    brouter  outback     24.3      1352     n/a      0  evals\\results\\baseline\\work\\D08\\route_25mi_maxclimb_7_outback_brouter.gpx\n8    brouter  loop        24.4      1326      2%      0  evals\\results\\baseline\\work\\D08\\route_25mi_maxclimb_8_loop_brouter.gpx\n9    brouter  loop        24.7      1301      2%      0  evals\\results\\baseline\\work\\D08\\route_25mi_maxclimb_9_loop_brouter.gpx\n10   brouter  loop        25.6      1261      0%      0  evals\\results\\baseline\\work\\D08\\route_25mi_maxclimb_10_loop_brouter.gpx\n11   brouter  loop        24.3      1205      7%      0  evals\\results\\baseline\\work\\D08\\route_25mi_maxclimb_11_loop_brouter.gpx\n12   brouter  loop        26.5      1192      0%      0  evals\\results\\baseline\\work\\D08\\route_25mi_maxclimb_12_loop_brouter.gpx\n13   brouter  loop        21.8      1164      9%      0  evals\\results\\baseline\\work\\D08\\route_25mi_maxclimb_13_loop_brouter.gpx\n14   brouter  loop        24.9      1153      1%  0.2mi  evals\\results\\baseline\\work\\D08\\route_25mi_maxclimb_14_loop_brouter.gpx\n15   brouter  outback     26.4      1104     n/a      0  evals\\results\\baseline\\work\\D08\\route_25mi_maxclimb_15_outback_brouter.gpx\n16   brouter  loop        22.1      1089      1%      0  evals\\results\\baseline\\work\\D08\\route_25mi_maxclimb_16_loop_brouter.gpx\n17   brouter  outback     25.5       898     n/a      0  evals\\results\\baseline\\work\\D08\\route_25mi_maxclimb_17_outback_brouter.gpx\n18   brouter  outback     25.2       854     n/a  0.0mi  evals\\results\\baseline\\work\\D08\\route_25mi_maxclimb_18_outback_brouter.gpx\n19   brouter  outback     28.0       846     n/a      0  evals\\results\\baseline\\work\\D08\\route_25mi_maxclimb_19_outback_brouter.gpx\nwrote evals\\results\\baseline\\work\\D08\\preview.html (19 routes)\n\nBest: rank 1 \u2014 24.6 mi, 1672 ft climbing (brouter, bearing=240 cw scale=1.00)\n",
+ "run": "baseline",
+ "repeat": 1,
+ "cases_version": "routegen-eval-v1",
+ "timestamp": "2026-09-20T09:33:30",
+ "verdict_history": [
+  {
+   "was": "fail",
+   "now": "pass",
+   "was_reasons": [
+    "geometry.continuous"
+   ],
+   "at": "2026-09-20T09:49:14"
+  }
+ ],
+ "rescored_at": "2026-09-20T11:30:41",
+ "scorer_error": null,
+ "candidate_labels": []
+}

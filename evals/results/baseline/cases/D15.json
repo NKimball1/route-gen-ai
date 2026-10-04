@@ -1,0 +1,146 @@
+{
+ "id": "D15",
+ "split": "dev",
+ "category": "avoid",
+ "tier": "live",
+ "scope": "supported",
+ "session": null,
+ "step": null,
+ "text": "I hate riding on Whitney Way -- 22 mile loop from the Memorial Union Madison WI without it",
+ "start": "Memorial Union, Madison WI",
+ "why": "Dislike phrasing rather than the word 'avoid'.",
+ "expect": {
+  "request_type": "route",
+  "outcome": "success",
+  "parse": {
+   "route.distance_miles": {
+    "range": [
+     20,
+     24
+    ]
+   },
+   "route.avoid_places": {
+    "len_min": 1
+   }
+  },
+  "route": {
+   "target_miles": 22,
+   "loop": true,
+   "avoid": [
+    "Whitney Way, Madison WI"
+   ],
+   "avoid_clearance_m": 300
+  }
+ },
+ "verdict": "fail",
+ "fail_reasons": [
+  "outcome.succeeded",
+  "parse.request_type",
+  "parse.distance_miles",
+  "parse.avoid_places"
+ ],
+ "parsed": {
+  "request_type": "edit_route",
+  "address": null,
+  "route": null,
+  "interval": null,
+  "edit": {
+   "mode": "avoid",
+   "place": "Whitney Way, Madison, WI",
+   "places": null,
+   "radius_m": 1000,
+   "miles_delta": null,
+   "target_miles": null,
+   "connect_return": false,
+   "revert_first": false
+  },
+  "notes": "User wants to avoid Whitney Way on a 22 mile loop from Memorial Union in Madison, WI"
+ },
+ "notes": "User wants to avoid Whitney Way on a 22 mile loop from Memorial Union in Madison, WI",
+ "outcome_ok": false,
+ "summary": "No current route to edit \u2014 compose or upload one first.",
+ "kind": "error",
+ "n_candidates": 0,
+ "error": null,
+ "traceback": "",
+ "seconds": 1.98,
+ "parse_cached": false,
+ "parse_tokens": {
+  "input": 2204,
+  "output": 102
+ },
+ "measured": {
+  "gpx_path": null,
+  "gpx_valid": null,
+  "gpx_error": null,
+  "n_points": null,
+  "distance_mi": null,
+  "app_reported_mi": null,
+  "ascent_ft_app": null,
+  "ascent_ft_independent": null,
+  "loop_closure_m": null,
+  "start_proximity_m": null,
+  "end_proximity_m": null,
+  "via_distances_m": {},
+  "avoid_on_road_m": {},
+  "max_point_gap_m": null,
+  "duplicate_points": null,
+  "repeat_frac": null,
+  "mirror_frac": null,
+  "teleports": [],
+  "gaps_confirmed_road": [],
+  "gaps_unknown": [],
+  "has_elevation": null
+ },
+ "checks": [
+  {
+   "name": "outcome.no_crash",
+   "status": "pass",
+   "hard": true,
+   "detail": "handled without an unhandled exception",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "outcome.succeeded",
+   "status": "fail",
+   "hard": true,
+   "detail": "ok=False, 0 candidate(s): No current route to edit \u2014 compose or upload one first.",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.request_type",
+   "status": "fail",
+   "hard": true,
+   "detail": "got 'edit_route', expected 'route'",
+   "value": "edit_route",
+   "limit": "route"
+  },
+  {
+   "name": "parse.distance_miles",
+   "status": "fail",
+   "hard": true,
+   "detail": "None vs [20, 24]",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.avoid_places",
+   "status": "fail",
+   "hard": true,
+   "detail": "0 item(s), need >= 1",
+   "value": null,
+   "limit": null
+  }
+ ],
+ "log_tail": "Parsed (claude-haiku-4-5, 2204in/102out tokens): {'request_type': 'edit_route', 'edit': {'mode': 'avoid', 'place': 'Whitney Way, Madison, WI', 'places': None, 'radius_m': 1000, 'miles_delta': None, 'target_miles': None, 'connect_return': False, 'revert_first': False}, 'notes': 'User wants to avoid Whitney Way on a 22 mile loop from Memorial Union in Madison, WI'}\nNote: couldn't map: User wants to avoid Whitney Way on a 22 mile loop from Memorial Union in Madison, WI\nNo current route to edit \u2014 compose or upload one first.\n",
+ "run": "baseline",
+ "repeat": 1,
+ "cases_version": "routegen-eval-v1",
+ "timestamp": "2026-09-20T09:36:24",
+ "verdict_history": [],
+ "rescored_at": "2026-09-20T11:30:41",
+ "scorer_error": null,
+ "candidate_labels": []
+}

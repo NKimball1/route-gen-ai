@@ -1,0 +1,199 @@
+{
+ "id": "D14",
+ "split": "dev",
+ "category": "avoid",
+ "tier": "live",
+ "scope": "supported",
+ "session": null,
+ "step": null,
+ "text": "30 mile loop from Monona Terrace Madison WI and keep me off Verona Road",
+ "start": "Monona Terrace, Madison WI",
+ "why": "Avoid-place on a fresh route (rides along as BRouter nogo circles).",
+ "expect": {
+  "request_type": "route",
+  "outcome": "success",
+  "parse": {
+   "route.distance_miles": {
+    "range": [
+     28,
+     32
+    ]
+   },
+   "route.avoid_places": {
+    "len_min": 1
+   }
+  },
+  "route": {
+   "target_miles": 30,
+   "loop": true,
+   "avoid": [
+    "Verona Road, Madison WI"
+   ],
+   "avoid_clearance_m": 300
+  }
+ },
+ "verdict": "pass",
+ "fail_reasons": [],
+ "parsed": {
+  "request_type": "route",
+  "address": "Monona Terrace, Madison, WI",
+  "route": {
+   "distance_miles": 30,
+   "max_climb_ft": null,
+   "maximize_climb": false,
+   "minimize_climb": false,
+   "shape": "loop",
+   "avoid_places": [
+    "Verona Road, Madison, WI"
+   ],
+   "via_places": []
+  },
+  "interval": null,
+  "edit": null,
+  "notes": ""
+ },
+ "notes": "",
+ "outcome_ok": true,
+ "summary": "5 route(s) \u2014 best: #1 loop: 29.8 mi, 1225 ft, 3% repeat",
+ "kind": "route",
+ "n_candidates": 5,
+ "error": null,
+ "traceback": "",
+ "seconds": 13.74,
+ "parse_cached": false,
+ "parse_tokens": {
+  "input": 2206,
+  "output": 105
+ },
+ "measured": {
+  "gpx_path": "evals/results/baseline/work/D14/route_30mi_ride_1_loop_brouter.gpx",
+  "gpx_valid": true,
+  "gpx_error": null,
+  "n_points": 1427,
+  "distance_mi": 29.77,
+  "app_reported_mi": 29.8,
+  "ascent_ft_app": 1224.0,
+  "ascent_ft_independent": 1245.0,
+  "loop_closure_m": 0.0,
+  "start_proximity_m": 14.6,
+  "end_proximity_m": 14.6,
+  "via_distances_m": {},
+  "avoid_on_road_m": {},
+  "max_point_gap_m": 766.2,
+  "duplicate_points": 0,
+  "repeat_frac": 0.035,
+  "mirror_frac": 0.05,
+  "teleports": [],
+  "gaps_confirmed_road": [],
+  "gaps_unknown": [],
+  "has_elevation": true
+ },
+ "checks": [
+  {
+   "name": "outcome.no_crash",
+   "status": "pass",
+   "hard": true,
+   "detail": "handled without an unhandled exception",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "outcome.succeeded",
+   "status": "pass",
+   "hard": true,
+   "detail": "ok=True, 5 candidate(s): 5 route(s) \u2014 best: #1 loop: 29.8 mi, 1225 ft, 3% repeat",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.request_type",
+   "status": "pass",
+   "hard": true,
+   "detail": "got 'route', expected 'route'",
+   "value": "route",
+   "limit": "route"
+  },
+  {
+   "name": "parse.distance_miles",
+   "status": "pass",
+   "hard": true,
+   "detail": "30 vs [28, 32]",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.avoid_places",
+   "status": "pass",
+   "hard": true,
+   "detail": "1 item(s), need >= 1",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "gpx.valid",
+   "status": "pass",
+   "hard": true,
+   "detail": "well-formed, 1427 points, elevation present",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "route.distance",
+   "status": "pass",
+   "hard": true,
+   "detail": "29.77 mi vs target 30 mi (+0.8%, tolerance +/-15%)",
+   "value": 29.77,
+   "limit": 30
+  },
+  {
+   "name": "route.loop_closure",
+   "status": "pass",
+   "hard": true,
+   "detail": "start-to-finish gap 0 m (limit 250 m)",
+   "value": 0.0,
+   "limit": 250.0
+  },
+  {
+   "name": "route.starts_where_asked",
+   "status": "pass",
+   "hard": true,
+   "detail": "begins 15 m from the geocoded start (limit 600 m)",
+   "value": 14.6,
+   "limit": 600.0
+  },
+  {
+   "name": "geometry.continuous",
+   "status": "pass",
+   "hard": true,
+   "detail": "continuous: no breaks. Longest single segment 766 m",
+   "value": 0,
+   "limit": 0
+  },
+  {
+   "name": "geometry.repeat",
+   "status": "pass",
+   "hard": false,
+   "detail": "4% of the route rides the same road twice (the app rejects loops above 25%); mirror score 5% -- not an out-and-back",
+   "value": 0.035,
+   "limit": 0.25
+  }
+ ],
+ "log_tail": "Parsed (claude-haiku-4-5, 2206in/105out tokens): {'request_type': 'route', 'address': 'Monona Terrace, Madison, WI', 'route': {'distance_miles': 30, 'max_climb_ft': None, 'maximize_climb': False, 'minimize_climb': False, 'shape': 'loop', 'avoid_places': ['Verona Road, Madison, WI'], 'via_places': []}}\nAvoiding: Verona Road, Madison, Dane County, Wisconsin, United States (r=800 m)\n(skipping ors: ORS_API_KEY not set)\nStart: Monona Terrace, Capital City State Trail, Bassett, Madison, Dane County, Wisconsin, 53788, United States (43.07167, -89.38002)\nGenerating 6 loop candidates via brouter...\n  brouter: trimmed 3.4 mi of out-and-back spurs\n  brouter: trimmed 1.6 mi of out-and-back spurs\n  brouter: trimmed 0.7 mi of out-and-back spurs\n  brouter: trimmed 8.1 mi of out-and-back spurs\n  brouter: trimmed 0.7 mi of out-and-back spurs\n  brouter: trimmed 6.3 mi of out-and-back spurs\n  brouter: trimmed 4.9 mi of out-and-back spurs\n  brouter: trimmed 0.8 mi of out-and-back spurs\n  brouter: trimmed 1.5 mi of out-and-back spurs\n  brouter: trimmed 0.7 mi of out-and-back spurs\n  brouter: trimmed 0.6 mi of out-and-back spurs\n  brouter: trimmed 0.8 mi of out-and-back spurs\n  reject [brouter bearing=120 cw scale=1.04]: distance 23.3 mi outside \u00b115% of target\n\nrank provider shape      miles  climb ft  repeat  major  file\n1    brouter  loop        29.8      1225      3%      0  evals\\results\\baseline\\work\\D14\\route_30mi_ride_1_loop_brouter.gpx\n2    brouter  loop        29.5      1185      1%      0  evals\\results\\baseline\\work\\D14\\route_30mi_ride_2_loop_brouter.gpx\n3    brouter  loop        30.8      1079      1%      0  evals\\results\\baseline\\work\\D14\\route_30mi_ride_3_loop_brouter.gpx\n4    brouter  loop        31.0      1351      1%  0.4mi  evals\\results\\baseline\\work\\D14\\route_30mi_ride_4_loop_brouter.gpx\n5    brouter  loop        31.7      1410      1%      0  evals\\results\\baseline\\work\\D14\\route_30mi_ride_5_loop_brouter.gpx\nwrote evals\\results\\baseline\\work\\D14\\preview.html (5 routes)\n\nBest: rank 1 \u2014 29.8 mi, 1225 ft climbing (brouter, bearing=180 ccw scale=1.07)\n",
+ "run": "baseline",
+ "repeat": 1,
+ "cases_version": "routegen-eval-v1",
+ "timestamp": "2026-09-20T09:36:22",
+ "verdict_history": [
+  {
+   "was": "fail",
+   "now": "pass",
+   "was_reasons": [
+    "geometry.continuous"
+   ],
+   "at": "2026-09-20T09:49:14"
+  }
+ ],
+ "rescored_at": "2026-09-20T11:30:41",
+ "scorer_error": null,
+ "candidate_labels": []
+}

@@ -6,9 +6,14 @@ Describe a ride in plain English, get a Garmin-ready GPX.
 
 > **What it is:** [docs/OVERVIEW.md](docs/OVERVIEW.md) — the project,
 > the stack, and the design decisions on one page.
-> **How it was built:** [docs/DEVLOG.md](docs/DEVLOG.md) — 35 phases of
+> **How it was built:** [docs/DEVLOG.md](docs/DEVLOG.md) — 36 phases of
 > field-tested iteration, every real-ride complaint turned into a
 > permanent, unit-tested fix.
+> **Does it work?** [evals/](evals/README.md) — a versioned set of 62
+> plain-English requests, scored by deterministic checks recomputed from
+> the GPX files rather than by asking a model. A third is held out.
+> The written-up results are in
+> [evals/site/routegen-evals.html](evals/site/routegen-evals.html).
 
 **Web app:** run `start_app.cmd` (with `start_brouter.cmd` running) and open
 http://localhost:8903 — one text box for routes, interval spots, and edits;
@@ -103,6 +108,13 @@ the app no longer reads `X-Forwarded-For` itself (a client could spoof it),
 so without those flags every visitor shares the proxy's rate limit.
 End-to-end smoke test against a running server (local or deployed):
 `python scripts/simulate.py hostile route edits upload cancel spot`.
+Evaluation campaign (`evals/README.md`):
+
+```
+python -m evals.runner --run myrun --tier offline     # failure injection; parser key/cache still needed
+python -m evals.runner --run myrun --tier live        # needs BRouter + API key
+python -m evals.report --run myrun --compare baseline
+```
 
 MIT licensed — see [LICENSE](LICENSE).
 
@@ -148,3 +160,6 @@ new ride, edit, or interval search when the wording is ambiguous.
 - Map data, access restrictions, weather and elevation estimates still need
   rider judgment. The app verifies defined constraints against available data;
   it cannot certify a route's real-world safety.
+
+Live verification (writes isolated test sessions using public landmarks):
+`python scripts/verify_live.py`. It needs the parser key and a running BRouter.

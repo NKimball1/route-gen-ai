@@ -1,0 +1,182 @@
+{
+ "id": "D32",
+ "split": "dev",
+ "category": "edit",
+ "tier": "live",
+ "scope": "supported",
+ "session": "E2",
+ "step": 1,
+ "text": "35 mile loop from Verona WI",
+ "start": "Verona, WI",
+ "why": "Session E2 setup.",
+ "expect": {
+  "request_type": "route",
+  "outcome": "success",
+  "parse": {
+   "route.distance_miles": {
+    "range": [
+     32,
+     38
+    ]
+   }
+  },
+  "route": {
+   "target_miles": 35,
+   "loop": true
+  }
+ },
+ "verdict": "pass",
+ "fail_reasons": [],
+ "parsed": {
+  "request_type": "route",
+  "address": "Verona, WI",
+  "route": {
+   "distance_miles": 35,
+   "max_climb_ft": null,
+   "maximize_climb": false,
+   "minimize_climb": false,
+   "shape": "loop",
+   "avoid_places": [],
+   "via_places": []
+  },
+  "interval": null,
+  "edit": null,
+  "notes": ""
+ },
+ "notes": "",
+ "outcome_ok": true,
+ "summary": "3 route(s) \u2014 best: #1 loop: 35.8 mi, 1844 ft, 0% repeat",
+ "kind": "route",
+ "n_candidates": 3,
+ "error": null,
+ "traceback": "",
+ "seconds": 10.19,
+ "parse_cached": false,
+ "parse_tokens": {
+  "input": 2194,
+  "output": 90
+ },
+ "measured": {
+  "gpx_path": "evals/results/baseline/work/E2/route_35mi_ride_1_loop_brouter.gpx",
+  "gpx_valid": true,
+  "gpx_error": null,
+  "n_points": 986,
+  "distance_mi": 35.74,
+  "app_reported_mi": 35.8,
+  "ascent_ft_app": 1845.0,
+  "ascent_ft_independent": 1948.0,
+  "loop_closure_m": 0.0,
+  "start_proximity_m": 1.9,
+  "end_proximity_m": 1.9,
+  "via_distances_m": {},
+  "avoid_on_road_m": {},
+  "max_point_gap_m": 669.7,
+  "duplicate_points": 0,
+  "repeat_frac": 0.002,
+  "mirror_frac": 0.0,
+  "teleports": [],
+  "gaps_confirmed_road": [],
+  "gaps_unknown": [],
+  "has_elevation": true
+ },
+ "checks": [
+  {
+   "name": "outcome.no_crash",
+   "status": "pass",
+   "hard": true,
+   "detail": "handled without an unhandled exception",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "outcome.succeeded",
+   "status": "pass",
+   "hard": true,
+   "detail": "ok=True, 3 candidate(s): 3 route(s) \u2014 best: #1 loop: 35.8 mi, 1844 ft, 0% repeat",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.request_type",
+   "status": "pass",
+   "hard": true,
+   "detail": "got 'route', expected 'route'",
+   "value": "route",
+   "limit": "route"
+  },
+  {
+   "name": "parse.distance_miles",
+   "status": "pass",
+   "hard": true,
+   "detail": "35 vs [32, 38]",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "gpx.valid",
+   "status": "pass",
+   "hard": true,
+   "detail": "well-formed, 986 points, elevation present",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "route.distance",
+   "status": "pass",
+   "hard": true,
+   "detail": "35.74 mi vs target 35 mi (+2.1%, tolerance +/-15%)",
+   "value": 35.74,
+   "limit": 35
+  },
+  {
+   "name": "route.loop_closure",
+   "status": "pass",
+   "hard": true,
+   "detail": "start-to-finish gap 0 m (limit 250 m)",
+   "value": 0.0,
+   "limit": 250.0
+  },
+  {
+   "name": "route.starts_where_asked",
+   "status": "pass",
+   "hard": true,
+   "detail": "begins 2 m from the geocoded start (limit 600 m)",
+   "value": 1.9,
+   "limit": 600.0
+  },
+  {
+   "name": "geometry.continuous",
+   "status": "pass",
+   "hard": true,
+   "detail": "continuous: no breaks. Longest single segment 670 m",
+   "value": 0,
+   "limit": 0
+  },
+  {
+   "name": "geometry.repeat",
+   "status": "pass",
+   "hard": false,
+   "detail": "0% of the route rides the same road twice (the app rejects loops above 25%); mirror score 0% -- not an out-and-back",
+   "value": 0.002,
+   "limit": 0.25
+  }
+ ],
+ "log_tail": "Parsed (claude-haiku-4-5, 2194in/90out tokens): {'request_type': 'route', 'address': 'Verona, WI', 'route': {'distance_miles': 35, 'max_climb_ft': None, 'maximize_climb': False, 'minimize_climb': False, 'shape': 'loop', 'avoid_places': [], 'via_places': []}}\n(skipping ors: ORS_API_KEY not set)\nStart: Verona, Dane County, Wisconsin, United States (42.99055, -89.53356)\nGenerating 6 loop candidates via brouter...\n  brouter: trimmed 2.0 mi of out-and-back spurs\n  brouter: trimmed 4.5 mi of out-and-back spurs\n  brouter: trimmed 8.1 mi of out-and-back spurs\n  brouter: trimmed 4.2 mi of out-and-back spurs\n  brouter: trimmed 4.7 mi of out-and-back spurs\n  brouter: trimmed 2.4 mi of out-and-back spurs\n  brouter: trimmed 0.4 mi of out-and-back spurs\n  brouter: trimmed 7.5 mi of out-and-back spurs\n  brouter: trimmed 9.6 mi of out-and-back spurs\n  brouter: trimmed 1.9 mi of out-and-back spurs\n  brouter: trimmed 3.3 mi of out-and-back spurs\n  brouter: trimmed 10.0 mi of out-and-back spurs\n  brouter: trimmed 3.6 mi of out-and-back spurs\n  brouter: trimmed 10.0 mi of out-and-back spurs\n  reject [brouter bearing=60 ccw scale=1.10]: distance 29.2 mi outside \u00b115% of target\n  reject [brouter bearing=180 ccw scale=1.38]: distance 45.6 mi outside \u00b115% of target\n  reject [brouter bearing=300 ccw scale=1.00]: distance 25.7 mi outside \u00b115% of target\n\nrank provider shape      miles  climb ft  repeat  major  file\n1    brouter  loop        35.8      1844      0%      0  evals\\results\\baseline\\work\\E2\\route_35mi_ride_1_loop_brouter.gpx\n2    brouter  loop        33.5      1409      1%      0  evals\\results\\baseline\\work\\E2\\route_35mi_ride_2_loop_brouter.gpx\n3    brouter  loop        32.5      1322      0%      0  evals\\results\\baseline\\work\\E2\\route_35mi_ride_3_loop_brouter.gpx\nwrote evals\\results\\baseline\\work\\E2\\preview.html (3 routes)\n\nBest: rank 1 \u2014 35.8 mi, 1844 ft climbing (brouter, bearing=240 cw scale=1.00)\n",
+ "run": "baseline",
+ "repeat": 1,
+ "cases_version": "routegen-eval-v1",
+ "timestamp": "2026-09-20T09:48:02",
+ "verdict_history": [
+  {
+   "was": "fail",
+   "now": "pass",
+   "was_reasons": [
+    "geometry.continuous"
+   ],
+   "at": "2026-09-20T09:49:15"
+  }
+ ],
+ "rescored_at": "2026-09-20T11:30:41",
+ "scorer_error": null,
+ "candidate_labels": []
+}

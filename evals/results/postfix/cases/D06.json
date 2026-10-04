@@ -1,0 +1,185 @@
+{
+ "id": "D06",
+ "split": "dev",
+ "category": "distance_target",
+ "tier": "live",
+ "scope": "supported",
+ "session": null,
+ "step": null,
+ "text": "45 miles, out and back or a loop, whatever works, from Cross Plains WI",
+ "start": "Cross Plains, WI",
+ "why": "'Either shape is fine' must map to shape=both, which generates two spec families.",
+ "expect": {
+  "request_type": "route",
+  "outcome": "success",
+  "parse": {
+   "route.distance_miles": {
+    "range": [
+     42,
+     48
+    ]
+   },
+   "route.shape": {
+    "in": [
+     "both"
+    ]
+   }
+  },
+  "route": {
+   "target_miles": 45,
+   "loop": null
+  }
+ },
+ "verdict": "pass",
+ "fail_reasons": [],
+ "parsed": {
+  "request_type": "route",
+  "address": "Cross Plains, WI",
+  "route": {
+   "distance_miles": 45,
+   "max_climb_ft": null,
+   "maximize_climb": false,
+   "minimize_climb": false,
+   "shape": "both",
+   "avoid_places": [],
+   "via_places": []
+  },
+  "interval": null,
+  "edit": null,
+  "notes": ""
+ },
+ "notes": "",
+ "outcome_ok": true,
+ "summary": "6 route(s) \u2014 best: #1 outback: 45.5 mi, 2361 ft, 0% repeat, 0.1 mi major",
+ "kind": "route",
+ "n_candidates": 6,
+ "candidate_labels": [
+  "#1 outback: 45.5 mi, 2361 ft, 0% repeat, 0.1 mi major",
+  "#2 outback: 44.1 mi, 2078 ft, 0% repeat, 0.1 mi major",
+  "#3 loop: 46.7 mi, 3239 ft, 0% repeat, 0.2 mi major",
+  "#4 outback: 41.8 mi, 2772 ft, 0% repeat, 0.3 mi major",
+  "#5 outback: 41.7 mi, 2394 ft, 0% repeat, 0.3 mi major",
+  "#6 loop: 48.8 mi, 2549 ft, 0% repeat, 0.3 mi major"
+ ],
+ "error": null,
+ "traceback": "",
+ "seconds": 14.05,
+ "parse_cached": false,
+ "parse_tokens": {
+  "input": 2439,
+  "output": 89
+ },
+ "measured": {
+  "gpx_path": "evals/results/postfix/work/D06/route_45mi_ride_1_outback_brouter.gpx",
+  "gpx_valid": true,
+  "gpx_error": null,
+  "n_points": 1415,
+  "distance_mi": 45.46,
+  "app_reported_mi": 45.5,
+  "ascent_ft_app": 2363.0,
+  "ascent_ft_independent": 2468.0,
+  "loop_closure_m": 0.0,
+  "start_proximity_m": 17.2,
+  "end_proximity_m": 17.2,
+  "via_distances_m": {},
+  "avoid_on_road_m": {},
+  "max_point_gap_m": 458.5,
+  "duplicate_points": 0,
+  "repeat_frac": 0.479,
+  "mirror_frac": 1.0,
+  "teleports": [],
+  "gaps_confirmed_road": [],
+  "gaps_unknown": [],
+  "has_elevation": true
+ },
+ "checks": [
+  {
+   "name": "outcome.no_crash",
+   "status": "pass",
+   "hard": true,
+   "detail": "handled without an unhandled exception",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "outcome.succeeded",
+   "status": "pass",
+   "hard": true,
+   "detail": "ok=True, 6 candidate(s): 6 route(s) \u2014 best: #1 outback: 45.5 mi, 2361 ft, 0% repeat, 0.1 mi major",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.request_type",
+   "status": "pass",
+   "hard": true,
+   "detail": "got 'route', expected 'route'",
+   "value": "route",
+   "limit": "route"
+  },
+  {
+   "name": "parse.distance_miles",
+   "status": "pass",
+   "hard": true,
+   "detail": "45 vs [42, 48]",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.shape",
+   "status": "pass",
+   "hard": true,
+   "detail": "'both' vs allowed ['both']",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "gpx.valid",
+   "status": "pass",
+   "hard": true,
+   "detail": "well-formed, 1415 points, elevation present",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "route.distance",
+   "status": "pass",
+   "hard": true,
+   "detail": "45.46 mi vs target 45 mi (+1.0%, tolerance +/-15%)",
+   "value": 45.46,
+   "limit": 45
+  },
+  {
+   "name": "route.starts_where_asked",
+   "status": "pass",
+   "hard": true,
+   "detail": "begins 17 m from the geocoded start (limit 600 m)",
+   "value": 17.2,
+   "limit": 600.0
+  },
+  {
+   "name": "geometry.continuous",
+   "status": "pass",
+   "hard": true,
+   "detail": "continuous: no breaks. Longest single segment 458 m",
+   "value": 0,
+   "limit": 0
+  },
+  {
+   "name": "geometry.repeat",
+   "status": "info",
+   "hard": false,
+   "detail": "48% repeated road, but the track is 100% its own reverse -- this is an out-and-back, where repetition is the shape, not a defect",
+   "value": 0.479,
+   "limit": null
+  }
+ ],
+ "log_tail": "Parsed (claude-haiku-4-5, 2439in/89out tokens): {'request_type': 'route', 'address': 'Cross Plains, WI', 'route': {'distance_miles': 45, 'max_climb_ft': None, 'maximize_climb': False, 'minimize_climb': False, 'shape': 'both', 'avoid_places': [], 'via_places': []}}\n(skipping ors: ORS_API_KEY not set)\nStart: Village of Cross Plains, Dane County, Wisconsin, 53528, United States (43.11170, -89.64522)\nGenerating 6 loop candidates via brouter...\n  brouter: trimmed 1.4 mi of out-and-back spurs\n  brouter: trimmed 1.0 mi of out-and-back spurs\n  brouter: trimmed 10.8 mi of out-and-back spurs\n  brouter: trimmed 1.4 mi of out-and-back spurs\n  brouter: trimmed 10.6 mi of out-and-back spurs\n  brouter: trimmed 1.9 mi of out-and-back spurs\n  brouter: trimmed 7.5 mi of out-and-back spurs\n  brouter: trimmed 5.3 mi of out-and-back spurs\n  brouter: trimmed 0.9 mi of out-and-back spurs\n  brouter: trimmed 3.9 mi of out-and-back spurs\n  brouter: trimmed 7.6 mi of out-and-back spurs\n  brouter: trimmed 5.8 mi of out-and-back spurs\nGenerating 6 outback candidates via brouter...\n  reject [brouter bearing=0 cw scale=1.10]: 1.9 mi on major highways (trunk/primary)\n  reject [brouter bearing=60 ccw scale=1.10]: distance 34.1 mi outside \u00b115% of target\n  reject [brouter bearing=240 cw scale=1.25]: 0.5 mi on major highways (trunk/primary)\n  reject [brouter bearing=300 ccw scale=1.00]: 2.0 mi on major highways (trunk/primary)\n  reject [brouter outback bearing=0 scale=0.73]: distance 56.0 mi outside \u00b115% of target\n  reject [brouter outback bearing=300 scale=0.52]: distance 21.2 mi outside \u00b115% of target\n\nrank provider shape      miles  climb ft  repeat  major  file\n1    brouter  outback     45.5      2361     n/a  0.1mi  evals\\results\\postfix\\work\\D06\\route_45mi_ride_1_outback_brouter.gpx\n2    brouter  outback     44.1      2078     n/a  0.1mi  evals\\results\\postfix\\work\\D06\\route_45mi_ride_2_outback_brouter.gpx\n3    brouter  loop        46.7      3239      0%  0.2mi  evals\\results\\postfix\\work\\D06\\route_45mi_ride_3_loop_brouter.gpx\n4    brouter  outback     41.8      2772     n/a  0.3mi  evals\\results\\postfix\\work\\D06\\route_45mi_ride_4_outback_brouter.gpx\n5    brouter  outback     41.7      2394     n/a  0.3mi  evals\\results\\postfix\\work\\D06\\route_45mi_ride_5_outback_brouter.gpx\n6    brouter  loop        48.8      2549      0%  0.3mi  evals\\results\\postfix\\work\\D06\\route_45mi_ride_6_loop_brouter.gpx\nwrote evals\\results\\postfix\\work\\D06\\preview.html (6 routes)\n\nBest: rank 1 \u2014 45.5 mi, 2361 ft climbing (brouter, outback bearing=60 scale=1.00)\n",
+ "run": "postfix",
+ "repeat": 1,
+ "cases_version": "routegen-eval-v1",
+ "timestamp": "2026-09-20T10:11:39",
+ "verdict_history": [],
+ "scorer_error": null,
+ "rescored_at": "2026-09-20T11:30:42"
+}

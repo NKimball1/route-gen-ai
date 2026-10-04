@@ -1,0 +1,711 @@
+{
+  "version": "routegen-eval-v1",
+  "frozen": "2026-09-19",
+  "note": "Versioned request set for the Route Gen AI evaluation campaign. Held-out expectations (H*) were frozen at the date above, before any fix informed by dev-set failures. Start addresses are PUBLIC landmarks only -- no home address or private ride start appears anywhere in this file.",
+  "defaults": {
+    "start": "Monona Terrace, Madison WI",
+    "distance_tolerance": 0.15,
+    "via_tolerance_m": 2000,
+    "loop_closure_m": 250,
+    "start_proximity_m": 600
+  },
+  "cases": [
+    {
+      "id": "D01", "split": "dev", "category": "simple_loop", "tier": "live", "scope": "supported",
+      "text": "give me an easy 12 mile loop from Monona Terrace, Madison WI",
+      "start": "Monona Terrace, Madison WI",
+      "why": "The floor case: a short loop from a named public start.",
+      "expect": {
+        "request_type": "route", "outcome": "success",
+        "parse": {"route.distance_miles": {"range": [10, 14]}, "route.shape": {"in": ["loop", "both"]}},
+        "route": {"target_miles": 12, "loop": true}
+      }
+    },
+    {
+      "id": "D02", "split": "dev", "category": "simple_loop", "tier": "live", "scope": "supported",
+      "text": "20 mile loop please",
+      "start": "Olin Park, Madison WI",
+      "why": "Minimal phrasing; the start comes from the session's configured starting point.",
+      "expect": {
+        "request_type": "route", "outcome": "success",
+        "parse": {"route.distance_miles": {"range": [18, 22]}, "route.shape": {"in": ["loop", "both"]}},
+        "route": {"target_miles": 20, "loop": true}
+      }
+    },
+    {
+      "id": "D03", "split": "dev", "category": "simple_loop", "tier": "live", "scope": "supported",
+      "text": "I'd like to ride about thirty miles starting and finishing at the Wisconsin State Capitol in Madison",
+      "start": "Wisconsin State Capitol, Madison WI",
+      "why": "Spelled-out number, round-trip phrasing, explicit public start.",
+      "expect": {
+        "request_type": "route", "outcome": "success",
+        "parse": {"route.distance_miles": {"range": [27, 33]}, "route.shape": {"in": ["loop", "both"]}},
+        "route": {"target_miles": 30, "loop": true}
+      }
+    },
+    {
+      "id": "D04", "split": "dev", "category": "distance_target", "tier": "live", "scope": "supported",
+      "text": "something around an hour and a half of riding from Olin Park, Madison WI",
+      "start": "Olin Park, Madison WI",
+      "why": "Duration instead of distance -- the prompt instructs the model to assume 16 mph.",
+      "expect": {
+        "request_type": "route", "outcome": "success",
+        "parse": {"route.distance_miles": {"range": [20, 28]}},
+        "route": {"target_miles": "from_parse", "loop": null}
+      }
+    },
+    {
+      "id": "D05", "split": "dev", "category": "distance_target", "tier": "live", "scope": "supported",
+      "text": "out and back, roughly 25 miles, from the Memorial Union in Madison WI",
+      "start": "Memorial Union, Madison WI",
+      "why": "Out-and-back shape must survive the parse and reach generation.",
+      "expect": {
+        "request_type": "route", "outcome": "success",
+        "parse": {"route.distance_miles": {"range": [23, 27]}, "route.shape": {"in": ["outback"]}},
+        "route": {"target_miles": 25, "loop": false, "shape": "outback"}
+      }
+    },
+    {
+      "id": "D06", "split": "dev", "category": "distance_target", "tier": "live", "scope": "supported",
+      "text": "45 miles, out and back or a loop, whatever works, from Cross Plains WI",
+      "start": "Cross Plains, WI",
+      "why": "'Either shape is fine' must map to shape=both, which generates two spec families.",
+      "expect": {
+        "request_type": "route", "outcome": "success",
+        "parse": {"route.distance_miles": {"range": [42, 48]}, "route.shape": {"in": ["both"]}},
+        "route": {"target_miles": 45, "loop": null}
+      }
+    },
+    {
+      "id": "D07", "split": "dev", "category": "climb_max", "tier": "live", "scope": "supported",
+      "text": "40 mile loop from Mount Horeb WI with as much climbing as you can find",
+      "start": "Mount Horeb, WI",
+      "why": "Climb maximization triggers the peak-scouting path (Overpass + elevation search).",
+      "expect": {
+        "request_type": "route", "outcome": "success",
+        "parse": {"route.distance_miles": {"range": [37, 43]}, "route.maximize_climb": {"equals": true}},
+        "route": {"target_miles": 40, "loop": true, "min_climb_ft": 1200}
+      }
+    },
+    {
+      "id": "D08", "split": "dev", "category": "climb_max", "tier": "live", "scope": "supported",
+      "text": "give me the hilliest 25 miles you can from Verona WI",
+      "start": "Verona, WI",
+      "why": "Superlative phrasing ('hilliest') rather than the literal 'maximize climbing'.",
+      "expect": {
+        "request_type": "route", "outcome": "success",
+        "parse": {"route.distance_miles": {"range": [23, 27]}, "route.maximize_climb": {"equals": true}},
+        "route": {"target_miles": 25, "loop": null, "min_climb_ft": 800}
+      }
+    },
+    {
+      "id": "D09", "split": "dev", "category": "climb_min", "tier": "live", "scope": "supported",
+      "text": "a 20 mile loop from Stoughton WI, as flat as possible please, my legs are wrecked",
+      "start": "Stoughton, WI",
+      "why": "Climb minimization with conversational noise around it.",
+      "expect": {
+        "request_type": "route", "outcome": "success",
+        "parse": {"route.distance_miles": {"range": [18, 22]}, "route.minimize_climb": {"equals": true}},
+        "route": {"target_miles": 20, "loop": true}
+      }
+    },
+    {
+      "id": "D10", "split": "dev", "category": "climb_min", "tier": "live", "scope": "supported",
+      "text": "30 mile ride from Monona Terrace Madison WI with less than 1000 feet of climbing",
+      "start": "Monona Terrace, Madison WI",
+      "why": "A HARD climb ceiling -- the ranker must reject every candidate above it.",
+      "expect": {
+        "request_type": "route", "outcome": "success",
+        "parse": {"route.distance_miles": {"range": [28, 32]}, "route.max_climb_ft": {"range": [900, 1100]}},
+        "route": {"target_miles": 30, "loop": null, "max_climb_ft": 1000}
+      }
+    },
+    {
+      "id": "D11", "split": "dev", "category": "climb_min", "tier": "live", "scope": "supported",
+      "text": "not much climbing, about 25 miles, from Sun Prairie WI",
+      "start": "Sun Prairie, WI",
+      "why": "SOFT climbing language -- the prompt maps 'not much climbing' to roughly 1000 ft for rides up to 35 mi.",
+      "expect": {
+        "request_type": "route", "outcome": "success",
+        "parse": {"route.distance_miles": {"range": [23, 27]}, "route.max_climb_ft": {"range": [500, 1600]}},
+        "route": {"target_miles": 25, "loop": null, "max_climb_ft": "from_parse"}
+      }
+    },
+    {
+      "id": "D12", "split": "dev", "category": "via", "tier": "live", "scope": "supported",
+      "text": "a 25 mile loop from Monona Terrace Madison WI that goes through Olbrich Botanical Gardens",
+      "start": "Monona Terrace, Madison WI",
+      "why": "Single named waypoint on a loop.",
+      "expect": {
+        "request_type": "route", "outcome": "success",
+        "parse": {"route.distance_miles": {"range": [23, 27]}, "route.via_places": {"len_min": 1}},
+        "route": {"target_miles": 25, "loop": true, "via": ["Olbrich Botanical Gardens, Madison WI"], "via_tolerance_m": 2000}
+      }
+    },
+    {
+      "id": "D13", "split": "dev", "category": "via", "tier": "live", "scope": "supported",
+      "text": "35 miles from Middleton WI, I want it to pass through Cross Plains and Black Earth",
+      "start": "Middleton, WI",
+      "why": "Two waypoints in ride order; both must be honored.",
+      "expect": {
+        "request_type": "route", "outcome": "success",
+        "parse": {"route.distance_miles": {"range": [32, 38]}, "route.via_places": {"len_min": 2}},
+        "route": {"target_miles": 35, "loop": null, "via": ["Cross Plains, WI", "Black Earth, WI"], "via_tolerance_m": 2500}
+      }
+    },
+    {
+      "id": "D14", "split": "dev", "category": "avoid", "tier": "live", "scope": "supported",
+      "text": "30 mile loop from Monona Terrace Madison WI and keep me off Verona Road",
+      "start": "Monona Terrace, Madison WI",
+      "why": "Avoid-place on a fresh route (rides along as BRouter nogo circles).",
+      "expect": {
+        "request_type": "route", "outcome": "success",
+        "parse": {"route.distance_miles": {"range": [28, 32]}, "route.avoid_places": {"len_min": 1}},
+        "route": {"target_miles": 30, "loop": true, "avoid": ["Verona Road, Madison WI"], "avoid_clearance_m": 300}
+      }
+    },
+    {
+      "id": "D15", "split": "dev", "category": "avoid", "tier": "live", "scope": "supported",
+      "text": "I hate riding on Whitney Way -- 22 mile loop from the Memorial Union Madison WI without it",
+      "start": "Memorial Union, Madison WI",
+      "why": "Dislike phrasing rather than the word 'avoid'.",
+      "expect": {
+        "request_type": "route", "outcome": "success",
+        "parse": {"route.distance_miles": {"range": [20, 24]}, "route.avoid_places": {"len_min": 1}},
+        "route": {"target_miles": 22, "loop": true, "avoid": ["Whitney Way, Madison WI"], "avoid_clearance_m": 300}
+      }
+    },
+    {
+      "id": "D16", "split": "dev", "category": "multi_constraint", "tier": "live", "scope": "supported",
+      "text": "40 mile loop from Verona WI, under 1500 ft of climbing, and stay off Highway 18",
+      "start": "Verona, WI",
+      "why": "Distance + hard climb cap + avoid, all at once.",
+      "expect": {
+        "request_type": "route", "outcome": "success",
+        "parse": {"route.distance_miles": {"range": [37, 43]}, "route.max_climb_ft": {"range": [1400, 1600]}, "route.avoid_places": {"len_min": 1}},
+        "route": {"target_miles": 40, "loop": true, "max_climb_ft": 1500}
+      }
+    },
+    {
+      "id": "D17", "split": "dev", "category": "multi_constraint", "tier": "live", "scope": "supported",
+      "text": "50 miles from Mount Horeb WI, loop, lots of climbing, and I want to go through Blue Mounds",
+      "start": "Mount Horeb, WI",
+      "why": "Climb maximization AND a waypoint -- in the code these two paths are mutually exclusive, so via wins and the climb goal becomes best-effort.",
+      "expect": {
+        "request_type": "route", "outcome": "success",
+        "parse": {"route.distance_miles": {"range": [47, 53]}, "route.maximize_climb": {"equals": true}, "route.via_places": {"len_min": 1}},
+        "route": {"target_miles": 50, "loop": true, "via": ["Blue Mounds, WI"], "via_tolerance_m": 2500}
+      }
+    },
+    {
+      "id": "D18", "split": "dev", "category": "interval_spot", "tier": "live", "scope": "supported",
+      "text": "find me a flat stretch within 20 minutes of Olin Park Madison WI for 2x20 threshold intervals",
+      "start": "Olin Park, Madison WI",
+      "why": "The other request type entirely -- a stretch of road, not a route.",
+      "expect": {
+        "request_type": "interval_spot", "outcome": "success",
+        "parse": {"interval.reps": {"equals": 2}, "interval.rep_minutes": {"range": [18, 22]}, "interval.kind": {"in": ["flat"]}, "interval.max_travel_minutes": {"range": [15, 25]}},
+        "route": {"target_miles": null, "loop": false}
+      }
+    },
+    {
+      "id": "D19", "split": "dev", "category": "interval_spot", "tier": "live", "scope": "supported",
+      "text": "I need a hill close to Verona WI for 4x5 minute VO2 efforts",
+      "start": "Verona, WI",
+      "why": "Incline kind inferred from 'VO2'; travel budget inferred from 'close to'.",
+      "expect": {
+        "request_type": "interval_spot", "outcome": "success",
+        "parse": {"interval.reps": {"equals": 4}, "interval.rep_minutes": {"range": [4, 6]}, "interval.kind": {"in": ["incline"]}},
+        "route": {"target_miles": null, "loop": false}
+      }
+    },
+    {
+      "id": "D20", "split": "dev", "category": "ambiguous", "tier": "live", "scope": "supported",
+      "text": "I want to go for a bike ride",
+      "start": "Wisconsin State Capitol, Madison WI",
+      "why": "No distance, no shape, no constraint. The schema FORCES a distance, so the system must guess. Probes whether the guess is sane and whether the user is told it was a guess.",
+      "expect": {
+        "request_type": "route", "outcome": "either",
+        "parse": {"route.distance_miles": {"range": [5, 60]}},
+        "route": {"target_miles": "from_parse", "loop": null}
+      }
+    },
+    {
+      "id": "D21", "split": "dev", "category": "ambiguous", "tier": "live", "scope": "supported",
+      "text": "a short easy spin from Olin Park Madison WI",
+      "start": "Olin Park, Madison WI",
+      "why": "Vague magnitude words only. 'Short' must not become 60 miles.",
+      "expect": {
+        "request_type": "route", "outcome": "success",
+        "parse": {"route.distance_miles": {"range": [4, 20]}},
+        "route": {"target_miles": "from_parse", "loop": null}
+      }
+    },
+    {
+      "id": "D22", "split": "dev", "category": "ambiguous", "tier": "live", "scope": "supported",
+      "text": "30 mile loop from Monona Terrace Madison WI, as flat as possible but also as much climbing as you can get",
+      "start": "Monona Terrace, Madison WI",
+      "why": "Directly contradictory. The system must not set BOTH maximize_climb and minimize_climb, and should say something about the conflict.",
+      "expect": {
+        "request_type": "route", "outcome": "either",
+        "parse": {"route.not_both_climb_flags": {"equals": true}},
+        "route": {"target_miles": 30, "loop": null}
+      }
+    },
+    {
+      "id": "D23", "split": "dev", "category": "infeasible", "tier": "live", "scope": "supported",
+      "text": "give me a 6 mile loop from Monona Terrace Madison WI with at least 5000 feet of climbing",
+      "start": "Monona Terrace, Madison WI",
+      "why": "Physically impossible in southern Wisconsin. The right answer is an honest refusal or a clearly-labelled best effort, not a route that pretends.",
+      "expect": {
+        "request_type": "route", "outcome": "decline_or_honest",
+        "parse": {"route.distance_miles": {"range": [5, 7]}},
+        "route": {"target_miles": 6, "loop": null}
+      }
+    },
+    {
+      "id": "D24", "split": "dev", "category": "infeasible", "tier": "live", "scope": "supported",
+      "text": "a 30 mile loop starting in Denver Colorado",
+      "start": "Denver, CO",
+      "why": "Outside the loaded routing tiles (southern Wisconsin). Probes the provider-has-no-data failure path.",
+      "expect": {
+        "request_type": "route", "outcome": "decline",
+        "parse": {"route.distance_miles": {"range": [27, 33]}},
+        "route": {"target_miles": 30, "loop": null}
+      }
+    },
+    {
+      "id": "D25", "split": "dev", "category": "out_of_scope", "tier": "live", "scope": "out_of_scope",
+      "text": "a 30 mile gravel loop from Cross Plains WI, mostly unpaved roads",
+      "start": "Cross Plains, WI",
+      "why": "Surface preference is NOT a supported constraint. Honest behavior is to flag it, not silently ignore it.",
+      "expect": {
+        "request_type": "route", "outcome": "success_with_caveat",
+        "parse": {"notes": {"nonempty": true}},
+        "route": {"target_miles": 30, "loop": null}
+      }
+    },
+    {
+      "id": "D26", "split": "dev", "category": "out_of_scope", "tier": "live", "scope": "out_of_scope",
+      "text": "plan me a three day bikepacking trip from Madison WI with overnight stops",
+      "start": "Wisconsin State Capitol, Madison WI",
+      "why": "Multi-day touring is out of product scope entirely.",
+      "expect": {
+        "request_type": "route", "outcome": "either",
+        "parse": {"notes": {"nonempty": true}},
+        "route": {"target_miles": null, "loop": null}
+      }
+    },
+    {
+      "id": "D27", "split": "dev", "category": "edit", "tier": "live", "scope": "supported",
+      "session": "E1", "step": 1,
+      "text": "a 22 mile loop from Olin Park Madison WI",
+      "start": "Olin Park, Madison WI",
+      "why": "Session E1 setup: the route the following edits chain against.",
+      "expect": {
+        "request_type": "route", "outcome": "success",
+        "parse": {"route.distance_miles": {"range": [20, 24]}},
+        "route": {"target_miles": 22, "loop": true}
+      }
+    },
+    {
+      "id": "D28", "split": "dev", "category": "edit", "tier": "live", "scope": "supported",
+      "session": "E1", "step": 2,
+      "text": "make it about 6 miles longer",
+      "start": "Olin Park, Madison WI",
+      "why": "Relative extend: a delta, not a total.",
+      "expect": {
+        "request_type": "edit_route", "outcome": "success",
+        "parse": {"edit.mode": {"in": ["extend"]}, "edit.miles_delta": {"range": [5, 7]}},
+        "route": {"loop": null, "distance_delta_mi": 6, "distance_delta_tolerance_mi": 3}
+      }
+    },
+    {
+      "id": "D29", "split": "dev", "category": "edit", "tier": "live", "scope": "supported",
+      "session": "E1", "step": 3,
+      "text": "can you run it past Olbrich Botanical Gardens",
+      "start": "Olin Park, Madison WI",
+      "why": "Via edit on an existing route -- 'past X' is a via, never an avoid.",
+      "expect": {
+        "request_type": "edit_route", "outcome": "success",
+        "parse": {"edit.mode": {"in": ["via"]}},
+        "route": {"loop": null, "via": ["Olbrich Botanical Gardens, Madison WI"], "via_tolerance_m": 1500}
+      }
+    },
+    {
+      "id": "D30", "split": "dev", "category": "edit", "tier": "live", "scope": "supported",
+      "session": "E1", "step": 4,
+      "text": "that wasn't what I meant -- send it past the Memorial Union instead",
+      "start": "Olin Park, Madison WI",
+      "why": "Corrective phrasing must set revert_first, so the fix applies to the version BEFORE the bad change, not on top of it.",
+      "expect": {
+        "request_type": "edit_route", "outcome": "success",
+        "parse": {"edit.mode": {"in": ["via"]}, "edit.revert_first": {"equals": true}},
+        "route": {"loop": null, "via": ["Memorial Union, Madison WI"], "via_tolerance_m": 1500}
+      }
+    },
+    {
+      "id": "D31", "split": "dev", "category": "edit", "tier": "live", "scope": "supported",
+      "session": "E1", "step": 5,
+      "text": "undo that",
+      "start": "Olin Park, Madison WI",
+      "why": "Plain undo, no replacement -- must parse as request_type 'undo', not as an edit.",
+      "expect": {
+        "request_type": "undo", "outcome": "success",
+        "parse": {}, "route": {"loop": null}
+      }
+    },
+    {
+      "id": "D32", "split": "dev", "category": "edit", "tier": "live", "scope": "supported",
+      "session": "E2", "step": 1,
+      "text": "35 mile loop from Verona WI",
+      "start": "Verona, WI",
+      "why": "Session E2 setup.",
+      "expect": {
+        "request_type": "route", "outcome": "success",
+        "parse": {"route.distance_miles": {"range": [32, 38]}},
+        "route": {"target_miles": 35, "loop": true}
+      }
+    },
+    {
+      "id": "D33", "split": "dev", "category": "edit", "tier": "live", "scope": "supported",
+      "session": "E2", "step": 2,
+      "text": "trim it down to 25 miles total",
+      "start": "Verona, WI",
+      "why": "An ABSOLUTE target, not a delta -- the service computes the delta from the route's current length.",
+      "expect": {
+        "request_type": "edit_route", "outcome": "success",
+        "parse": {"edit.target_or_delta": {"equals": true}},
+        "route": {"target_miles": 25, "distance_tolerance": 0.18, "loop": null}
+      }
+    },
+    {
+      "id": "D34", "split": "dev", "category": "edit", "tier": "live", "scope": "supported",
+      "session": "E2", "step": 3,
+      "text": "make this one start and finish at Mount Horeb WI",
+      "start": "Verona, WI",
+      "why": "Anchor: start AND end at one place as a single operation, not move_start alone.",
+      "expect": {
+        "request_type": "edit_route", "outcome": "success",
+        "parse": {"edit.mode": {"in": ["anchor"]}},
+        "route": {"loop": true, "anchor": "Mount Horeb, WI", "anchor_tolerance_m": 1500}
+      }
+    },
+    {
+      "id": "D35", "split": "dev", "category": "edit", "tier": "live", "scope": "supported",
+      "session": "E2", "step": 4,
+      "text": "actually keep me off County Road PB",
+      "start": "Verona, WI",
+      "why": "Avoid edit naming a county road -- exercises OSM way-geometry avoidance and the verified outcome banner.",
+      "expect": {
+        "request_type": "edit_route", "outcome": "either",
+        "parse": {"edit.mode": {"in": ["avoid"]}},
+        "route": {"loop": null}
+      }
+    },
+    {
+      "id": "D36", "split": "dev", "category": "provider_failure", "tier": "offline", "scope": "supported",
+      "text": "a 20 mile loop from Monona Terrace Madison WI",
+      "start": "Monona Terrace, Madison WI",
+      "env": {"BROUTER_URL": "http://127.0.0.1:9/brouter"},
+      "why": "Routing provider unreachable. Must fail honestly and point at the routing server, not hand back an empty map or a traceback.",
+      "expect": {
+        "request_type": "route", "outcome": "decline",
+        "parse": {}, "route": {"loop": null},
+        "message_mentions": ["routing server", "unreachable", "brouter", "router is", "cannot reach"]
+      }
+    },
+    {
+      "id": "D37", "split": "dev", "category": "provider_failure", "tier": "offline", "scope": "supported",
+      "text": "a 20 mile loop from Monona Terrace Madison WI",
+      "start": "Monona Terrace, Madison WI",
+      "env": {"ROUTEGEN_EVAL_BREAK_GEOCODER": "1"},
+      "why": "Geocoder unreachable. Probes whether a dead Nominatim surfaces as a usable message or as an unhandled exception.",
+      "expect": {
+        "request_type": "route", "outcome": "decline",
+        "parse": {}, "route": {"loop": null}
+      }
+    },
+
+    {
+      "id": "H01", "split": "heldout", "category": "simple_loop", "tier": "live", "scope": "supported",
+      "text": "can I get a 15 mile loop out of Middleton WI",
+      "start": "Middleton, WI",
+      "why": "Held out: plain short loop, different town.",
+      "expect": {
+        "request_type": "route", "outcome": "success",
+        "parse": {"route.distance_miles": {"range": [13, 17]}, "route.shape": {"in": ["loop", "both"]}},
+        "route": {"target_miles": 15, "loop": true}
+      }
+    },
+    {
+      "id": "H02", "split": "heldout", "category": "simple_loop", "tier": "live", "scope": "supported",
+      "text": "looking for a ~18 mile ride from Stoughton WI, loop is fine",
+      "start": "Stoughton, WI",
+      "why": "Held out: tilde-approximate distance.",
+      "expect": {
+        "request_type": "route", "outcome": "success",
+        "parse": {"route.distance_miles": {"range": [16, 20]}},
+        "route": {"target_miles": 18, "loop": true}
+      }
+    },
+    {
+      "id": "H03", "split": "heldout", "category": "distance_target", "tier": "live", "scope": "supported",
+      "text": "two hours of riding from Sun Prairie WI",
+      "start": "Sun Prairie, WI",
+      "why": "Held out: duration converted to distance at the assumed 16 mph.",
+      "expect": {
+        "request_type": "route", "outcome": "success",
+        "parse": {"route.distance_miles": {"range": [26, 38]}},
+        "route": {"target_miles": "from_parse", "loop": null}
+      }
+    },
+    {
+      "id": "H04", "split": "heldout", "category": "distance_target", "tier": "live", "scope": "supported",
+      "text": "60 mile loop from Monona Terrace Madison WI",
+      "start": "Monona Terrace, Madison WI",
+      "why": "Held out: a long route -- generation cost and distance fit at the top of the normal range.",
+      "expect": {
+        "request_type": "route", "outcome": "success",
+        "parse": {"route.distance_miles": {"range": [55, 65]}},
+        "route": {"target_miles": 60, "loop": true}
+      }
+    },
+    {
+      "id": "H05", "split": "heldout", "category": "climb_max", "tier": "live", "scope": "supported",
+      "text": "30 miles from Blue Mounds WI and make it hurt -- max elevation",
+      "start": "Blue Mounds, WI",
+      "why": "Held out: climb maximization in slang.",
+      "expect": {
+        "request_type": "route", "outcome": "success",
+        "parse": {"route.distance_miles": {"range": [27, 33]}, "route.maximize_climb": {"equals": true}},
+        "route": {"target_miles": 30, "loop": null, "min_climb_ft": 900}
+      }
+    },
+    {
+      "id": "H06", "split": "heldout", "category": "climb_min", "tier": "live", "scope": "supported",
+      "text": "flattest 35 miles you can find around Stoughton WI",
+      "start": "Stoughton, WI",
+      "why": "Held out: climb minimization as a superlative.",
+      "expect": {
+        "request_type": "route", "outcome": "success",
+        "parse": {"route.distance_miles": {"range": [32, 38]}, "route.minimize_climb": {"equals": true}},
+        "route": {"target_miles": 35, "loop": null}
+      }
+    },
+    {
+      "id": "H07", "split": "heldout", "category": "climb_min", "tier": "live", "scope": "supported",
+      "text": "25 mile loop from Middleton WI, cap the climbing at 800 feet",
+      "start": "Middleton, WI",
+      "why": "Held out: a tight hard ceiling that may legitimately reject every candidate -- an honest refusal is a pass.",
+      "expect": {
+        "request_type": "route", "outcome": "either",
+        "parse": {"route.distance_miles": {"range": [23, 27]}, "route.max_climb_ft": {"range": [700, 900]}},
+        "route": {"target_miles": 25, "loop": true, "max_climb_ft": 800}
+      }
+    },
+    {
+      "id": "H08", "split": "heldout", "category": "via", "tier": "live", "scope": "supported",
+      "text": "28 mile ride from Verona WI that swings through Paoli WI",
+      "start": "Verona, WI",
+      "why": "Held out: single waypoint, 'swings through' phrasing.",
+      "expect": {
+        "request_type": "route", "outcome": "success",
+        "parse": {"route.distance_miles": {"range": [25, 31]}, "route.via_places": {"len_min": 1}},
+        "route": {"target_miles": 28, "loop": null, "via": ["Paoli, WI"], "via_tolerance_m": 2500}
+      }
+    },
+    {
+      "id": "H09", "split": "heldout", "category": "avoid", "tier": "live", "scope": "supported",
+      "text": "25 mile loop from the Wisconsin State Capitol Madison WI, nothing on East Washington Avenue",
+      "start": "Wisconsin State Capitol, Madison WI",
+      "why": "Held out: avoid a major arterial that starts right at the start point.",
+      "expect": {
+        "request_type": "route", "outcome": "success",
+        "parse": {"route.distance_miles": {"range": [23, 27]}, "route.avoid_places": {"len_min": 1}},
+        "route": {"target_miles": 25, "loop": true, "avoid": ["East Washington Avenue, Madison WI"], "avoid_clearance_m": 250}
+      }
+    },
+    {
+      "id": "H10", "split": "heldout", "category": "multi_constraint", "tier": "live", "scope": "supported",
+      "text": "I want 45 miles from Cross Plains WI, through Black Earth, under 2000 feet of climbing, and off Highway 14",
+      "start": "Cross Plains, WI",
+      "why": "Held out: the hardest combination in the set -- distance + waypoint + hard climb cap + avoid.",
+      "expect": {
+        "request_type": "route", "outcome": "either",
+        "parse": {"route.distance_miles": {"range": [42, 48]}, "route.via_places": {"len_min": 1}, "route.max_climb_ft": {"range": [1800, 2200]}, "route.avoid_places": {"len_min": 1}},
+        "route": {"target_miles": 45, "loop": null, "max_climb_ft": 2000, "via": ["Black Earth, WI"], "via_tolerance_m": 2500}
+      }
+    },
+    {
+      "id": "H11", "split": "heldout", "category": "multi_constraint", "tier": "live", "scope": "supported",
+      "text": "32 mile flat-ish loop from Sun Prairie WI that goes by Lake Mills WI",
+      "start": "Sun Prairie, WI",
+      "why": "Held out: soft flat preference plus a waypoint roughly a third of the ride away.",
+      "expect": {
+        "request_type": "route", "outcome": "either",
+        "parse": {"route.distance_miles": {"range": [29, 35]}, "route.via_places": {"len_min": 1}},
+        "route": {"target_miles": 32, "loop": null, "via": ["Lake Mills, WI"], "via_tolerance_m": 3000}
+      }
+    },
+    {
+      "id": "H12", "split": "heldout", "category": "interval_spot", "tier": "live", "scope": "supported",
+      "text": "somewhere within half an hour of Middleton WI to do 3x12 sweet spot",
+      "start": "Middleton, WI",
+      "why": "Held out: sweet-spot maps to a flat stretch; travel budget stated in words.",
+      "expect": {
+        "request_type": "interval_spot", "outcome": "success",
+        "parse": {"interval.reps": {"equals": 3}, "interval.rep_minutes": {"range": [10, 14]}, "interval.kind": {"in": ["flat"]}, "interval.max_travel_minutes": {"range": [25, 35]}},
+        "route": {"target_miles": null, "loop": false}
+      }
+    },
+    {
+      "id": "H13", "split": "heldout", "category": "ambiguous", "tier": "live", "scope": "supported",
+      "text": "ride from Olin Park Madison WI, I've got maybe an hour but I might have longer",
+      "start": "Olin Park, Madison WI",
+      "why": "Held out: underspecified duration with a hedge. Probes whether the hedge is surfaced or silently resolved.",
+      "expect": {
+        "request_type": "route", "outcome": "either",
+        "parse": {"route.distance_miles": {"range": [10, 40]}},
+        "route": {"target_miles": "from_parse", "loop": null}
+      }
+    },
+    {
+      "id": "H14", "split": "heldout", "category": "ambiguous", "tier": "live", "scope": "supported",
+      "text": "30 mile loop from Verona WI that goes through the place with the good pie",
+      "start": "Verona, WI",
+      "why": "Held out: an ungeocodable waypoint. A confidently wrong location is worse than a clear 'not found'.",
+      "expect": {
+        "request_type": "route", "outcome": "either",
+        "parse": {"route.distance_miles": {"range": [27, 33]}},
+        "route": {"target_miles": 30, "loop": null}
+      }
+    },
+    {
+      "id": "H15", "split": "heldout", "category": "infeasible", "tier": "live", "scope": "supported",
+      "text": "a 300 mile loop from Monona Terrace Madison WI",
+      "start": "Monona Terrace, Madison WI",
+      "why": "Held out: beyond the server-side clamp of 150 mi. Probes whether the clamp is applied AND disclosed to the user.",
+      "expect": {
+        "request_type": "route", "outcome": "either",
+        "parse": {"route.distance_miles": {"range": [250, 350]}},
+        "route": {"target_miles": 150, "loop": null, "clamped": true}
+      }
+    },
+    {
+      "id": "H16", "split": "heldout", "category": "out_of_scope", "tier": "live", "scope": "out_of_scope",
+      "text": "give me the most scenic 40 mile loop from Mount Horeb WI, best views",
+      "start": "Mount Horeb, WI",
+      "why": "Held out: there is no scenery model. Honest behavior is a route plus a note that scenery was not used as a criterion.",
+      "expect": {
+        "request_type": "route", "outcome": "success_with_caveat",
+        "parse": {"notes": {"nonempty": true}},
+        "route": {"target_miles": 40, "loop": null}
+      }
+    },
+    {
+      "id": "H17", "split": "heldout", "category": "out_of_scope", "tier": "live", "scope": "out_of_scope",
+      "text": "25 mile loop from Middleton WI that avoids all stop signs and traffic lights",
+      "start": "Middleton, WI",
+      "why": "Held out: traffic-control avoidance exists for INTERVAL SPOTS only, never for routes. Easy to silently claim.",
+      "expect": {
+        "request_type": "route", "outcome": "success_with_caveat",
+        "parse": {"notes": {"nonempty": true}},
+        "route": {"target_miles": 25, "loop": null}
+      }
+    },
+    {
+      "id": "H18", "split": "heldout", "category": "edit", "tier": "live", "scope": "supported",
+      "session": "E3", "step": 1,
+      "text": "20 mile loop from the Wisconsin State Capitol Madison WI",
+      "start": "Wisconsin State Capitol, Madison WI",
+      "why": "Held-out session E3 setup.",
+      "expect": {
+        "request_type": "route", "outcome": "success",
+        "parse": {"route.distance_miles": {"range": [18, 22]}},
+        "route": {"target_miles": 20, "loop": true}
+      }
+    },
+    {
+      "id": "H19", "split": "heldout", "category": "edit", "tier": "live", "scope": "supported",
+      "session": "E3", "step": 2,
+      "text": "end the ride at Olbrich Botanical Gardens instead",
+      "start": "Wisconsin State Capitol, Madison WI",
+      "why": "Held out: move_end on a loop -- the finish moves, the start does not.",
+      "expect": {
+        "request_type": "edit_route", "outcome": "success",
+        "parse": {"edit.mode": {"in": ["move_end"]}},
+        "route": {"loop": false, "end_at": "Olbrich Botanical Gardens, Madison WI", "end_tolerance_m": 1200}
+      }
+    },
+    {
+      "id": "H20", "split": "heldout", "category": "edit", "tier": "live", "scope": "supported",
+      "session": "E3", "step": 3,
+      "text": "add about 8 more miles to it",
+      "start": "Wisconsin State Capitol, Madison WI",
+      "why": "Held out: extend applied to an already-edited route (chained edits must compose).",
+      "expect": {
+        "request_type": "edit_route", "outcome": "success",
+        "parse": {"edit.mode": {"in": ["extend"]}, "edit.miles_delta": {"range": [7, 9]}},
+        "route": {"loop": null, "distance_delta_mi": 8, "distance_delta_tolerance_mi": 4}
+      }
+    },
+    {
+      "id": "H21", "split": "heldout", "category": "edit", "tier": "live", "scope": "supported",
+      "session": "E3", "step": 4,
+      "text": "go back to the previous version",
+      "start": "Wisconsin State Capitol, Madison WI",
+      "why": "Held out: paraphrased undo.",
+      "expect": {
+        "request_type": "undo", "outcome": "success",
+        "parse": {}, "route": {"loop": null}
+      }
+    },
+    {
+      "id": "H22", "split": "heldout", "category": "edit", "tier": "live", "scope": "supported",
+      "session": "E4", "step": 1,
+      "text": "18 mile loop from the Memorial Union Madison WI",
+      "start": "Memorial Union, Madison WI",
+      "why": "Held-out session E4 setup.",
+      "expect": {
+        "request_type": "route", "outcome": "success",
+        "parse": {"route.distance_miles": {"range": [16, 20]}},
+        "route": {"target_miles": 18, "loop": true}
+      }
+    },
+    {
+      "id": "H23", "split": "heldout", "category": "edit", "tier": "live", "scope": "supported",
+      "session": "E4", "step": 2,
+      "text": "route me through Vilas Park and then the Arboretum",
+      "start": "Memorial Union, Madison WI",
+      "why": "Held out: a MULTI-waypoint via chain in one edit -- each place must arrive as its own geocodable string.",
+      "expect": {
+        "request_type": "edit_route", "outcome": "either",
+        "parse": {"edit.mode": {"in": ["via"]}, "edit.places_len_min": {"equals": 2}},
+        "route": {"loop": null, "via": ["Vilas Park, Madison WI", "UW Arboretum, Madison WI"], "via_tolerance_m": 1500}
+      }
+    },
+    {
+      "id": "H24", "split": "heldout", "category": "edit", "tier": "live", "scope": "supported",
+      "session": "E4", "step": 3,
+      "text": "undo",
+      "start": "Memorial Union, Madison WI",
+      "why": "Held out: bare one-word undo.",
+      "expect": {
+        "request_type": "undo", "outcome": "success",
+        "parse": {}, "route": {"loop": null}
+      }
+    },
+    {
+      "id": "H25", "split": "heldout", "category": "edit", "tier": "live", "scope": "supported",
+      "session": "E5", "step": 1,
+      "text": "undo that",
+      "start": "Monona Terrace, Madison WI",
+      "why": "Held out: undo with NO route in the session. Must refuse cleanly rather than crash.",
+      "expect": {
+        "request_type": "undo", "outcome": "decline",
+        "parse": {}, "route": {"loop": null}
+      }
+    }
+  ]
+}

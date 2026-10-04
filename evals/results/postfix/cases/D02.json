@@ -1,0 +1,194 @@
+{
+ "id": "D02",
+ "split": "dev",
+ "category": "simple_loop",
+ "tier": "live",
+ "scope": "supported",
+ "session": null,
+ "step": null,
+ "text": "20 mile loop please",
+ "start": "Olin Park, Madison WI",
+ "why": "Minimal phrasing; the start comes from the session's configured starting point.",
+ "expect": {
+  "request_type": "route",
+  "outcome": "success",
+  "parse": {
+   "route.distance_miles": {
+    "range": [
+     18,
+     22
+    ]
+   },
+   "route.shape": {
+    "in": [
+     "loop",
+     "both"
+    ]
+   }
+  },
+  "route": {
+   "target_miles": 20,
+   "loop": true
+  }
+ },
+ "verdict": "pass",
+ "fail_reasons": [],
+ "parsed": {
+  "request_type": "route",
+  "address": null,
+  "route": {
+   "distance_miles": 20,
+   "max_climb_ft": null,
+   "maximize_climb": false,
+   "minimize_climb": false,
+   "shape": "loop",
+   "avoid_places": [],
+   "via_places": []
+  },
+  "interval": null,
+  "edit": null,
+  "notes": ""
+ },
+ "notes": "",
+ "outcome_ok": true,
+ "summary": "6 route(s) \u2014 best: #1 loop: 20.2 mi, 765 ft, 1% repeat",
+ "kind": "route",
+ "n_candidates": 6,
+ "candidate_labels": [
+  "#1 loop: 20.2 mi, 765 ft, 1% repeat",
+  "#2 loop: 20.2 mi, 647 ft, 4% repeat",
+  "#3 loop: 19.4 mi, 738 ft, 1% repeat",
+  "#4 loop: 19.1 mi, 628 ft, 6% repeat",
+  "#5 loop: 18.7 mi, 783 ft, 2% repeat",
+  "#6 loop: 18.7 mi, 672 ft, 1% repeat"
+ ],
+ "error": null,
+ "traceback": "",
+ "seconds": 8.19,
+ "parse_cached": false,
+ "parse_tokens": {
+  "input": 2425,
+  "output": 84
+ },
+ "measured": {
+  "gpx_path": "evals/results/postfix/work/D02/route_20mi_ride_1_loop_brouter.gpx",
+  "gpx_valid": true,
+  "gpx_error": null,
+  "n_points": 1297,
+  "distance_mi": 19.97,
+  "app_reported_mi": 20.2,
+  "ascent_ft_app": 766.0,
+  "ascent_ft_independent": 718.0,
+  "loop_closure_m": 1.3,
+  "start_proximity_m": 0.3,
+  "end_proximity_m": 1.5,
+  "via_distances_m": {},
+  "avoid_on_road_m": {},
+  "max_point_gap_m": 32.6,
+  "duplicate_points": 0,
+  "repeat_frac": 0.014,
+  "mirror_frac": 0.025,
+  "teleports": [],
+  "gaps_confirmed_road": [],
+  "gaps_unknown": [],
+  "has_elevation": true
+ },
+ "checks": [
+  {
+   "name": "outcome.no_crash",
+   "status": "pass",
+   "hard": true,
+   "detail": "handled without an unhandled exception",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "outcome.succeeded",
+   "status": "pass",
+   "hard": true,
+   "detail": "ok=True, 6 candidate(s): 6 route(s) \u2014 best: #1 loop: 20.2 mi, 765 ft, 1% repeat",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.request_type",
+   "status": "pass",
+   "hard": true,
+   "detail": "got 'route', expected 'route'",
+   "value": "route",
+   "limit": "route"
+  },
+  {
+   "name": "parse.distance_miles",
+   "status": "pass",
+   "hard": true,
+   "detail": "20 vs [18, 22]",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "parse.shape",
+   "status": "pass",
+   "hard": true,
+   "detail": "'loop' vs allowed ['loop', 'both']",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "gpx.valid",
+   "status": "pass",
+   "hard": true,
+   "detail": "well-formed, 1297 points, elevation present",
+   "value": null,
+   "limit": null
+  },
+  {
+   "name": "route.distance",
+   "status": "pass",
+   "hard": true,
+   "detail": "19.97 mi vs target 20 mi (+0.2%, tolerance +/-15%)",
+   "value": 19.97,
+   "limit": 20
+  },
+  {
+   "name": "route.loop_closure",
+   "status": "pass",
+   "hard": true,
+   "detail": "start-to-finish gap 1 m (limit 250 m)",
+   "value": 1.3,
+   "limit": 250.0
+  },
+  {
+   "name": "route.starts_where_asked",
+   "status": "pass",
+   "hard": true,
+   "detail": "begins 0 m from the geocoded start (limit 600 m)",
+   "value": 0.3,
+   "limit": 600.0
+  },
+  {
+   "name": "geometry.continuous",
+   "status": "pass",
+   "hard": true,
+   "detail": "continuous: no breaks. Longest single segment 33 m",
+   "value": 0,
+   "limit": 0
+  },
+  {
+   "name": "geometry.repeat",
+   "status": "pass",
+   "hard": false,
+   "detail": "1% of the route rides the same road twice (the app rejects loops above 25%); mirror score 2% -- not an out-and-back",
+   "value": 0.014,
+   "limit": 0.25
+  }
+ ],
+ "log_tail": "Parsed (claude-haiku-4-5, 2425in/84out tokens): {'request_type': 'route', 'route': {'distance_miles': 20, 'max_climb_ft': None, 'maximize_climb': False, 'minimize_climb': False, 'shape': 'loop', 'avoid_places': [], 'via_places': []}}\n(skipping ors: ORS_API_KEY not set)\nStart: Olin Park, 1155, Madison, Dane County, Wisconsin, 53715, United States (43.05494, -89.37807)\nGenerating 6 loop candidates via brouter...\n  brouter: trimmed 6.3 mi of out-and-back spurs\n  brouter: trimmed 4.2 mi of out-and-back spurs\n  brouter: trimmed 4.0 mi of out-and-back spurs\n  brouter: trimmed 0.5 mi of out-and-back spurs\n  brouter: trimmed 0.9 mi of out-and-back spurs\n  brouter: trimmed 1.3 mi of out-and-back spurs\n  brouter: trimmed 0.3 mi of out-and-back spurs\n  brouter: trimmed 0.3 mi of out-and-back spurs\n  brouter: trimmed 0.3 mi of out-and-back spurs\n  brouter: trimmed 3.3 mi of out-and-back spurs\n\nrank provider shape      miles  climb ft  repeat  major  file\n1    brouter  loop        20.2       765      1%      0  evals\\results\\postfix\\work\\D02\\route_20mi_ride_1_loop_brouter.gpx\n2    brouter  loop        20.2       647      4%      0  evals\\results\\postfix\\work\\D02\\route_20mi_ride_2_loop_brouter.gpx\n3    brouter  loop        19.4       738      1%      0  evals\\results\\postfix\\work\\D02\\route_20mi_ride_3_loop_brouter.gpx\n4    brouter  loop        19.1       628      6%      0  evals\\results\\postfix\\work\\D02\\route_20mi_ride_4_loop_brouter.gpx\n5    brouter  loop        18.7       783      2%      0  evals\\results\\postfix\\work\\D02\\route_20mi_ride_5_loop_brouter.gpx\n6    brouter  loop        18.7       672      1%      0  evals\\results\\postfix\\work\\D02\\route_20mi_ride_6_loop_brouter.gpx\nwrote evals\\results\\postfix\\work\\D02\\preview.html (6 routes)\n\nBest: rank 1 \u2014 20.2 mi, 765 ft climbing (brouter, bearing=0 cw scale=1.11)\n",
+ "run": "postfix",
+ "repeat": 1,
+ "cases_version": "routegen-eval-v1",
+ "timestamp": "2026-09-20T10:10:46",
+ "verdict_history": [],
+ "scorer_error": null,
+ "rescored_at": "2026-09-20T11:30:42"
+}
