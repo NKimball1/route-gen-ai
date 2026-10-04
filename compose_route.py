@@ -11,8 +11,8 @@ Examples (the two target prompts):
   # avoid a road/area (repeatable; ":radius_m" optional, default 800)
   python compose_route.py --address "..." --miles 30 --avoid "Verona Rd, Madison WI:1500"
 
-Providers: brouter (no key needed) always runs; ors runs if ORS_API_KEY is set
-(free key from https://openrouteservice.org). GPX files land in output/routes/.
+Provider: BRouter by default; ORS requires --provider ors/all and ORS_API_KEY.
+GPX files land in output/routes/.
 
 For plain-English requests, use ask.py instead.
 """
@@ -21,6 +21,8 @@ import sys
 
 from dotenv import load_dotenv
 
+# before the route imports: some modules read settings (e.g. ROUTEGEN_TOTAL_KG)
+# at import time
 load_dotenv()
 
 from routes.geocode import geocode
@@ -55,7 +57,7 @@ def main() -> int:
                     help="rank candidates by least climbing")
     ap.add_argument("--candidates", type=int, default=6,
                     help="loop candidates per provider (default 6)")
-    ap.add_argument("--provider", choices=["brouter", "ors", "all"], default="all")
+    ap.add_argument("--provider", choices=["brouter", "ors", "all"], default="brouter")
     ap.add_argument("--profile", default=None,
                     help="BRouter profile (default: fastbike-quiet on the "
                          "self-hosted server, fastbike-lowtraffic on public)")
@@ -65,6 +67,8 @@ def main() -> int:
                     help='no-go area, "place name" or "place name:radius_m"')
     ap.add_argument("--via", action="append", default=[],
                     help="place the route must pass through (repeatable, ordered)")
+    ap.add_argument("--use-strava", action="store_true",
+                    help="include your explicitly configured personal Strava starred climbs")
     args = ap.parse_args()
 
     avoid = parse_avoid(args.avoid)
@@ -83,6 +87,9 @@ def main() -> int:
                                      minimize_climb=args.minimize_climb,
                                      via=via, via_names=via_names)
              for s in shapes]
+
+    for spec in specs:
+        spec.use_strava = args.use_strava
 
     providers = build_providers(args.provider, args.profile)
     keepers = compose(specs, providers, candidates_per=args.candidates)

@@ -22,6 +22,7 @@ import requests
 
 from routes.despur import _hav_m, corridor_despur, despur
 from routes.elevation import track_ascent
+from routes.execution import checkpoint
 from routes.spec import (EARTH_RADIUS_M, METERS_PER_DEG_LAT,
                          METERS_PER_DEG_LON_EQ, METERS_PER_MILE, Coord, LatLon,
                          Leg, NoGo, RouteCandidate, RouteSpec, Track)
@@ -135,6 +136,10 @@ class BRouterProvider:
             profile = ("fastbike-quiet" if "localhost" in self.base_url
                        else "fastbike-lowtraffic")
         self.profile: str = profile
+        # Set when a leg failed because the server never answered, so the
+        # caller can tell "the router is down" from "nothing met your
+        # constraints". Those two need different words to the user.
+        self.unreachable: bool = False
 
     def route(self, waypoints: Sequence[LatLon],
               avoid: Sequence[NoGo] | None = None,
@@ -150,11 +155,14 @@ class BRouterProvider:
         if avoid:
             params["nogos"] = "|".join(f"{a[1]:.6f},{a[0]:.6f},{a[2]:.0f}"
                                        for a in avoid)
+        checkpoint()
         try:
             resp = requests.get(self.base_url, params=params, timeout=120)
+            checkpoint()
             resp.raise_for_status()
             feature = resp.json()["features"][0]
-        except requests.ConnectionError:
+        except (requests.ConnectionError, requests.Timeout):
+            self.unreachable = True
             print(f"  ROUTING SERVER UNREACHABLE at {self.base_url} — "
                   "is BRouter running? (start_brouter.cmd)")
             return None

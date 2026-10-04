@@ -9,11 +9,12 @@ avoid-zone, back off a buffer on each side, ask the router for a fresh leg
 between those points with a no-go circle over the zone, and splice.
 """
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Sequence
 
 from routes.elevation import track_ascent
 from routes.overlap import repeated_fraction
+from routes.policy import EDIT_DISTANCE_TOLERANCE
 from routes.spec import (METERS_PER_DEG_LAT, METERS_PER_DEG_LON_EQ,
                          METERS_PER_MILE, Coord, LatLon, NoGo, Router, Track)
 
@@ -41,6 +42,7 @@ class EditResult:
     failed_detours: int = 0  # sections that could not be rerouted
     fail_reason: str = ""
     road_mode: bool = False  # avoided a road AS A LINE and self-verified
+    warnings: list[str] = field(default_factory=list)
 
 
 def _dist_m(a: Coord, b: Coord) -> float:
@@ -108,6 +110,8 @@ def extend_route(points: Track, add_m: float, provider: Router,
             if abs(gained - add_m) <= 0.15 * add_m:
                 break
             r *= max(0.3, min(3.0, add_m / gained))
+    if best and best[0] > EDIT_DISTANCE_TOLERANCE * add_m:
+        best[1].warnings.append("The extension could not meet the requested distance.")
     return best[1] if best else None
 
 
@@ -158,7 +162,8 @@ def shorten_route(points: Track, cut_m: float,
     if best is None:
         return None
     achieved = total - best[1].distance_m
-    if achieved < 0.85 * cut_m:
+    if abs(achieved - cut_m) > EDIT_DISTANCE_TOLERANCE * cut_m:
+        best[1].warnings.append("The shortening could not meet the requested distance.")
         print(f"  could only shorten by ~{achieved / METERS_PER_MILE:.1f} mi "
               f"(asked ~{cut_m / METERS_PER_MILE:.1f}) — the route has no bigger "
               "cuttable detour")
@@ -352,14 +357,20 @@ def connect_from(points: Track, addr: LatLon, provider: Router,
         return None
     new_pts = leg_out["points"] + points
     added = leg_out["distance_m"]
+    warnings: list[str] = []
+    detours = 1
     if with_return:
         leg_back = provider.route([points[-1][:2], addr])
         if leg_back is None:
             print("  could not route the return leg — added the outbound only")
+            warnings.append("The return connection could not be routed; the ride does not finish at the requested address.")
         else:
             new_pts = new_pts + leg_back["points"]
             added += leg_back["distance_m"]
-    return _result(new_pts, 0.0, added, detours=2 if with_return else 1)
+            detours += 1
+    result = _result(new_pts, 0.0, added, detours=detours)
+    result.warnings = warnings
+    return result
 
 
 def route_via(points: Track, target: LatLon, provider: Router,

@@ -29,7 +29,8 @@ var ROUTES = {routes_json};
 ROUTES.forEach(function(r, i) {{
   var cell = document.createElement('div');
   cell.className = 'cell'; cell.id = 'map' + i;
-  cell.innerHTML = '<div class="label">' + r.label + '</div>';
+  var label = document.createElement('div'); label.className = 'label';
+  label.textContent = r.label; cell.appendChild(label);
   document.getElementById('grid').appendChild(cell);
   var m = L.map(cell, {{fadeAnimation: false, zoomAnimation: false}});
   // CyclOSM, not tile.openstreetmap.org: this page opens from file://, so
@@ -142,7 +143,7 @@ def build_preview(gpx_paths: list[str], out_path: str) -> None:
         label = f"{os.path.basename(path)} — {desc}"
         routes.append({"label": label, "points": [[p[0], p[1]] for p in points]})
     with open(out_path, "w", encoding="utf-8") as f:
-        f.write(PAGE.format(routes_json=json.dumps(routes)))
+        f.write(PAGE.format(routes_json=json.dumps(routes).replace("<", "\\u003c")))
     print(f"wrote {out_path} ({len(routes)} routes)")
 
 

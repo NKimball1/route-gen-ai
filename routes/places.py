@@ -5,12 +5,12 @@ A spot is only useful once the rider knows where it is: "Hope Road
 Nominatim's reverse endpoint, one request per second per its usage
 policy, failures degrade to None rather than breaking a search.
 """
-import time
 from typing import Callable
 
 import requests
 
 from routes.geocode import USER_AGENT
+from routes.request_gate import wait_for_nominatim
 from routes.spec import Coord
 
 REVERSE_URL: str = "https://nominatim.openstreetmap.org/reverse"
@@ -23,14 +23,13 @@ def road_at(lat: float, lon: float) -> tuple[str, str] | None:
     params: dict[str, str | float] = {"lat": lat, "lon": lon,
                                       "format": "jsonv2", "zoom": 17}
     try:
+        wait_for_nominatim()
         resp = requests.get(REVERSE_URL, params=params,
                             headers={"User-Agent": USER_AGENT}, timeout=20)
         resp.raise_for_status()
         a = resp.json().get("address", {})
     except (requests.RequestException, ValueError):
         return None
-    finally:
-        time.sleep(1.1)   # Nominatim usage policy: at most 1 request/second
     road = a.get("road") or a.get("cycleway") or a.get("path") or a.get("footway")
     if not road:
         return None

@@ -33,7 +33,18 @@ INVITE = os.environ.get("ROUTEGEN_SIM_INVITE")
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 os.makedirs(os.path.join(ROOT, "output"), exist_ok=True)
 STATE = os.path.join(ROOT, "output", "sim_state.json")
-HTTP = requests.Session()   # every call below goes through this
+HTTP_TIMEOUT_S = 30
+JOB_TIMEOUT_S = 600
+POLL_INTERVAL_S = 1.0
+
+
+class TimedSession(requests.Session):
+    def request(self, method: str | bytes, url: str | bytes, *args: Any, **kwargs: Any) -> requests.Response:
+        kwargs.setdefault("timeout", HTTP_TIMEOUT_S)
+        return super().request(method, url, *args, **kwargs)
+
+
+HTTP = TimedSession()
 if INVITE:
     HTTP.headers["X-Invite-Code"] = INVITE
 START = "Monona Terrace, Madison WI"
@@ -71,9 +82,11 @@ def ask(text: str, sid: str | None = None, start: str = START,
     job = r.json()["job"]
     if not wait:
         return {"job": job}
-    while True:
-        time.sleep(1.0)
-        j = HTTP.get(f"{BASE}/api/job/{job}").json()
+    while time.time() - t0 < JOB_TIMEOUT_S:
+        time.sleep(POLL_INTERVAL_S)
+        response = HTTP.get(f"{BASE}/api/job/{job}", headers=h)
+        response.raise_for_status()
+        j = response.json()
         if j["status"] != "running":
             j["seconds"] = round(time.time() - t0, 1)
             j["job"] = job
@@ -81,6 +94,8 @@ def ask(text: str, sid: str | None = None, start: str = START,
                 res = j.get("result") or {}
                 print(f"   -> {j['status']} in {j['seconds']}s | ok={res.get('ok')} | {res.get('summary')}")
             return j
+
+    raise TimeoutError(f"Job {job} did not finish within {JOB_TIMEOUT_S}s")
 
 
 def miles_of(label: str) -> float | None:
@@ -102,7 +117,7 @@ def stage_hostile() -> None:
     check(r.status_code == 400, "missing session id rejected", f"HTTP {r.status_code}")
     for p in ["../.env", "output/../.env", "output/sessions/../../.env", "C:/Windows/win.ini",
               "output\\..\\.env", ".env", "output/usage.jsonl", "output/x.gpx/../../.env"]:
-        r = HTTP.get(f"{BASE}/api/gpx", params={"path": p})
+        r = HTTP.get(f"{BASE}/api/gpx", params={"path": p}, headers=H)
         body = r.text[:60].replace("\n", " ")
         check(r.status_code in (400, 404), f"/api/gpx refuses {p!r}", f"HTTP {r.status_code} {body}")
     for p in ["../.env", "output/usage.jsonl", "output/routes/../../.env"]:
@@ -129,7 +144,7 @@ def stage_hostile() -> None:
     check(r.status_code == 200 and r.json().get("ok") is False, "undo on empty session is graceful", r.text[:80])
     r = HTTP.post(f"{BASE}/api/cancel", headers=H)
     check(r.status_code == 404, "cancel with nothing running", f"HTTP {r.status_code}")
-    r = HTTP.get(f"{BASE}/api/job/doesnotexist")
+    r = HTTP.get(f"{BASE}/api/job/doesnotexist", headers=H)
     check(r.status_code == 404, "unknown job id", f"HTTP {r.status_code}")
     r = HTTP.get(f"{BASE}/about")
     check(r.status_code == 200, "/about serves")
@@ -150,7 +165,7 @@ def stage_route() -> None:
         if mi:
             check(abs(mi - 25) / 25 <= 0.15, "candidate within +/-15% of 25 mi", f"{mi} mi")
     if cands:
-        g = HTTP.get(f"{BASE}/api/gpx", params={"path": cands[0]["gpx"]})
+        g = HTTP.get(f"{BASE}/api/gpx", params={"path": cands[0]["gpx"]}, headers=H)
         check(g.status_code == 200 and b"<trkpt" in g.content, "winner GPX downloads", f"{len(g.content)} bytes")
         check(current() == cands[0]["gpx"], "winner became the current route", str(current()))
         state["base"] = cands[0]["gpx"]
@@ -208,7 +223,7 @@ def stage_edits() -> None:
 def stage_upload() -> None:
     print("\n== UPLOAD A FOREIGN GPX (lon-first attrs, rtept, extra junk) ==")
     base = state.get("base")
-    raw = HTTP.get(f"{BASE}/api/gpx", params={"path": base}).text
+    raw = HTTP.get(f"{BASE}/api/gpx", params={"path": base}, headers=H).text
     pts = re.findall(r'<trkpt lat="([-\d.]+)" lon="([-\d.]+)">\s*<ele>([-\d.]+)</ele>', raw)
     body = "".join(f'<rtept lon="{lo}" lat="{la}"><time>2026-01-01T00:00:00Z</time><ele>{el}</ele>'
                    f'<extensions><hr>150</hr></extensions></rtept>' for la, lo, el in pts)
@@ -222,13 +237,12 @@ def stage_upload() -> None:
         c = r.json()["candidates"][0]
         print(f"      {c['label']}")
         check(len(c["latlngs"]) > 10, "points parsed from lon-first rtepts", f"{len(c['latlngs'])} drawn pts")
-        check("no elevation data" in c["label"] or True, "label ok")
-        # ele after <time> is NOT captured by the parser -> does climbing read 0?
+        # Elevation must survive arbitrary child order.
         m = re.search(r"([\d.]+) ft", c["label"])
         ft = float(m.group(1)) if m else None
         check(ft is not None and ft > 50, "elevation survives when <ele> is not the first child",
               f"label says {ft} ft (source file had real elevations)")
-        out = HTTP.get(f"{BASE}/api/gpx", params={"path": c["gpx"]}).text
+        out = HTTP.get(f"{BASE}/api/gpx", params={"path": c["gpx"]}, headers=h2).text
         check("Ignore previous" not in out and "<hr>" not in out and "<time>" not in out,
               "upload laundering dropped metadata/HR/timestamps")
         j = ask("start and end at Olbrich Park, Madison", sid=sid2)
@@ -245,26 +259,27 @@ def stage_cancel() -> None:
     time.sleep(4)
     r = HTTP.post(f"{BASE}/api/cancel", headers={"X-Session-Id": sid3})
     check(r.status_code == 200, "cancel accepted", r.text[:80])
-    t0 = time.time()
-    c = ask("give me a 20 mile loop", sid=sid3, wait=False)
-    check("job" in c, "session is free immediately after cancel", str(c)[:120])
-    while True:
-        j = HTTP.get(f"{BASE}/api/job/{a['job']}").json()
+    deadline = time.monotonic() + JOB_TIMEOUT_S
+    headers = {"X-Session-Id": sid3}
+    while time.monotonic() < deadline:
+        response = HTTP.get(f"{BASE}/api/job/{a['job']}", headers=headers)
+        response.raise_for_status()
+        j = response.json()
         if j["status"] != "running":
             break
-        time.sleep(0.5)
-    print(f"      cancelled job reached status={j['status']} {time.time() - t0:.1f}s after cancel")
+        time.sleep(POLL_INTERVAL_S)
+    else:
+        issue("cancelled worker failed to stop within the deadline")
+        return
     check(j["status"] == "cancelled", "abandoned job ends as cancelled")
-    # wait for the follow-up to finish, then make sure the cancelled job did not clobber it
-    while True:
-        j2 = HTTP.get(f"{BASE}/api/job/{c['job']}").json()
-        if j2["status"] != "running":
-            break
-        time.sleep(1)
+    # The worker owns the session until it has actually stopped.
+    j2 = ask("give me a 20 mile loop", sid=sid3)
     res = j2.get("result") or {}
-    print(f"      follow-up: {j2['status']} | {res.get('summary')}")
-    cur = HTTP.get(f"{BASE}/api/current", headers={"X-Session-Id": sid3}).json()["current"]
-    check(cur and "20mi" in cur, "current route belongs to the follow-up, not the cancelled job", str(cur))
+    print(f"      follow-up: {j2.get('status')} | {res.get('summary')}")
+    cur = HTTP.get(f"{BASE}/api/current", headers=headers).json()["current"]
+    candidates = res.get("candidates") or []
+    check(bool(candidates) and cur == candidates[0]["gpx"],
+          "current route belongs to the follow-up", str(cur))
     h = HTTP.get(f"{BASE}/api/health").json()
     check(h["jobs_running"] == 0, "no zombie jobs left running", str(h))
 

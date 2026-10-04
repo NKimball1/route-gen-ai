@@ -5,8 +5,7 @@ What it adds: real climb locations (explore returns climb_category per
 segment) and a where-locals-actually-ride popularity signal.
 
 Auth: needs STRAVA_CLIENT_ID / STRAVA_CLIENT_SECRET in the environment and
-a token file. The token file is seeded from the cycling-coach project's
-authorization if not present here; access tokens auto-refresh. Multi-user
+a token file explicitly configured for this project; access tokens auto-refresh. Multi-user
 note: per Strava's API agreement one athlete's token must not serve other
 people — a public deployment gives each user their own OAuth connection.
 """
@@ -18,10 +17,7 @@ import time
 import requests
 from routes.spec import METERS_PER_DEG_LAT, METERS_PER_DEG_LON_EQ
 
-TOKEN_FILE = ".strava_tokens.json"
-SEED_TOKEN_FILE = os.path.join(
-    os.path.expanduser("~"), "OneDrive", "Desktop", "cycling agentic flow",
-    ".strava_tokens.json")
+TOKEN_FILE = os.environ.get("ROUTEGEN_STRAVA_TOKEN_FILE", ".strava_tokens.json")
 TOKEN_URL = "https://www.strava.com/oauth/token"
 EXPLORE_URL = "https://www.strava.com/api/v3/segments/explore"
 STARRED_URL = "https://www.strava.com/api/v3/segments/starred"
@@ -30,13 +26,12 @@ STARRED_URL = "https://www.strava.com/api/v3/segments/starred"
 def available() -> bool:
     return bool(os.environ.get("STRAVA_CLIENT_ID")
                 and os.environ.get("STRAVA_CLIENT_SECRET")
-                and (os.path.exists(TOKEN_FILE)
-                     or os.path.exists(SEED_TOKEN_FILE)))
+                and os.path.exists(TOKEN_FILE))
 
 
 def get_access_token() -> str:
-    path = TOKEN_FILE if os.path.exists(TOKEN_FILE) else SEED_TOKEN_FILE
-    tokens = json.load(open(path))
+    with open(TOKEN_FILE, encoding="utf-8") as token_file:
+        tokens = json.load(token_file)
     if tokens.get("expires_at", 0) > time.time() + 60:
         return tokens["access_token"]
     resp = requests.post(TOKEN_URL, data={
@@ -47,11 +42,8 @@ def get_access_token() -> str:
     }, timeout=30)
     resp.raise_for_status()
     fresh = resp.json()
-    if fresh.get("refresh_token") != tokens["refresh_token"]:
-        print("  strava: NOTE — refresh token rotated; if the coach agent's "
-              "deployment refreshes separately, update its token file")
     tokens.update(fresh)
-    with open(TOKEN_FILE, "w") as f:
+    with open(TOKEN_FILE, "w", encoding="utf-8") as f:
         json.dump(tokens, f)
     return tokens["access_token"]
 

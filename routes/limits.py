@@ -45,12 +45,24 @@ def allow(key: tuple[str, ...], limit: int, period_s: float, now: float | None =
 
 def check_ask(sid: str, ip: str) -> str | None:
     """None if allowed, else a human-readable refusal."""
-    if not allow(("ask_g",), Limits.ASK_GLOBAL_DAY, DAY_S):
-        return "daily capacity reached — try again tomorrow"
-    if not allow(("ask_s", sid), Limits.ASK_PER_SESSION_HOUR, HOUR_S):
-        return "hourly limit reached for this session — take a break"
-    if not allow(("ask_ip", ip), Limits.ASK_PER_IP_HOUR, HOUR_S):
-        return "hourly limit reached — take a break"
+    quotas = [
+        (("ask_s", sid), Limits.ASK_PER_SESSION_HOUR, HOUR_S,
+         "hourly limit reached for this session - take a break"),
+        (("ask_ip", ip), Limits.ASK_PER_IP_HOUR, HOUR_S,
+         "hourly limit reached - take a break"),
+        (("ask_g",), Limits.ASK_GLOBAL_DAY, DAY_S,
+         "daily capacity reached - try again tomorrow"),
+    ]
+    now = time.time()
+    with LOCK:
+        for key, limit, period, refusal in quotas:
+            window = _WINDOWS[key]
+            while window and window[0] <= now - period:
+                window.popleft()
+            if len(window) >= limit:
+                return refusal
+        for key, _, _, _ in quotas:
+            _WINDOWS[key].append(now)
     return None
 
 

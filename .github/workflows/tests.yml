@@ -31,6 +31,8 @@ jobs:
       # mypy.ini requires every function to be fully annotated
       - name: Type check
         run: python -m mypy
+      - name: Frontend behavior tests
+        run: node --test tests/frontend.test.cjs
 
   audit:
     # Fails the build when a declared dependency has a published advisory.

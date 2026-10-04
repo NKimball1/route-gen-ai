@@ -78,7 +78,7 @@ def extract_climbs(rs: list[Sample], min_gain_m: float = 25.0,
 
 
 def find_climbs(lat: float, lon: float, radius_m: float, provider: Router,
-                n_spokes: int = 10, top: int = 3) -> list[Climb]:
+                n_spokes: int = 10, top: int = 3, *, use_strava: bool = False) -> list[Climb]:
     """Best climbs within radius: starred Strava segments first, then our
     own elevation search along routed spokes. Deduped by location."""
     from routes.providers import _destination
@@ -87,7 +87,7 @@ def find_climbs(lat: float, lon: float, radius_m: float, provider: Router,
 
     try:
         from routes import strava
-        if strava.available():
+        if use_strava and strava.available():
             for s in strava.starred_segments():
                 start = tuple(s.get("start_latlng") or ())
                 if len(start) != 2 or _dist_m((lat, lon), start) > radius_m:

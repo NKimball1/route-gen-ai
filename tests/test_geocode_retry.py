@@ -64,6 +64,6 @@ def test_hard_client_error_does_not_retry(monkeypatch):
     calls = []
     monkeypatch.setattr(g.requests, "get",
                         lambda url, **kw: calls.append(url) or FakeResp(400))
-    with pytest.raises(requests.HTTPError):
+    with pytest.raises(g.GeocodeUnavailable, match="400"):
         g.geocode("Madison WI")
     assert len(calls) == 1  # a bad request stays bad — no point retrying

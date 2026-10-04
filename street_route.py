@@ -11,15 +11,16 @@ an address to the first street; --end (or --loop, which ends back at the
 start) adds a finish. Each street is fetched from OpenStreetMap near the
 ride, waypoints are placed ON it, and afterward the route is measured
 against every street: any street it didn't really ride is reported.
-Writes output/routes/streets_<first-street>.gpx plus a map preview.
+Writes a unique output/routes/streets_<id>.gpx plus its map preview.
 """
 import argparse
 import os
-import re
 import sys
 
 from dotenv import load_dotenv
 
+# before the route imports: some modules read settings (e.g. ROUTEGEN_TOTAL_KG)
+# at import time
 load_dotenv()
 
 from routes.geocode import geocode
@@ -28,6 +29,7 @@ from routes.preview import build_preview
 from routes.providers import BRouterProvider
 from routes.spec import METERS_PER_MILE, LatLon
 from routes.street_list import build_street_route, parse_street_list
+from routes.storage import artifact_path, publish, transaction
 
 OUT_DIR: str = os.path.join("output", "routes")
 
@@ -72,12 +74,13 @@ def main() -> int:
         return 1
 
     os.makedirs(OUT_DIR, exist_ok=True)
-    slug = re.sub(r"[^a-z0-9]+", "_", names[0].lower()).strip("_")[:30]
-    out = os.path.join(OUT_DIR, f"streets_{slug}.gpx")
+    out = artifact_path(OUT_DIR, "streets")
     miles = result.distance_m / METERS_PER_MILE
-    write_track(result.points, " -> ".join(names)[:80],
-                f"{miles:.1f} mi along {len(names)} named streets", out)
-    build_preview([out], os.path.join(OUT_DIR, "preview.html"))
+    with transaction(OUT_DIR):
+        write_track(result.points, " -> ".join(names)[:80],
+                    f"{miles:.1f} mi along {len(names)} named streets", out)
+        build_preview([out], os.path.splitext(out)[0] + ".html")
+        publish(out, OUT_DIR)
     print(f"{'Done' if result.ok else 'Done, with problems above'}: "
           f"{miles:.1f} mi -> {out}")
     return 0 if result.ok else 2

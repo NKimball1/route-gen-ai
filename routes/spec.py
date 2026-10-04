@@ -1,10 +1,10 @@
 """Route request spec and candidate result types.
 
-The spec is what the LLM will eventually produce from a natural-language
-request ("give me a ~30 mile loop with less than 1000 ft of climbing").
-For the prototype it is built directly from CLI flags.
+The application builds specs from validated natural-language requests or
+direct CLI arguments. Providers produce candidates; scoring verifies them.
 """
 from dataclasses import dataclass, field
+import math
 from typing import Literal, NotRequired, Protocol, Sequence, TypedDict
 
 # ---- shared geometry types: signatures read as cycling, not tuple soup ----
@@ -82,6 +82,19 @@ class RouteSpec:
     avoid: list[NoGo] = field(default_factory=list)   # no-go circles
     via: list[LatLon] = field(default_factory=list)   # places to pass through
     via_names: list[str] = field(default_factory=list)
+    use_strava: bool = False  # explicit personal CLI opt-in; never enabled by web
+
+    def __post_init__(self) -> None:
+        if not math.isfinite(self.distance_m) or self.distance_m <= 0:
+            raise ValueError("Route distance must be finite and positive.")
+        if not math.isfinite(self.distance_tolerance) or not 0 < self.distance_tolerance < 1:
+            raise ValueError("Distance tolerance must be between zero and one.")
+        if self.max_ascent_m is not None and (not math.isfinite(self.max_ascent_m) or self.max_ascent_m < 0):
+            raise ValueError("Climb limit must be finite and nonnegative.")
+        if self.maximize_ascent and self.minimize_ascent:
+            raise ValueError("Choose either maximum or minimum climbing.")
+        if self.shape not in {"loop", "outback", "both"}:
+            raise ValueError("Unsupported route shape.")
 
     @classmethod
     def from_imperial(cls, address: str, miles: float,
@@ -117,6 +130,8 @@ class RouteCandidate:
     natural: bool = False      # passes through vias organically, not anchored
     major_m: float = 0.0       # distance on motorway/trunk/primary roads
     points: Track = field(repr=False, default_factory=list)
+    gpx_path: str | None = None
+    warnings: list[str] = field(default_factory=list)
 
     @property
     def distance_mi(self) -> float:

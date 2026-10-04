@@ -1,378 +1,311 @@
-"""Web frontend for Route Gen AI.
+"""Single-process web API. Session state and route history live in storage.
 
-  .venv\\Scripts\\python.exe -m uvicorn api:app --port 8903
-
-One text box in, routes on a map out. Requests run as background jobs with
-live log streaming; the same brain as ask.py (routes/service.py).
+Run with one Uvicorn worker; the in-memory job registry deliberately does not
+pretend to coordinate multiple processes. CLI and web use the same service.
 """
 import os
 import re
-import shutil
 import sys
 import threading
 import time
 import uuid
+from contextlib import contextmanager, ExitStack
+from dataclasses import dataclass
 from io import StringIO
-from typing import Any, TypedDict
-
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-os.chdir(os.path.dirname(os.path.abspath(__file__)))
+from typing import Any, Iterator, Literal, TypedDict
 
 from dotenv import load_dotenv
-
 load_dotenv()
 
-from fastapi import FastAPI, File, Header, Request, UploadFile
+from fastapi import Depends, FastAPI, File, Header, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
+from starlette.concurrency import run_in_threadpool
 
-from routes import limits
-from routes.service import ServiceResult
+from routes import limits, storage
+from routes.execution import Cancellation, JobCancelled
+from routes.service import ServiceResult, _downsample, undo_request
 from routes.spec import METERS_PER_FOOT, METERS_PER_MILE
 
+ROOT = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, ROOT)
+os.chdir(ROOT)
 app = FastAPI(title="Route Gen AI")
 app.mount("/assets", StaticFiles(directory="static"), name="assets")
-
-# Optional shared invite code: set ROUTEGEN_INVITE_CODE to gate the
-# expensive endpoint; unset = open (local/dev).
 INVITE_CODE: str | None = os.environ.get("ROUTEGEN_INVITE_CODE")
+JOBS: dict[str, "Job"] = {}
+RUNNING: dict[str, str] = {}
+LOCK = threading.RLock()
+JOB_TTL_S = limits.HOUR_S
+SESSIONS_ROOT = os.path.join("output", "sessions")
+SID_RE = re.compile(r"^[A-Za-z0-9-]{8,64}$")
+UPLOAD_MAX_MB = 8
+UPLOAD_MAX_BYTES = UPLOAD_MAX_MB * 1024 * 1024
 
 
 def client_ip(request: Request) -> str:
-    fwd = request.headers.get("x-forwarded-for")
-    if fwd:  # trust only behind your own reverse proxy
-        return fwd.split(",")[0].strip()
+    # Uvicorn may resolve trusted proxy headers when explicitly configured.
+    # Never trust an arbitrary forwarding header supplied by a client.
     return request.client.host if request.client else "unknown"
-
-JOBS: dict[str, "Job"] = {}     # job id -> job
-RUNNING: dict[str, str] = {}    # session id -> job id currently running
-LOCK = threading.Lock()
-JOB_TTL_S: int = limits.HOUR_S     # finished jobs older than this are evicted
-
-SESSIONS_ROOT: str = os.path.join("output", "sessions")
-SID_RE: re.Pattern[str] = re.compile(r"^[A-Za-z0-9-]{8,64}$")
-SESSION_MAX_AGE_S: int = 7 * limits.DAY_S
-
-UPLOAD_MAX_MB: int = 8
-UPLOAD_MAX_BYTES: int = UPLOAD_MAX_MB * 1024 * 1024
 
 
 def session_dir(sid: str | None) -> str | None:
-    """Per-session workspace: each browser session's GPX files and
-    current-route pointer live here so concurrent users never collide."""
-    if not sid or not SID_RE.match(sid):
+    if not sid or not SID_RE.fullmatch(sid):
         return None
-    d = os.path.join(SESSIONS_ROOT, sid)
-    os.makedirs(d, exist_ok=True)
-    return d
+    return os.path.join(SESSIONS_ROOT, sid)
 
 
-def _sweep_stale_sessions() -> None:
-    if not os.path.isdir(SESSIONS_ROOT):
-        return
-    cutoff = time.time() - SESSION_MAX_AGE_S
-    for name in os.listdir(SESSIONS_ROOT):
-        d = os.path.join(SESSIONS_ROOT, name)
-        try:
-            if os.path.isdir(d) and os.path.getmtime(d) < cutoff:
-                shutil.rmtree(d, ignore_errors=True)
-        except OSError:
-            pass
+@dataclass(frozen=True)
+class Session:
+    sid: str
+    workdir: str
 
 
-_sweep_stale_sessions()
+def authorized_session(x_session_id: str | None = Header(default=None),
+                       x_invite_code: str | None = Header(default=None)) -> Session:
+    workdir = session_dir(x_session_id)
+    if workdir is None or x_session_id is None:
+        raise HTTPException(400, "missing or invalid session id")
+    if INVITE_CODE and x_invite_code != INVITE_CODE:
+        raise HTTPException(401, "invite code required")
+    return Session(x_session_id, workdir)
 
 
-class JobCancelled(BaseException):
-    """Raised INSIDE the job thread at its next progress print once the
-    user cancels. BaseException on purpose: the pipeline's "never fatal"
-    except-Exception guards must not swallow it."""
+@contextmanager
+def session_mutation(session: Session) -> Iterator[None]:
+    with ExitStack() as stack:
+        with LOCK:
+            if session.sid in RUNNING:
+                raise HTTPException(409, "A request is running. Wait for cancellation or completion first.")
+            try:
+                stack.enter_context(storage.transaction(session.workdir, blocking=False))
+            except storage.SessionBusy as error:
+                raise HTTPException(409, str(error)) from error
+        yield
 
 
 class JobLog(StringIO):
-    """A job's live log buffer, doubling as its cancellation point. Every
-    stage prints progress, so raising from write() unwinds the pipeline
-    within one step — no cooperative checks sprinkled through routing
-    code, and an in-flight BRouter call just finishes first."""
-    cancelled: bool = False
+    def __init__(self) -> None:
+        super().__init__()
+        self.cancellation = Cancellation()
+
+    @property
+    def cancelled(self) -> bool:
+        return self.cancellation.cancelled
+
+    @cancelled.setter
+    def cancelled(self, value: bool) -> None:
+        if value:
+            self.cancellation.cancel()
 
     def write(self, s: str) -> int:
-        if self.cancelled:
-            raise JobCancelled()
+        self.cancellation.check()
         return super().write(s)
 
 
 class Job(TypedDict):
-    status: str                     # running | done | error | cancelled
-    buf: JobLog                     # live progress log (and cancel point)
-    result: ServiceResult | None    # set when status == "done"
-    sid: str                        # owning session
-    ts: float                       # start time, for eviction
+    status: str
+    buf: JobLog
+    result: ServiceResult | None
+    sid: str
+    ts: float
 
 
 class Ask(BaseModel):
-    # caps: a request is a sentence, not a document (cost + abuse bound)
-    text: str = Field(max_length=600)
+    text: str = Field(min_length=1, max_length=600)
     start: str | None = Field(default=None, max_length=200)
+    intent: Literal["auto", "route", "edit_route", "interval_spot"] = "auto"
 
 
-def _run(job_id: str, text: str, start: str | None, workdir: str) -> None:
+def _run(job_id: str, text: str, start: str | None, workdir: str,
+         intent: str = "auto") -> None:
     from routes.service import handle_request
     job = JOBS[job_id]
     t0 = time.time()
     try:
-        result = handle_request(text, log_sink=job["buf"],
-                                default_address=start, workdir=workdir)
-        job["result"] = result
-        job["status"] = "done"
-        limits.log_event("ask_done", sid=job["sid"], kind=result.get("kind"),
-                         candidates=len(result.get("candidates", [])),
-                         seconds=round(time.time() - t0, 1))
+        path = storage.current_route(workdir)
+        seen: set[str] = set()
+        while path and path not in seen:
+            if not storage.owned_path(path, workdir):
+                raise ValueError("This legacy route references files outside the session. Upload the route to continue.")
+            seen.add(path)
+            path = storage.predecessor(path)
+        result = handle_request(text, log_sink=job["buf"], default_address=start,
+                                workdir=workdir, cancellation=job["buf"].cancellation,
+                                intent=intent)
+        job["buf"].cancellation.check()
+        with LOCK:
+            job["result"], job["status"] = result, "done"
     except JobCancelled:
         job["status"] = "cancelled"
-        limits.log_event("ask_cancelled", sid=job["sid"],
-                         seconds=round(time.time() - t0, 1))
-    except Exception as e:  # surfaced to the UI, not swallowed
-        job["buf"].write(f"\nERROR: {type(e).__name__}: {e}\n")
-        job["status"] = "error"
-        limits.log_event("ask_error", sid=job["sid"],
-                         error=f"{type(e).__name__}: {e}",
-                         seconds=round(time.time() - t0, 1))
+    except Exception as error:
+        # Error reporting must never raise another cancellation and strand a
+        # job in 'running'. Unexpected failures are recorded, not committed.
+        StringIO.write(job["buf"], f"\nERROR: {type(error).__name__}: {error}\n")
+        job["status"] = "cancelled" if job["buf"].cancelled else "error"
     finally:
         with LOCK:
             if RUNNING.get(job["sid"]) == job_id:
                 del RUNNING[job["sid"]]
+        limits.log_event("ask_" + job["status"], sid=job["sid"],
+                         seconds=round(time.time() - t0, 1))
 
 
-# response_model=None throughout: FastAPI reads a return annotation as a
-# response model, and a union containing a Response class is not one.
 @app.post("/api/ask", response_model=None)
-def ask(body: Ask, request: Request,
-        x_session_id: str | None = Header(default=None),
-        x_invite_code: str | None = Header(default=None)
-        ) -> dict[str, str] | JSONResponse:
-    workdir = session_dir(x_session_id)
-    if workdir is None or x_session_id is None:
-        return JSONResponse({"error": "missing or invalid session id"},
-                            status_code=400)
-    if INVITE_CODE and x_invite_code != INVITE_CODE:
-        return JSONResponse({"error": "invite code required"}, status_code=401)
-    ip = client_ip(request)
-    refusal = limits.check_ask(x_session_id, ip)
-    if refusal:
-        limits.log_event("ask_limited", sid=x_session_id, ip=ip, why=refusal)
-        return JSONResponse({"error": refusal}, status_code=429)
-    job_id = uuid.uuid4().hex[:12]
+def ask(body: Ask, request: Request, session: Session = Depends(authorized_session)) -> dict[str, str] | JSONResponse:
+    job_id = uuid.uuid4().hex
     with LOCK:
-        # evict finished jobs — JOBS grew forever without this
         cutoff = time.time() - JOB_TTL_S
-        for jid in [j for j, v in JOBS.items()
-                    if v["status"] != "running" and v["ts"] < cutoff]:
-            del JOBS[jid]
-        running = RUNNING.get(x_session_id)
-        active = JOBS.get(running) if running else None
-        if active is not None and active["status"] == "running":
-            return JSONResponse(
-                {"error": "a request is already running for this session — "
-                          "wait for it to finish"},
-                status_code=429)
-        busy = sum(1 for j in JOBS.values() if j["status"] == "running")
-        if busy >= limits.Limits.JOBS_CONCURRENT:
-            return JSONResponse(
-                {"error": "the server is busy — try again in a minute"},
-                status_code=429)
-        RUNNING[x_session_id] = job_id
-        JOBS[job_id] = {"status": "running", "buf": JobLog(),
-                        "result": None, "sid": x_session_id,
-                        "ts": time.time()}
-    limits.log_event("ask", sid=x_session_id, ip=ip, text=body.text,
-                     start=body.start)
-    threading.Thread(target=_run,
-                     args=(job_id, body.text, body.start, workdir),
+        for key in [key for key, value in JOBS.items()
+                    if value["status"] != "running" and value["ts"] < cutoff]:
+            del JOBS[key]
+        if session.sid in RUNNING:
+            return JSONResponse({"error": "A request is already running for this session."}, status_code=429)
+        if sum(j["status"] == "running" for j in JOBS.values()) >= limits.Limits.JOBS_CONCURRENT:
+            return JSONResponse({"error": "The server is busy - try again shortly."}, status_code=429)
+        refusal = limits.check_ask(session.sid, client_ip(request))
+        if refusal:
+            return JSONResponse({"error": refusal}, status_code=429)
+        RUNNING[session.sid] = job_id
+        JOBS[job_id] = {"status": "running", "buf": JobLog(), "result": None,
+                        "sid": session.sid, "ts": time.time()}
+    limits.log_event("ask", sid=session.sid, ip=client_ip(request), text=body.text, start=body.start)
+    threading.Thread(target=_run, args=(job_id, body.text, body.start, session.workdir, body.intent),
                      daemon=True).start()
     return {"job": job_id}
 
 
 @app.post("/api/cancel", response_model=None)
-def cancel(x_session_id: str | None = Header(default=None)
-           ) -> dict[str, str] | JSONResponse:
-    """Abandon the session's running job. The session is freed at once
-    (a new request may start); the old thread unwinds at its next
-    progress print and its result is discarded."""
+def cancel(session: Session = Depends(authorized_session)) -> dict[str, str] | JSONResponse:
     with LOCK:
-        job_id = RUNNING.pop(x_session_id or "", None)
+        job_id = RUNNING.get(session.sid)
         job = JOBS.get(job_id) if job_id else None
-    if not job_id or not job or job["status"] != "running":
-        return JSONResponse({"error": "nothing is running for this session"},
-                            status_code=404)
-    job["buf"].cancelled = True
+        if not job_id or not job or job["status"] != "running":
+            return JSONResponse({"error": "nothing is running for this session"}, status_code=404)
+        if not job["buf"].cancellation.cancel():
+            return JSONResponse({"error": "The request has already committed its result."}, status_code=409)
+    # The session remains reserved until the worker actually exits.
     return {"cancelled": job_id}
 
 
-@app.post("/api/upload", response_model=None)
-async def upload(request: Request, file: UploadFile = File(...),
-                 x_session_id: str | None = Header(default=None),
-                 x_invite_code: str | None = Header(default=None)
-                 ) -> dict[str, Any] | JSONResponse:
-    """Upload an existing GPX; it becomes the session's current route, so
-    every edit ('avoid that road', 'make it longer', ...) works on it."""
-    workdir = session_dir(x_session_id)
-    if workdir is None:
-        return JSONResponse({"error": "missing or invalid session id"},
-                            status_code=400)
-    if INVITE_CODE and x_invite_code != INVITE_CODE:
-        return JSONResponse({"error": "invite code required"}, status_code=401)
-    if not limits.allow(("upload", client_ip(request)),
-                        limits.Limits.UPLOAD_PER_IP_HOUR, limits.HOUR_S):
-        return JSONResponse({"error": "too many uploads — slow down"},
-                            status_code=429)
-    data = await file.read()
-    if len(data) > UPLOAD_MAX_BYTES:
-        return JSONResponse(
-            {"error": f"file too large ({UPLOAD_MAX_MB} MB max)"},
-            status_code=413)
+def _save_upload(data: bytes, filename: str, session: Session) -> dict[str, Any]:
     from routes.elevation import track_ascent
     from routes.preview import parse_gpx_text
     from routes.editing import _cum
     from routes.gpx_out import write_track
-    from routes.service import _downsample
-    points = parse_gpx_text(data.decode("utf-8", errors="ignore"))
-    if len(points) < 2:
-        return JSONResponse(
-            {"error": "no track/route points found in that file"},
-            status_code=400)
-    safe = re.sub(r"[^A-Za-z0-9_-]+", "_",
-                  os.path.splitext(file.filename or "route")[0])[:40] or "route"
-    out = os.path.join(workdir, f"upload_{safe}.gpx")
-    dist_mi = _cum(points)[-1] / METERS_PER_MILE
-    ascent_ft = track_ascent(points) / METERS_PER_FOOT
-    ele_note = "" if any(p[2] is not None for p in points) else \
-        " — no elevation data in this file; climbing will read low until an edit adds routed legs"
-    # rewriting through write_track normalizes the format and drops
-    # timestamps/HR/extensions the original may carry (privacy win)
-    write_track(points, safe, f"{dist_mi:.1f} mi, {ascent_ft:.0f} ft (uploaded)",
-                out)
-    with open(os.path.join(workdir, "latest.txt"), "w") as f:
-        f.write(out)
-    limits.log_event("upload", sid=x_session_id, ip=client_ip(request),
-                     name=safe, points=len(points), miles=round(dist_mi, 1))
-    return {"kind": "upload", "candidates": [{
-        "label": f"uploaded: {safe} — {dist_mi:.1f} mi, {ascent_ft:.0f} ft"
-                 + ele_note,
-        "gpx": out, "latlngs": _downsample(points),
-    }]}
+    with session_mutation(session):
+        try:
+            points = parse_gpx_text(data.decode("utf-8-sig"))
+        except (ValueError, UnicodeError) as error:
+            raise HTTPException(400, str(error)) from error
+        if len(points) < 2:
+            raise HTTPException(400, "No usable track/route points found in that file.")
+        safe = re.sub(r"[^A-Za-z0-9_-]+", "_", os.path.splitext(filename)[0])[:40] or "route"
+        out = storage.artifact_path(session.workdir, f"upload_{safe}")
+        miles = _cum(points)[-1] / METERS_PER_MILE
+        ascent = track_ascent(points) / METERS_PER_FOOT
+        missing_elevation = any(p[2] is None for p in points)
+        warning = "Elevation is incomplete; climbing cannot be verified." if missing_elevation else ""
+        write_track(points, safe, f"{miles:.1f} mi, {ascent:.0f} ft (uploaded)", out)
+        storage.publish(out, session.workdir)
+        return {"kind": "upload", "ok": "partial" if warning else True,
+                "summary": "Uploaded - selected for editing." + (" " + warning if warning else ""),
+                "candidates": [{"label": f"uploaded: {safe} - {miles:.1f} mi, {ascent:.0f} ft. {warning}",
+                                "gpx": out, "latlngs": _downsample(points)}]}
+
+
+@app.post("/api/upload", response_model=None)
+async def upload(request: Request, file: UploadFile = File(...),
+                 session: Session = Depends(authorized_session)) -> dict[str, Any] | JSONResponse:
+    if not limits.allow(("upload", client_ip(request)), limits.Limits.UPLOAD_PER_IP_HOUR, limits.HOUR_S):
+        return JSONResponse({"error": "too many uploads - slow down"}, status_code=429)
+    try:
+        data = await file.read(UPLOAD_MAX_BYTES + 1)
+        if len(data) > UPLOAD_MAX_BYTES:
+            return JSONResponse({"error": f"File too large ({UPLOAD_MAX_MB} MB max)."}, status_code=413)
+        return await run_in_threadpool(_save_upload, data, file.filename or "route", session)
+    finally:
+        await file.close()
+
+
+@app.get("/api/job/{job_id}", response_model=None)
+def job(job_id: str, session: Session = Depends(authorized_session)) -> dict[str, Any] | JSONResponse:
+    with LOCK:
+        record = JOBS.get(job_id)
+        if record is None or record["sid"] != session.sid:
+            return JSONResponse({"error": "no such job"}, status_code=404)
+        result: dict[str, Any] = {"status": record["status"], "log": record["buf"].getvalue()}
+        if record["status"] == "done":
+            result["result"] = dict(record["result"] or {})
+            result["result"].pop("log", None)
+        return result
+
+
+@app.get("/api/gpx", response_model=None)
+def gpx(path: str, session: Session = Depends(authorized_session)) -> FileResponse | JSONResponse:
+    if not storage.owned_path(path, session.workdir):
+        return JSONResponse({"error": "bad path"}, status_code=400)
+    if not os.path.isfile(path):
+        return JSONResponse({"error": "not found"}, status_code=404)
+    return FileResponse(path, media_type="application/gpx+xml", filename=os.path.basename(path))
+
+
+@app.post("/api/current", response_model=None)
+def set_current(body: Ask, session: Session = Depends(authorized_session)) -> dict[str, str]:
+    if not storage.owned_path(body.text, session.workdir) or not os.path.isfile(body.text):
+        raise HTTPException(400, "bad path")
+    with session_mutation(session):
+        storage.select_route(body.text, session.workdir)
+        storage.note_outcome(session.workdir, False)
+    return {"current": body.text}
+
+
+@app.get("/api/current", response_model=None)
+def get_current(session: Session = Depends(authorized_session)) -> dict[str, Any]:
+    current = storage.current_route(session.workdir)
+    candidates = []
+    if current and storage.owned_path(current, session.workdir):
+        from routes.service import _route_row
+        candidates = [_route_row(current)]
+    return {"current": current if candidates else None, "candidates": candidates}
+
+
+@app.post("/api/undo", response_model=None)
+def undo(session: Session = Depends(authorized_session)) -> ServiceResult:
+    with session_mutation(session):
+        result = undo_request(session.workdir)
+        # Old sessions could select files from the shared CLI directory.
+        # Do not expose those files through a web session after migration.
+        if any(not storage.owned_path(c["gpx"], session.workdir) for c in result.get("candidates", [])):
+            raise HTTPException(400, "The legacy parent belongs outside this session. Upload it to use it here.")
+        return result
 
 
 @app.get("/api/health")
 def health() -> JSONResponse:
-    """Liveness for load balancers + a one-line answer to "is the router
-    up?" — the most common reason a request fails outright."""
     from routes.providers import BRouterProvider, brouter_reachable
-    url = BRouterProvider().base_url
-    up = brouter_reachable(url)
-    body = {"ok": up, "brouter": "up" if up else "down", "brouter_url": url,
-            "jobs_running": sum(1 for j in JOBS.values()
-                                if j["status"] == "running")}
-    return JSONResponse(body, status_code=200 if up else 503)
+    up = brouter_reachable(BRouterProvider().base_url)
+    with LOCK:
+        running = sum(j["status"] == "running" for j in JOBS.values())
+    return JSONResponse({"ok": up, "brouter": "up" if up else "down", "jobs_running": running},
+                        status_code=200 if up else 503)
 
 
 @app.get("/api/geocode", response_model=None)
-def api_geocode(q: str, request: Request) -> dict[str, Any] | JSONResponse:
+def api_geocode(q: str, request: Request,
+                session: Session = Depends(authorized_session)) -> dict[str, Any] | JSONResponse:
     refusal = limits.check_geocode(client_ip(request))
     if refusal:
         return JSONResponse({"error": refusal}, status_code=429)
-    from routes.geocode import geocode_flexible
+    from routes.geocode import geocode_flexible, GeocodeNotFound, GeocodeUnavailable
     try:
         lat, lon, name = geocode_flexible(q)
         return {"lat": lat, "lon": lon, "name": name}
-    except ValueError:
-        return JSONResponse({"error": f"could not find {q!r}"}, status_code=404)
-
-
-@app.get("/api/job/{job_id}", response_model=None)
-def job(job_id: str) -> dict[str, Any] | JSONResponse:
-    j = JOBS.get(job_id)
-    if j is None:
-        return JSONResponse({"error": "no such job"}, status_code=404)
-    out: dict[str, Any] = {"status": j["status"],
-                           "log": j["buf"].getvalue()}
-    if j["status"] == "done":
-        result: dict[str, Any] = dict(j["result"] or {})
-        result.pop("log", None)
-        out["result"] = result
-    return out
-
-
-@app.get("/api/gpx", response_model=None)
-def gpx(path: str) -> FileResponse | JSONResponse:
-    # only serve GPX files from our own output tree
-    norm = os.path.normpath(path)
-    if (norm.startswith("..") or os.path.isabs(norm)
-            or not norm.startswith("output" + os.sep)
-            or not norm.endswith(".gpx")):
-        return JSONResponse({"error": "bad path"}, status_code=400)
-    if not os.path.exists(norm):
-        return JSONResponse({"error": "not found"}, status_code=404)
-    return FileResponse(norm, media_type="application/gpx+xml",
-                        filename=os.path.basename(norm))
-
-
-@app.post("/api/current", response_model=None)
-def set_current(body: Ask, x_session_id: str | None = Header(default=None)
-                ) -> dict[str, str] | JSONResponse:
-    workdir = session_dir(x_session_id)
-    if workdir is None:
-        return JSONResponse({"error": "missing or invalid session id"},
-                            status_code=400)
-    norm = os.path.normpath(body.text)
-    # a session may only select its own files (or the shared CLI dir)
-    allowed = (norm.startswith(os.path.normpath(workdir) + os.sep)
-               or norm.startswith(os.path.join("output", "routes")))
-    if norm.startswith("..") or os.path.isabs(norm) or not allowed \
-            or not norm.endswith(".gpx") or not os.path.exists(norm):
-        return JSONResponse({"error": "bad path"}, status_code=400)
-    with open(os.path.join(workdir, "latest.txt"), "w") as f:
-        f.write(norm)
-    return {"current": norm}
-
-
-@app.post("/api/undo", response_model=None)
-def undo(x_session_id: str | None = Header(default=None)
-         ) -> dict[str, Any] | JSONResponse:
-    """Step the session's current route back one version (no LLM call)."""
-    workdir = session_dir(x_session_id)
-    if workdir is None:
-        return JSONResponse({"error": "missing or invalid session id"},
-                            status_code=400)
-    from edit_route import current_route, note_outcome, predecessor
-    from routes.preview import _parse_desc, _parse_gpx
-    from routes.service import _downsample
-    cur = current_route(workdir)
-    prev = cur and predecessor(cur)
-    if not prev:
-        return JSONResponse(
-            {"ok": False, "summary": "Nothing to undo — this is the "
-                                     "earliest version.", "candidates": []})
-    with open(os.path.join(workdir, "latest.txt"), "w") as f:
-        f.write(prev)
-    note_outcome(workdir, False)  # already stepped back once
-    limits.log_event("undo", sid=x_session_id, to=os.path.basename(prev))
-    return {"ok": True, "summary": f"Undone — back to {os.path.basename(prev)}.",
-            "candidates": [{
-                "label": f"{os.path.basename(prev)} — {_parse_desc(prev)}",
-                "gpx": prev, "latlngs": _downsample(_parse_gpx(prev)),
-            }]}
-
-
-@app.get("/api/current", response_model=None)
-def get_current(x_session_id: str | None = Header(default=None)
-                ) -> dict[str, str | None]:
-    workdir = session_dir(x_session_id)
-    if workdir is None:
-        return {"current": None}
-    from edit_route import current_route
-    return {"current": current_route(workdir)}
+    except GeocodeNotFound:
+        return JSONResponse({"error": "Could not find that place."}, status_code=404)
+    except GeocodeUnavailable:
+        return JSONResponse({"error": "Address lookup is temporarily unavailable."}, status_code=503)
 
 
 @app.get("/")
