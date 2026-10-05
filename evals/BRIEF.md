@@ -1,5 +1,9 @@
 # Morning brief — Route Gen AI evaluation campaign
 
+> Historical snapshot from 2026-09-20, kept as written. Since then the
+> per-run `work/` folders and `*.log` files stay local rather than in the
+> repository, and the offline suite has grown (DEVLOG phases 37–38).
+
 **Ran:** 2026-09-19 → 09-20. **Model spend:** $0.44 total, every run
 included (budget was $2). **Request set:** `routegen-eval-v1`, 62 requests,
 expectations frozen 2026-09-19 before any fix; 25 held out.
@@ -33,10 +37,10 @@ ones, up to ~175 s, because they wait on Overpass).
 | Methodology | `evals/README.md` |
 | Request set + frozen expectations | `evals/cases_v1.json` |
 | Harness | `evals/runner.py`, `scorers.py`, `geo.py`, `roadcheck.py`, `rescore.py`, `report.py` |
-| Baseline results | `evals/results/baseline/` (per-case JSON, `summary.json`, GPX under `work/`) |
+| Baseline results | `evals/results/baseline/` (per-case JSON, `summary.json`; GPX under `work/`, local only) |
 | Post-fix results | `evals/results/postfix/` |
 | Variability run | `evals/results/postfix/parse_variance.json` |
-| HTTP end-to-end log | `evals/results/e2e_simulate.log` (50 checks, 0 issues) |
+| HTTP end-to-end log | `evals/results/e2e_simulate.log` (50 checks, 0 issues; local only) |
 | Featured route GPX | `evals/site/routegen/gpx/*.gpx` |
 | Sanitized full results | `evals/site/routegen/results.json` |
 | Write-up in the project log | `docs/DEVLOG.md` phase 36 |

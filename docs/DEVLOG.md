@@ -970,15 +970,125 @@ The whole thing is written up as a case study at
 built from `summary.json` so no number on the page is maintained by
 hand.
 
+## Phase 37 — The interval finder grows up, and routing by street name (2026-09-21 → 10-03)
+
+Two weeks of real interval searches, each one ending with a complaint
+that became a test. In order:
+
+- **Hygiene first.** pyflakes now fails CI on *any* warning in app code
+  (leftover debris is how the dead interval feature started in phase 34),
+  and Dependabot plus a `pip-audit` job keep the dependencies honest.
+- **Reps sized from watts** (`routes/power.py`). A steady-state physics
+  model (rolling, gravity, aero) turns "4 min at 285 W" into road length
+  at the stretch's own grade, closing the phase 3 complaint: the fixed
+  11 mph guess sized 0.73 mi where the 2.5% road needed 1.1 mi. Kind
+  `any` scores out-and-back symmetry (a 2.5% road is 3:56 up and 2:12
+  down) and reports both directions and the laps each needs.
+- **"Within 30 minutes" means riding distance,** not crow-flies: a
+  winding spoke had returned a stretch 12.5 mi out on a 10 mi budget.
+- **Rolling is not flat.** Flatness was average grade, so a road that
+  climbs and descends 30 m scored as flat. Climbing per km now counts
+  (full credit at 0, none at 15 m/km).
+- **One road, one result.** Adjacent spokes share their first miles, so
+  the Badger State Trail came back as #1, #2 and #3. Two stretches are
+  now the same spot when half the shorter lies within 40 m of the
+  other's road (midpoint distance was wrong both ways).
+- **Unknown is not zero.** When Overpass is down the table printed
+  "0 stops", which reads as verified-clear. Unknown counts now print as
+  "?", and `--max-stops N` (a hard cap) refuses to run on unknown data.
+- **Overpass answers are cached on disk** for 7 days, with the last good
+  copy used when every mirror is down (four searches in one week had
+  lost their stop counts to timeouts).
+- **Surface and road class.** BRouter's per-segment way tags (each row
+  covers the stretch *ending* at its coordinate, checked on a real
+  mixed-surface trail) now mark unpaved and busy stretches. Windows over
+  10% unpaved are dropped; each share on a secondary-or-bigger road costs
+  that share of the score; and every window is also tried cut off just
+  before its first bad point, because a full-length-only search could
+  never prefer "stop before South Fish Hatchery Road".
+- **Results name their roads** ("County Highway B, Fitchburg (Maple Ave
+  -> Mahoney Rd)") via reverse geocoding, with ft/mi, unpaved and busy
+  columns. Every search that week had ended with a script asking "which
+  road is this?".
+- **Preview maps** switched to CyclOSM tiles: file:// pages send no
+  Referer, so OSM's tile policy served "Access blocked" on every map.
+
+**Routing by street name** (`street_route.py`). An official lake loop
+took six map-based passes; one list of street names got it right.
+Each street's real OSM geometry is fetched near the ride, waypoints go
+*on* the street, and afterward the route is measured against every
+street so a street it didn't really ride is reported, not hidden.
+
+## Phase 38 — A code review, a refactor, and a review of the refactor (2026-10-03 → 10-04)
+
+An outside code-review agent audited the whole project against a list
+of findings and rebuilt the parts underneath them. The prompt-to-GPX
+design is unchanged (no agent framework, database or UI framework was
+added); what moved is *where things live*:
+
+- `routes/storage.py` — every GPX gets a unique name, so nothing is ever
+  overwritten. The current selection and the parent history commit
+  together, atomically, to one `state.json` per session (the old
+  `latest.txt` stays as a mirror). Undo follows recorded parents.
+- `routes/execution.py` — cancellation and commit share one boundary:
+  a cancelled request can finish computing but can never select its
+  result late.
+- `routes/service.py` with `edit_service.py` and `spot_service.py` — the
+  CLIs became thin adapters over the same workflows the web app runs, so
+  power, mass, stop caps and road names behave the same everywhere.
+- `routes/policy.py` names every product tolerance; `geometry.py`
+  measures against segments, not vertices; `constraints.py` resolves
+  "avoid X" into real road geometry or an area; `gpx_in.py` is the one
+  GPX reader.
+- `api.py` — invite code and session ownership on every read and write,
+  quotas checked before any is spent, the forwarded-IP header no longer
+  trusted, the frontend logic moved to `static/app.js` with Node tests.
+- The parser sees the current route's length, the home address and an
+  explicit operation selector, and may answer "clarify" instead of
+  inventing a ride. Vias keep the order the rider gave; shape is a hard
+  filter; partial results say what they missed.
+
+**The review of the review.** Before committing, a second pass measured
+the refactor against field cases instead of reading it, and found five
+regressions, each now pinned by a test that fails on the first version:
+
+- "A loop through Fitchburg and Verona" lost its natural sweep. The new
+  150 m via check treated a town like a cafe. Tolerance now comes from
+  each place's own Nominatim bounding box: half its narrowest width, from
+  150 m (a cafe) up to 3 km (a town).
+- Device recordings split at auto-pauses were refused as "disconnected".
+  Gaps up to 2 km now join; separate rides in one file are still refused.
+- The CLIs loaded `.env` *after* importing modules that read settings at
+  import time (rider mass, the Overpass cache directory).
+- "Avoid X" on a road the ride only crosses reported a failed detour. A
+  crossing can measure ~50 m "on" a road; the threshold for "riding it"
+  had been lowered from 60 m to 30 m.
+- One damaged `state.json` locked the whole session. It is now set aside
+  as `state.json.damaged-*` and the session keeps going.
+
+Lesson: a tighter tolerance reads as stricter-therefore-safer in review,
+but "through Verona" is an area, not a point. Tolerances need a field
+case on each side before they change.
+
+It landed as four commits, each tested alone (offline suite, mypy,
+frontend tests, and `scripts/simulate.py` against the middle one):
+interval fixes; storage/API/services; routing rules; and the phase 36
+evals, which had been sitting uncommitted since September.
+[REVIEW_FIXES.md](REVIEW_FIXES.md) has the finding-by-finding test map.
+
 ## Testing & verification practices that emerged
 
-- 152 offline tests (no API keys, mocked HTTP): despurring, interval
+- 267 offline tests (no API keys, mocked HTTP): despurring, interval
   scoring (including the exact field-complaint cases), overlap
   detection, ranking, control mapping, every edit operation, road-line
-  avoidance, geocode fallbacks and retries, rate limits, LLM-output
-  clamps, undo lineage, cancellation — plus a 20-phrase live NL
-  parse-regression corpus (opt-in, ~5 cents a run) rerun after any
-  prompt or schema change.
+  avoidance, GPX reading, geocode fallbacks and retries, rate limits,
+  LLM-output clamps, session history, cancellation, API ownership — plus
+  a live NL parse-regression corpus (opt-in, a few cents a run) rerun
+  after any prompt or schema change, and Node tests for the frontend.
+- Static gates in CI: strict mypy (an unannotated function is an error),
+  zero pyflakes warnings, `pip-audit` on the declared dependencies.
+- `scripts/simulate.py` drives the running app over HTTP like a user;
+  the phase 36 eval campaign scores 62 requests from their GPX files.
 - Every field complaint became a regression test before the fix shipped.
 - Independent re-verification of winners (e.g., re-fetching traffic
   controls around a winning stretch's midpoint) caught a counting bug the
@@ -987,39 +1097,21 @@ hand.
   computable: distance tolerance, climb caps, repeat %, major-road meters,
   interruptions per rep.
 
-## Open items (as of phase 32)
+## Open items (as of phase 38)
 
 - **Deployment** — the only thing between the current code and a public
   URL: a Lightsail box with BRouter tiles, HTTPS, and the invite code.
+  Run one API worker; jobs and rate limits are process-local.
+- **Live road avoidance** was verified only offline during the phase 38
+  review (Overpass was down); recheck it against a live map.
 - Strava segment *explore* (popularity scoring) is gated behind Strava's
-  Extended Access tier; starred segments work today. Per-user
+  Extended Access tier; starred segments work today, CLI-only. Per-user
   "Sign in with Strava" OAuth is the planned identity model.
-- Power-based interval rep sizing (rider watts + weight → stretch
-  length) instead of fixed speed assumptions.
 - "Both passes" corridor edits: an out-and-back edit changes one pass
   of a corridor at a time.
 - Uncontrolled-crossroads detection (road-crossing counting via
   Overpass) for interval spots.
+- Disk retention: session folders and old artifacts are never cleaned up
+  automatically.
 - Worldwide coverage: BRouter tiles are the only regional piece; the
   quiet profile's road-class weights are tuned to US tagging.
-
-
-## 2026-10-03 — Code review reliability and architecture pass
-
-Backed up the full dirty working tree before changes. Centralized immutable GPX
-artifacts, atomic session history and cancellation-aware transactions; extracted
-CLI application behavior into shared services. Fixed contextual edit parsing,
-failed corrections, ordered precise waypoints, road exclusions, outback shape,
-interval export geometry/travel direction, unknown metadata and partial-result
-reporting. Secured session reads, quota accounting and UI polling. Optional
-Strava is personal CLI-only; BRouter is the supported default. See
-[REVIEW_FIXES.md](REVIEW_FIXES.md) for the complete finding/test map, evidence and
-remaining limits. Historical evaluation result pages were preserved.
-
-A second review before committing found five regressions in that pass, each
-now pinned by a test that fails on the first version: "through Verona" loops
-rejected by a 150 m via check (via tolerance now comes from the place's own
-bounding box, 150 m for a cafe up to 3 km for a town), recordings split at
-pauses refused as "disconnected", CLIs reading `.env` after import-time
-settings, "avoid X" on a road the ride only crosses reported as a failed
-detour, and a damaged `state.json` locking the whole session.

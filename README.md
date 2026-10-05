@@ -6,7 +6,7 @@ Describe a ride in plain English, get a Garmin-ready GPX.
 
 > **What it is:** [docs/OVERVIEW.md](docs/OVERVIEW.md) — the project,
 > the stack, and the design decisions on one page.
-> **How it was built:** [docs/DEVLOG.md](docs/DEVLOG.md) — 36 phases of
+> **How it was built:** [docs/DEVLOG.md](docs/DEVLOG.md) — 38 phases of
 > field-tested iteration, every real-ride complaint turned into a
 > permanent, unit-tested fix.
 > **Does it work?** [evals/](evals/README.md) — a versioned set of 62
@@ -52,14 +52,24 @@ owns the search and the judgment, and routing engines are swappable backends.
      excised by `routes/despur.py`.
    - Interval spots (`routes/intervals.py`): spokes radiate from the start,
      a window slides along each spoke's geometry, and windows are scored on
-     length, gradient character (flat and steady vs. a consistent ~4%
-     climb), and turn density.
+     length (sized from your watts when given), gradient character (flat
+     means low climbing per km, not just a zero average), mapped stop signs
+     and signals, and how much is unpaved or on busy roads.
 3. **Validate & rank** (`routes/scoring.py`): distance tolerance, climb caps,
-   climb maximization — all computed, never judged by the LLM.
-4. **Output**: GPX tracks (`output/routes/`, `output/spots/`) importable to
-   Garmin Connect as courses, plus a Leaflet preview beside each GPX.
-   UUID filenames preserve previous artifacts. `routes/storage.py` commits
-   selection and parent history atomically; cancellation cannot commit late.
+   requested shape, vias reached in order, excluded roads and areas, repeated
+   road, major-highway meters — all computed, never judged by the LLM.
+4. **Output**: GPX tracks (`output/routes/` and `output/spots/` from the CLI,
+   `output/sessions/<id>/` from the web app) importable to Garmin Connect as
+   courses, plus a Leaflet preview beside each GPX. Every file gets a unique
+   name, so nothing is overwritten.
+
+Code layout: `api.py` and the CLI scripts are thin adapters over
+`routes/service.py` and its workflows (`pipeline.py` for new routes,
+`edit_service.py`, `spot_service.py`). `routes/storage.py` owns session
+history and undo, `routes/execution.py` cancellation, `routes/policy.py` the
+named tolerances, and `routes/geometry.py`, `constraints.py` and `gpx_in.py`
+the measurements, avoid rules and GPX reading. The browser code is
+`static/app.js`. [docs/OVERVIEW.md](docs/OVERVIEW.md) has the boundaries.
 
 Routing backends: **BRouter** — self-hosted (see docs/DEVLOG.md phase 5 for setup)
 (start with `start_brouter.cmd`, port 17777; `BROUTER_URL` in `.env` points
@@ -85,6 +95,9 @@ python compose_route.py --address "..." --miles 50 --maximize-climb --shape both
 python compose_route.py --address "..." --miles 30 --avoid "Verona Rd, Madison WI:1500"
 python find_spot.py --address "..." --reps 2 --rep-minutes 20 --kind flat --max-travel-minutes 30
 python find_spot.py --address "..." --reps 4 --rep-minutes 5 --kind incline
+python find_spot.py --address "..." --reps 4 --rep-minutes 4 --kind any --watts 285 --max-stops 0
+python edit_route.py --avoid "Whitney Way, Madison WI"     # edits the current route
+python street_route.py --start "Olbrich Park, Madison WI" --streets "Capital City State Trail -> Dempsey Road"
 python -m routes.preview output/routes/*.gpx   # rebuild a map preview
 ```
 

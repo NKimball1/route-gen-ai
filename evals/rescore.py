@@ -3,7 +3,8 @@
   python -m evals.rescore --run baseline
 
 The runner saves each case's parse, its user-facing outcome, and the GPX it
-produced (under evals/results/<run>/work/). Scoring is a pure function of
+produced (under evals/results/<run>/work/, which is local: rescoring needs
+the run's own machine, or a fresh run). Scoring is a pure function of
 those, so calibrating a tolerance or fixing a check costs no API call and no
 route generation -- and every run in the campaign can be re-scored under
 identical rules, which is what makes before/after comparisons meaningful.

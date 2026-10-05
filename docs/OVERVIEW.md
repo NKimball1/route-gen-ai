@@ -17,9 +17,14 @@ download, not a redesign.
   you can" — it scouts real summits and routes through them), routes
   through named places, avoid zones.
 - **Interval-spot finding** — "find me a flat stretch for 2x20
-  threshold" or "a 4x5 VO2 hill" returns scored stretches of road: right
-  length, right gradient character, minimal stop signs and traffic
-  lights (verified against OSM data, not guessed).
+  threshold" or "a 4x5 VO2 hill" returns scored stretches of road, named
+  by road: right length (sized from your watts if you give them), right
+  gradient character, paved, off busy roads, with minimal stop signs and
+  traffic lights (verified against OSM data, not guessed; unknown counts
+  are shown as unknown).
+- **Street-list routing** — "Capital City Trail, then Dempsey Road, then
+  Davies Street" builds the ride on those streets and reports any street
+  it didn't actually ride.
 - **Conversational route editing** — upload a GPX of one ride or use a generated
   one, then chain edits in plain English: avoid a road, add waypoints,
   extend/shorten, move the start or end, anchor a round trip, connect
@@ -59,7 +64,7 @@ with stated reasons, not smoothed over.
 | Backend | Python, FastAPI, background jobs with live log streaming, per-session workspaces, sliding-window rate limits, invite-code gate |
 | Frontend | Zero-build vanilla JS + Leaflet — one text box, candidates on a map, GPX downloads |
 | Calibration | Routes were ridden with a Garmin; barometric FIT data calibrated the elevation model until predictions sat within instrument spread |
-| Testing | pytest — 251 offline tests (mocked HTTP, no API keys needed) plus 24 live parser tests, frontend behavior checks, and live HTTP routing checks |
+| Testing | pytest — 267 offline tests (mocked HTTP, no API keys needed) plus opt-in live parser tests, Node frontend tests, strict mypy, a user-simulation script against the running app, and a 62-request eval campaign |
 
 ## The process
 
@@ -72,7 +77,9 @@ verify by measuring on-road meters); the false "Done" on a failed edit
 (fix: outcome verification); a concurrency bug where one user's log
 stole another's (fix: thread-routed stdout); an LLM parser that hedged
 in its notes but acted anyway. Plus a structured code review against an
-11-type bug taxonomy and a written prompt-injection threat model.
+11-type bug taxonomy, a written prompt-injection threat model, and an
+October architecture review whose own five regressions were caught by
+re-running field cases before it landed (DEVLOG phase 38).
 
 ## Application boundaries
 

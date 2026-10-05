@@ -1,4 +1,4 @@
-# Code and architecture review fixes — 2026-10-03
+# Code and architecture review fixes — 2026-10-03 (landed 2026-10-04)
 
 ## Recovery point
 
@@ -75,20 +75,37 @@ that fails on the first-pass code.
   `state.json.damaged-*`; the current route is kept from the `latest.txt`
   mirror and undo history starts over.
 
+## How it landed
+
+The work was committed as four pieces, each tested on its own tree
+(offline suite, mypy, frontend tests):
+
+1. Interval-finder fixes (`tests/test_review_intervals.py`).
+2. Session storage, cancellation, API safety, shared services, frontend.
+   `scripts/simulate.py` also ran against this tree: 0 issues.
+3. Routing rules (vias, avoid checks, shape, GPX reader) and these docs.
+4. The evaluation harness and its saved results (per-run work folders and
+   logs stay local).
+
+A later commit added `tests/test_cli_dotenv.py` for the `.env` fix above.
+
 ## Verification
 
-- Offline Python suite: 251 passed; 24 paid live parser tests skipped by default.
-- Live parser suite, separately enabled: 24 passed.
+- Offline Python suite: 267 passed, including the follow-up test; paid live
+  parser tests are skipped by default.
 - Frontend controller: 3 Node tests passed (minimal DOM/network adapter).
 - Mypy: 43 source files clean; application pyflakes runs inside pytest.
-- Real Claude + local BRouter through FastAPI TestClient: new loop, repeated
-  generation with unchanged earlier bytes, undo, total-distance edit, multi-via
-  edit, max-climb outback, powered interval search and GPX downloads passed.
-  Evidence: `output/review-validation/20261003-141953/report.json` and its GPX files.
-  The final pass (`output/review-validation/20261003-143727/report.json`)
-  repeated those checks and independently measured the exported distances.
-  Its additional named-road generation check could not produce a route:
-  Overpass returned HTTP 504, then the fallback host timed out. The app
+- `scripts/simulate.py` against the final app: 0 issues across hostile
+  input, generation, edit chains, upload, cancellation and interval search.
+- Live after the follow-up fixes: a 50 mi loop through Fitchburg and Verona
+  returns a natural sweep through both towns.
+- First pass, before the follow-up fixes: the live parser suite passed (24),
+  and real Claude + local BRouter through FastAPI TestClient passed a new
+  loop, repeated generation with unchanged earlier bytes, undo, a
+  total-distance edit, a multi-via edit, a max-climb outback, a powered
+  interval search and GPX downloads. Those reports were saved locally under
+  `output/review-validation/` (not committed). That run's named-road
+  generation check could not produce a route: Overpass returned HTTP 504, then the fallback host timed out. The app
   explicitly refused the unverifiable constraint. That run records one
   failed live expectation; successful live road-avoidance remains unverified.
   Deterministic tests cover road geometry, mixed area/road exclusions, and

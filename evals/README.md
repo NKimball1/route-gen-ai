@@ -20,8 +20,9 @@ evals/
   mapgen.py            self-contained SVG route maps + elevation profiles
   story.py             the case study's prose (never its numbers)
   build_case_study.py  summary.json -> the portfolio HTML page
-  results/<run>/       cases/*.json, work/ (the GPX files), summary.json
-  results/e2e_simulate.log   tier C: the HTTP end-to-end run
+  results/<run>/       cases/*.json and summary.json (committed); work/ holds
+                       the run's GPX files and stays local (.gitignore)
+  results/*.log        run logs, including tier C's HTTP end-to-end run (local)
   BRIEF.md             what the campaign found, and interview material
   cache/               parses, geocodes, road and context geometry
 ```
