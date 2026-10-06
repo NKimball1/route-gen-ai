@@ -28,6 +28,11 @@ OVERPASS_URLS: list[str] = [
     "https://overpass-api.de/api/interpreter",
     "https://overpass.kumi.systems/api/interpreter",
 ]
+# A mirror that ANSWERS "busy" (rate limited, gateway timeout) is alive and
+# often serves the same query moments later; one that never answers is
+# down, and waiting on it again would only double an outage.
+OVERPASS_BUSY_HTTP: tuple[int, ...] = (429, 502, 503, 504)
+OVERPASS_RETRY_WAIT_S: float = 5.0
 
 # How badly each control type breaks an interval effort.
 WEIGHTS: dict[str, float] = {
@@ -88,19 +93,40 @@ def _age(entry: dict[str, Any]) -> str:
     return f"{days * 24:.0f} h" if days < 1 else f"{days:.0f} days"
 
 
+def _post_one(url: str, query: str) -> tuple[dict[str, Any] | None, bool]:
+    """(answer, busy): busy means the mirror replied that it is overloaded."""
+    try:
+        resp = requests.post(
+            url, data={"data": query},
+            headers={"User-Agent": "route-gen-ai/0.1"},
+            timeout=90)
+        if resp.status_code in OVERPASS_BUSY_HTTP:
+            print(f"  overpass {url.split('/')[2]}: busy (HTTP {resp.status_code})")
+            return None, True
+        resp.raise_for_status()
+        data: dict[str, Any] = resp.json()
+        return data, False
+    except (requests.RequestException, ValueError) as e:
+        print(f"  overpass {url.split('/')[2]}: failed ({e})")
+        return None, False
+
+
 def _post_overpass(query: str) -> dict[str, Any] | None:
-    """POST an Overpass QL query, trying mirrors. None if all fail."""
+    """POST an Overpass QL query, trying mirrors. None if all fail.
+
+    Mirrors that answered "busy" get one more try after a short pause."""
+    busy: list[str] = []
     for url in OVERPASS_URLS:
-        try:
-            resp = requests.post(
-                url, data={"data": query},
-                headers={"User-Agent": "route-gen-ai/0.1"},
-                timeout=90)
-            resp.raise_for_status()
-            data: dict[str, Any] = resp.json()
+        data, is_busy = _post_one(url, query)
+        if data is not None:
             return data
-        except (requests.RequestException, ValueError) as e:
-            print(f"  overpass {url.split('/')[2]}: failed ({e})")
+        if is_busy:
+            busy.append(url)
+    for url in busy:
+        time.sleep(OVERPASS_RETRY_WAIT_S)
+        data, _ = _post_one(url, query)
+        if data is not None:
+            return data
     return None
 
 

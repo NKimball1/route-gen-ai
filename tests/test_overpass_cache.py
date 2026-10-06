@@ -15,11 +15,13 @@ from routes import interruptions as ix
 
 
 class Resp:
-    def __init__(self, payload):
+    def __init__(self, payload, status_code=200):
         self.payload = payload
+        self.status_code = status_code
 
     def raise_for_status(self):
-        pass
+        if self.status_code >= 400:
+            raise requests.HTTPError(f"HTTP {self.status_code}")
 
     def json(self):
         return self.payload
@@ -105,3 +107,49 @@ def test_covering_fetch_is_used_even_stale_when_overpass_is_down(monkeypatch, ca
     monkeypatch.setattr(ix.requests, "post", down([]))
     got = ix.fetch_controls(43.0, -89.4, 3000)
     assert got == [(43.0005, -89.4005, 1.0)]
+
+
+# ---- busy mirrors get a second chance; dead ones do not ----
+
+@pytest.fixture
+def sleeps(monkeypatch):
+    waited = []
+    monkeypatch.setattr(ix.time, "sleep", waited.append)
+    return waited
+
+
+def scripted(answers, calls):
+    """Each mirror replies with the next status in its own list."""
+    def post(url, **kw):
+        calls.append(url)
+        status = answers[url].pop(0)
+        if status == "timeout":
+            raise requests.Timeout("read timed out")
+        return Resp({"elements": [url]}, status)
+    return post
+
+
+def test_a_busy_mirror_is_asked_again_after_a_pause(monkeypatch, sleeps):
+    """Seen live: overpass-api.de answered 504 in 8 s, then 200 a moment
+    later -- while the other mirror sat silent for its full 90 s."""
+    first, second = ix.OVERPASS_URLS
+    calls = []
+    monkeypatch.setattr(ix.requests, "post", scripted({first: [504, 200], second: ["timeout"]}, calls))
+    assert ix.query_overpass("Q") == {"elements": [first]}
+    assert calls == [first, second, first]
+    assert sleeps == [ix.OVERPASS_RETRY_WAIT_S]
+
+
+def test_a_mirror_that_stays_busy_is_asked_only_twice(monkeypatch, sleeps):
+    first, second = ix.OVERPASS_URLS
+    calls = []
+    monkeypatch.setattr(ix.requests, "post", scripted({first: [429, 429], second: [503, 503]}, calls))
+    assert ix.query_overpass("Q") is None
+    assert calls == [first, second, first, second]
+
+
+def test_silent_mirrors_are_not_waited_on_twice(monkeypatch, sleeps):
+    calls = []
+    monkeypatch.setattr(ix.requests, "post", down(calls))
+    assert ix.query_overpass("Q") is None
+    assert len(calls) == len(ix.OVERPASS_URLS) and sleeps == []
