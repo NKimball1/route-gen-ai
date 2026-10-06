@@ -1102,8 +1102,14 @@ evals, which had been sitting uncommitted since September.
 - **Deployment** — the only thing between the current code and a public
   URL: a Lightsail box with BRouter tiles, HTTPS, and the invite code.
   Run one API worker; jobs and rate limits are process-local.
-- **Live road avoidance** was verified only offline during the phase 38
-  review (Overpass was down); recheck it against a live map.
+- **Road avoidance next to the start.** Checked live on 10-06: a 10 mi
+  loop from Wingra Park rides 118-627 m of Monroe Street in all six
+  candidates; with "avoid Monroe Street" none of the six rides it, because
+  every one is rejected. Exclusion zones are left off right around the
+  start so the ride can get out, and Wingra Park sits close enough to
+  Monroe that every candidate leaves on it. Avoidance holds (it refuses
+  rather than riding the road), but the refusal is over-strict and its
+  message ("try a looser target") points the rider at the wrong fix.
 - Strava segment *explore* (popularity scoring) is gated behind Strava's
   Extended Access tier; starred segments work today, CLI-only. Per-user
   "Sign in with Strava" OAuth is the planned identity model.
