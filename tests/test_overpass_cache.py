@@ -80,9 +80,9 @@ def test_nothing_cached_and_overpass_down_is_still_none(monkeypatch):
 
 
 def test_corrupt_cache_file_is_a_miss_not_a_crash(monkeypatch, cache_in_tmp):
-    open(os.path.join(cache_in_tmp, "controls_bad.json"), "w").write("{not json")
+    open(os.path.join(cache_in_tmp, ix.CONTROLS_PREFIX + "bad.json"), "w").write("{not json")
     monkeypatch.setattr(ix.requests, "post", up(nodes((43.0, -89.4)), []))
-    assert ix.fetch_controls(43.0, -89.4, 1000) == [(43.0, -89.4, 1.0)]
+    assert ix.fetch_controls(43.0, -89.4, 1000) == [(43.0, -89.4, 1.0, ix.CONTROL_ON_ROUTE_M)]
 
 
 def test_one_big_fetch_answers_smaller_searches_inside_it(monkeypatch):
@@ -92,7 +92,7 @@ def test_one_big_fetch_answers_smaller_searches_inside_it(monkeypatch):
     big = ix.fetch_controls(43.0, -89.4, 20000)
     assert len(big) == 2 and len(calls) == 1
     small = ix.fetch_controls(43.0, -89.4, 2000)         # a different area, same region
-    assert small == [(inner[0], inner[1], 1.0)]          # trimmed to the smaller box
+    assert small == [(inner[0], inner[1], 1.0, ix.CONTROL_ON_ROUTE_M)]  # trimmed to the smaller box
     assert len(calls) == 1                               # no network at all
 
 
@@ -106,7 +106,7 @@ def test_covering_fetch_is_used_even_stale_when_overpass_is_down(monkeypatch, ca
         json.dump(e, open(p, "w"))
     monkeypatch.setattr(ix.requests, "post", down([]))
     got = ix.fetch_controls(43.0, -89.4, 3000)
-    assert got == [(43.0005, -89.4005, 1.0)]
+    assert got == [(43.0005, -89.4005, 1.0, ix.CONTROL_ON_ROUTE_M)]
 
 
 # ---- busy mirrors get a second chance; dead ones do not ----
@@ -153,3 +153,14 @@ def test_silent_mirrors_are_not_waited_on_twice(monkeypatch, sleeps):
     monkeypatch.setattr(ix.requests, "post", down(calls))
     assert ix.query_overpass("Q") is None
     assert len(calls) == len(ix.OVERPASS_URLS) and sleeps == []
+
+
+def test_cached_lists_from_before_reach_existed_are_not_read_back(monkeypatch, cache_in_tmp):
+    """Old lists clustered side-street stops together with the road's own;
+    reading one back would bring the over-count with it."""
+    (cache_in_tmp / "controls_old.json").write_text(json.dumps(
+        {"ts": time.time(), "bbox": [42.0, -90.0, 44.0, -89.0], "controls": [[43.0, -89.4, 1.0]]}))
+    calls = []
+    monkeypatch.setattr(ix.requests, "post", up(nodes((43.0005, -89.4005)), calls))
+    assert ix.fetch_controls(43.0, -89.4, 1000) == [(43.0005, -89.4005, 1.0, ix.CONTROL_ON_ROUTE_M)]
+    assert len(calls) == 1

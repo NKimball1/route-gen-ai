@@ -13,6 +13,13 @@ def via_place_tolerance_m(extent_m: float | None) -> float:
         return WAYPOINT_TOLERANCE_M
     return max(WAYPOINT_TOLERANCE_M, min(extent_m / 2, VIA_PLACE_MAX_TOLERANCE_M))
 AVOID_ROAD_TOLERANCE_M = 30.0  # crossing a road is allowed; riding it is not
+# A stop sign, yield or rail crossing applies to the rider only when it sits
+# ON the routed line: OSM maps it as a node of the road it controls, and the
+# router's geometry passes through that node (40 of 40 sampled: within
+# 0.5 m). Side-street signs sit a median 13 m off the main road.
+CONTROL_ON_ROUTE_M = 3.0
+# Signals stop every approach and are mapped at corners or per carriageway.
+SIGNAL_REACH_M = 40.0
 DEFAULT_AVOID_RADIUS_M = 800.0
 MIN_AVOID_RADIUS_M = 50.0
 MAX_AVOID_RADIUS_M = 5000.0
