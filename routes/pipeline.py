@@ -9,7 +9,7 @@ from routes.geocode import geocode
 from routes.gpx_out import write_gpx
 from routes.preview import build_preview
 from routes.providers import BRouterProvider, ORSProvider
-from routes.scoring import rank
+from routes.scoring import rank, why_nothing_fits
 from routes.storage import artifact_path, current_route, record_parent, select_route, note_outcome, transaction
 from routes.spec import (MAJOR_DISPLAY_MIN_M, METERS_PER_MILE,
                          RouteCandidate, RouteSpec)
@@ -38,15 +38,20 @@ def build_providers(which: str = "brouter",
 
 def compose(specs: list[RouteSpec], providers: list[Provider],
             candidates_per: int = 6,
-            out_dir: str = OUT_DIR) -> list[RouteCandidate]:
+            out_dir: str = OUT_DIR,
+            rejects_out: list[tuple[RouteCandidate, str]] | None = None
+            ) -> list[RouteCandidate]:
     with transaction(out_dir):
-        return _compose(specs, providers, candidates_per, out_dir)
+        return _compose(specs, providers, candidates_per, out_dir, rejects_out)
 
 
 def _compose(specs: list[RouteSpec], providers: list[Provider],
             candidates_per: int = 6,
-            out_dir: str = OUT_DIR) -> list[RouteCandidate]:
-    """Run the full pipeline. Returns ranked keepers (also writes GPX+preview)."""
+            out_dir: str = OUT_DIR,
+            rejects_out: list[tuple[RouteCandidate, str]] | None = None
+            ) -> list[RouteCandidate]:
+    """Run the full pipeline. Returns ranked keepers (also writes GPX+preview);
+    rejected candidates and their reasons are added to `rejects_out`."""
     if not specs:
         raise ValueError("At least one route specification is required.")
     if candidates_per < 1:
@@ -79,6 +84,8 @@ def _compose(specs: list[RouteSpec], providers: list[Provider],
             candidates.extend(p.candidates(s, lat, lon, n=candidates_per))
 
     keepers, rejects = rank(spec, candidates, allowed_shapes=allowed_shapes)
+    if rejects_out is not None:
+        rejects_out.extend(rejects)
     for c, reason in rejects:
         print(f"  reject [{c.provider} {c.seed}]: {reason}")
     if not keepers:
@@ -90,8 +97,7 @@ def _compose(specs: list[RouteSpec], providers: list[Provider],
                   "be generated. This is a server problem, not a problem "
                   "with the request.")
         else:
-            print("No candidate met the constraints. Try more candidates or a "
-                  "looser target.")
+            print(why_nothing_fits(rejects))
         return []
 
     os.makedirs(out_dir, exist_ok=True)

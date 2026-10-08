@@ -78,3 +78,40 @@ def test_maximize_orders_by_climb():
     spec = RouteSpec("x", distance_m=50 * 1609.344, maximize_ascent=True)
     keepers, _ = rank(spec, [cand(50, 700, "a"), cand(50, 1400, "b")])
     assert keepers[0].seed == "b"
+
+
+# ---- why nothing fit: the advice has to match the cause ----
+
+def test_a_rejected_route_names_the_road_it_still_rides():
+    from routes.spec import AvoidRoad
+    road = [(43.0, -89.5), (43.01, -89.5)]
+    spec = RouteSpec("x", distance_m=1.1 * 1609.344, avoid_roads=[AvoidRoad("Monroe Street", [road])])
+    on_it = cand(0.69, 0)
+    on_it.points = [(43.0, -89.5, 0), (43.01, -89.5, 0)]
+    _, rejects = rank(spec, [on_it])
+    assert "Monroe Street" in rejects[0][1]
+
+
+def test_avoiding_the_road_the_start_sits_on_is_not_a_target_problem():
+    """Live 10-06, from Wingra Park with 'avoid Monroe Street': all six
+    candidates rode Monroe and the banner said 'try a looser target'."""
+    from routes.scoring import ROAD_REJECT, why_nothing_fits
+    rejects = [(cand(10, 400), ROAD_REJECT.format(road="Monroe Street")) for _ in range(6)]
+    message = why_nothing_fits(rejects)
+    assert "Monroe Street" in message and "start" in message
+    assert "looser target" not in message
+
+
+def test_mixed_rejections_keep_the_generic_advice_and_say_what_happened():
+    from routes.scoring import ROAD_REJECT, why_nothing_fits
+    rejects = [(cand(10, 400), "distance 13.1 mi outside ±15% of target"),
+               (cand(10, 400), "distance 7.2 mi outside ±15% of target"),
+               (cand(10, 400), ROAD_REJECT.format(road="Monroe Street"))]
+    message = why_nothing_fits(rejects)
+    assert "looser target" in message
+    assert "2 missed the distance" in message and "1 rode an excluded road" in message
+
+
+def test_no_candidates_at_all_keeps_the_original_sentence():
+    from routes.scoring import NOTHING_FITS, why_nothing_fits
+    assert why_nothing_fits([]) == NOTHING_FITS

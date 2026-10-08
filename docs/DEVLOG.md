@@ -1108,8 +1108,10 @@ evals, which had been sitting uncommitted since September.
   every one is rejected. Exclusion zones are left off right around the
   start so the ride can get out, and Wingra Park sits close enough to
   Monroe that every candidate leaves on it. Avoidance holds (it refuses
-  rather than riding the road), but the refusal is over-strict and its
-  message ("try a looser target") points the rider at the wrong fix.
+  rather than riding the road), but the refusal is over-strict. Since
+  10-08 the banner says so (it names the road and suggests starting a
+  short way off it) instead of "try a looser target"; finding an exit
+  that avoids the road is still open.
 - Strava segment *explore* (popularity scoring) is gated behind Strava's
   Extended Access tier; starred segments work today, CLI-only. Per-user
   "Sign in with Strava" OAuth is the planned identity model.

@@ -1,9 +1,54 @@
 """Deterministic candidate filtering and ranking (no LLM judgment — ADR 0004)."""
+from collections import Counter
+from typing import Sequence
+
 from routes.spec import METERS_PER_MILE, RouteCandidate, RouteSpec
 from routes.geometry import waypoints_in_order, enters_circle
 from routes.policy import (AVOID_ROAD_TOLERANCE_M,
                            MAX_LOOP_REPEAT_FRACTION, MAX_MAJOR_ROAD_M)
 from routes.road_avoid import on_road_meters
+
+
+# Reject reasons start with these, so a summary can tell them apart.
+ROAD_REJECT = "still rides {road}, which the request excludes"
+NOTHING_FITS = "No route met the constraints - try a looser target or different distance."
+_KINDS = (("still rides ", "rode an excluded road"),
+          ("still enters ", "entered an excluded area"),
+          ("does not visit ", "missed a requested place"),
+          ("does not have ", "had the wrong shape"),
+          ("distance ", "missed the distance"),
+          ("ascent ", "climbed over the limit"),
+          ("% of the route", "repeated too much road"),
+          (" on major ", "used major highways"))
+
+
+def _kind(reason: str) -> str:
+    return next((label for key, label in _KINDS if key in reason), "other")
+
+
+def why_nothing_fits(rejects: Sequence[tuple[RouteCandidate, str]]) -> str:
+    """The sentence a rider sees when every candidate was rejected.
+
+    "Try a looser target" is the wrong advice when the target was fine and
+    one constraint ruled out everything: avoiding the road the start sits
+    on rejects every candidate, and no distance change will help."""
+    if not rejects:
+        return NOTHING_FITS
+    kinds = Counter(_kind(reason) for _, reason in rejects)
+    if set(kinds) == {"rode an excluded road"}:
+        prefix, suffix = ROAD_REJECT.split("{road}")
+        roads = sorted({r.removeprefix(prefix).removesuffix(suffix) for _, r in rejects})
+        return (f"Every route found rides {' / '.join(roads)}, which you asked to avoid - "
+                "usually because the start is on or right next to it. Start a short way "
+                "off it, or drop that avoid.")
+    if set(kinds) == {"entered an excluded area"}:
+        return ("Every route found passes through the area you asked to avoid. "
+                "Try a smaller radius, or a start farther from it.")
+    if set(kinds) == {"missed a requested place"}:
+        return ("No route reached every place you named, in that order. "
+                "Try fewer places, a different order, or a longer ride.")
+    tally = ", ".join(f"{n} {kind}" for kind, n in kinds.most_common())
+    return f"{NOTHING_FITS} Of {len(rejects)} candidates: {tally}."
 
 
 def rank(spec: RouteSpec, candidates: list[RouteCandidate], *,
@@ -20,7 +65,9 @@ def rank(spec: RouteSpec, candidates: list[RouteCandidate], *,
             rejects.append((c, "does not visit every waypoint in the requested order"))
         elif any(on_road_meters(c.points, road.ways) > AVOID_ROAD_TOLERANCE_M
                  for road in spec.avoid_roads):
-            rejects.append((c, "still rides a road the request excludes"))
+            rejects.append((c, ROAD_REJECT.format(road=next(
+                road.name for road in spec.avoid_roads
+                if on_road_meters(c.points, road.ways) > AVOID_ROAD_TOLERANCE_M))))
         elif any(enters_circle(c.points, (la, lo), radius)
                              for la, lo, radius in (spec.avoid if spec.avoid_areas is None else spec.avoid_areas)):
             rejects.append((c, "still enters an excluded area"))

@@ -369,7 +369,8 @@ def _ride_request(r: dict[str, Any], address: str, home: str | None,
     from routes.geocode import geocode_flexible, place_extent_m
     from routes.pipeline import build_providers, compose
     from routes.policy import via_place_tolerance_m
-    from routes.spec import RouteSpec
+    from routes.scoring import why_nothing_fits
+    from routes.spec import RouteCandidate, RouteSpec
     from routes.edit_service import NEAR_MARGIN_LAT_DEG, NEAR_MARGIN_LON_DEG
     # Resolve relative place names against the actual start, not an invented
     # city from an LLM that has never seen the user's configured address.
@@ -400,7 +401,8 @@ def _ride_request(r: dict[str, Any], address: str, home: str | None,
         spec.avoid_roads = avoidance.roads
         spec.avoid_areas = avoidance.areas
     providers = build_providers("brouter")
-    keepers = compose(specs, providers, out_dir=workdir)
+    rejects: list[tuple[RouteCandidate, str]] = []
+    keepers = compose(specs, providers, out_dir=workdir, rejects_out=rejects)
     candidates: list[CandidateOut] = []
     for i, candidate in enumerate(keepers, 1):
         road = "major roads unknown" if candidate.major_m is None else f"{candidate.major_m / METERS_PER_MILE:.1f} mi major"
@@ -413,6 +415,6 @@ def _ride_request(r: dict[str, Any], address: str, home: str | None,
     warnings = list(dict.fromkeys(w for c in candidates for w in c.get("warnings", [])))
     summary = f"{len(candidates)} route(s) - best: {candidates[0]['label']}" if candidates else (
         ROUTER_DOWN_MSG if any(getattr(p, "unreachable", False) for p in providers) else
-        "No route met the constraints - try a looser target or different distance.")
+        why_nothing_fits(rejects))
     return {"kind": "route", "ok": ("partial" if warnings else True) if candidates else False,
             "summary": summary, "warnings": warnings, "candidates": candidates}

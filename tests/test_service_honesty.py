@@ -263,3 +263,24 @@ def test_a_real_bug_below_the_boundary_is_not_disguised_as_a_lookup(
         TypeError("someone passed the wrong thing")))
     with pytest.raises(TypeError):
         service.handle_request("a 20 mile loop", workdir=str(tmp_path))
+
+
+def test_banner_explains_an_avoid_that_rules_out_every_route(monkeypatch, tmp_path):
+    """The service passes the real reject reasons to the banner instead of a
+    fixed 'try a looser target' line (live case: Wingra Park, avoid Monroe)."""
+    import routes.pipeline
+    from routes.scoring import ROAD_REJECT
+    from routes.spec import RouteCandidate
+    _install_parse(monkeypatch, _parse())
+    _patch_geocode(monkeypatch, lambda a: (43.07, -89.38, "Monona Terrace"))
+    monkeypatch.setattr("routes.providers.brouter_reachable", lambda url, timeout_s=1.0: True)
+
+    def all_ride_it(specs, providers, out_dir, rejects_out=None, **kw):
+        rejects_out.extend((RouteCandidate("brouter", str(i), 16000, 100),
+                            ROAD_REJECT.format(road="Monroe Street")) for i in range(6))
+        return []
+
+    monkeypatch.setattr(routes.pipeline, "compose", all_ride_it)
+    summary = service.handle_request("a 10 mile loop", workdir=str(tmp_path))["summary"]
+    assert "Monroe Street" in summary
+    assert "looser target" not in summary.lower()
