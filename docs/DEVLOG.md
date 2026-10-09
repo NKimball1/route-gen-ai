@@ -1112,6 +1112,13 @@ evals, which had been sitting uncommitted since September.
   10-08 the banner says so (it names the road and suggests starting a
   short way off it) instead of "try a looser target"; finding an exit
   that avoids the road is still open.
+- **Interval sizing runs about 10% fast.** A real 5x4 VO2 ride on the
+  White Crossing Road climb (tests/test_ride_white_crossing.py) shows the
+  power model itself within 5% when fed second-by-second power, but the
+  finder's shortcut -- steady power on the stretch's average grade --
+  says each 4-minute rep takes 8-10% less time than it did (the rep
+  starts from a rolling recovery, and steep parts cost more than the
+  average suggests). Stretches are oversized by about a tenth.
 - Strava segment *explore* (popularity scoring) is gated behind Strava's
   Extended Access tier; starred segments work today, CLI-only. Per-user
   "Sign in with Strava" OAuth is the planned identity model.
