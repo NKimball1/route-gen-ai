@@ -78,14 +78,15 @@ class LapTimes(NamedTuple):
     other_way: float   # the same road ridden the opposite way
 
 
-def _laps(lap: float, rep: float) -> int:
-    """Laps of `lap` (seconds or meters) one `rep` needs. A Rep's length
-    comes from an assumed pace, so it is already a rough number: a Lap
-    within REP_FIT_TOLERANCE of a full Rep is one Lap, not a turnaround
-    for being 0.1% short."""
-    if lap <= 0:
+def _laps_needed(per_lap: float, per_rep: float) -> int:
+    """Laps one Rep needs when a Lap takes `per_lap` and a Rep `per_rep`,
+    both in the same unit: seconds (with a power figure) or meters. A
+    Rep's length comes from an assumed pace, so it is already a rough
+    number: a Lap within REP_FIT_TOLERANCE of a full Rep is one Lap, not a
+    turnaround for being 0.1% short."""
+    if per_lap <= 0:
         return 1
-    return max(1, math.ceil(rep * (1.0 - REP_FIT_TOLERANCE) / lap))
+    return max(1, math.ceil(per_rep * (1.0 - REP_FIT_TOLERANCE) / per_lap))
 
 
 def _on_ways_cum(rs: list[Sample], ways: list[list[LatLon]]) -> list[int]:
@@ -100,7 +101,7 @@ def _on_ways_cum(rs: list[Sample], ways: list[list[LatLon]]) -> list[int]:
     return cum
 
 
-class _OnLines:
+class _NearLines:
     """Is a point within a few meters of these lines? An area holds
     thousands of crossing nodes (every crosswalk in town) and a trail
     Spoke thousands of points, so a coarse grid of the cells the lines
@@ -122,7 +123,7 @@ class _OnLines:
     def _cell(self, lat: float, lon: float) -> tuple[int, int]:
         return math.floor(lat / self.CELL_DEG), math.floor(lon / self.CELL_DEG)
 
-    def within(self, lat: float, lon: float, reach_m: float) -> bool:
+    def near(self, lat: float, lon: float, reach_m: float) -> bool:
         i, j = self._cell(lat, lon)
         if not any((i + di, j + dj) in self._cells
                    for di in (-1, 0, 1) for dj in (-1, 0, 1)):
@@ -159,10 +160,10 @@ class Spoke:
         # only where this Spoke rides a path through it: on the road being
         # crossed it is a crosswalk, someone else's stop.
         self.stops_known = controls is not None
-        on_path = _OnLines(leg.get("path", []))
-        mine = [c for c in controls or []
-                if not is_path_only(c) or on_path.within(c[0], c[1], c[3])]
-        hits = controls_along([(p[0], p[1]) for p in self._raw], mine)
+        paths = _NearLines(leg.get("path", []))
+        applying = [c for c in controls or []
+                    if not is_path_only(c) or paths.near(c[0], c[1], c[3])]
+        hits = controls_along([(p[0], p[1]) for p in self._raw], applying)
         self._hit_pos = [h[0] for h in hits]
         self._hit_wt_cum = [0.0]
         for _, w in hits:
@@ -180,19 +181,19 @@ class Spoke:
 
     def _seconds_cum(self, watts: float, total_kg: float) -> tuple[list[float], list[float]]:
         """Running riding time at steady `watts` piece by piece (~100 m)
-        along the grade profile, (outward, back towards the start): a
+        along the grade profile, (away from the start, towards it): a
         Stretch over rs[i..j] takes cum[j] - cum[i] either way. Worked out
         once per rider, so timing a Stretch in the search loop is cheap."""
         key = (watts, total_kg)
         cums = self._lap_cums.get(key)
         if cums is None:
-            out, back = [0.0], [0.0]
+            away, towards = [0.0], [0.0]
             for a, b in zip(self._rs, self._rs[1:]):
                 d = b[3] - a[3]
                 grade = (b[2] - a[2]) / d * 100.0 if d > 0 else 0.0
-                out.append(out[-1] + seconds_for(d, grade, watts, total_kg))
-                back.append(back[-1] + seconds_for(d, -grade, watts, total_kg))
-            cums = self._lap_cums[key] = (out, back)
+                away.append(away[-1] + seconds_for(d, grade, watts, total_kg))
+                towards.append(towards[-1] + seconds_for(d, -grade, watts, total_kg))
+            cums = self._lap_cums[key] = (away, towards)
         return cums
 
     @property
@@ -218,10 +219,10 @@ class Spoke:
 
     def stretch(self, from_m: float, to_m: float) -> "Stretch":
         """The Stretch between two points along the Spoke, ridden from
-        `from_m` towards `to_m` (back towards the start if to_m < from_m).
+        `from_m` towards `to_m` (towards the start if to_m < from_m).
         Ends snap to the Spoke's ~100 m measuring points."""
         i, j = self._index(from_m), self._index(to_m)
-        return Stretch(self, min(i, j), max(i, j), reverse=j < i)
+        return Stretch(self, min(i, j), max(i, j), toward_start=j < i)
 
     def stretches_worth_trying(self, plan: RepPlan,
                                starting_within_m: float) -> Iterator["Stretch"]:
@@ -238,8 +239,8 @@ class Spoke:
             return
 
         def as_ridden(i: int, j: int) -> Stretch:
-            uphill_is_back = plan.kind == "incline" and rs[j][2] < rs[i][2]
-            return Stretch(self, i, j, reverse=uphill_is_back)
+            uphill_toward_start = plan.kind == "incline" and rs[j][2] < rs[i][2]
+            return Stretch(self, i, j, toward_start=uphill_toward_start)
 
         for i in range(0, len(rs) - 3):
             if rs[i][3] > starting_within_m:
@@ -250,9 +251,9 @@ class Spoke:
             while j_full + 1 < len(rs) and as_ridden(i, j_full + 1).fits_rep(plan):
                 j_full += 1
             ends = [j_full]
-            k_bad = self._bad_next[i]
-            if i < k_bad - 1 < j_full:
-                ends.append(k_bad - 1)
+            first_bad = self._bad_next[i]
+            if i < first_bad - 1 < j_full:
+                ends.append(first_bad - 1)
             for j in ends:
                 yield as_ridden(i, j)
 
@@ -260,10 +261,13 @@ class Spoke:
 class Stretch:
     """A measured piece of a Spoke, ridden in a stated direction."""
 
-    def __init__(self, spoke: Spoke, i: int, j: int, reverse: bool = False) -> None:
+    def __init__(self, spoke: Spoke, i: int, j: int,
+                 toward_start: bool = False) -> None:
         self._spoke = spoke
         self._i, self._j = i, j       # resampled indices in Spoke order, i < j
-        self.reverse = reverse        # ridden back towards the Spoke's start
+        # The riding direction: towards the Spoke's start (j to i) or away
+        # from it (i to j).
+        self.toward_start = toward_start
 
     @cached_property
     def length_m(self) -> float:
@@ -274,13 +278,13 @@ class Stretch:
     def starts_at_m(self) -> float:
         """How far along the Spoke a Lap starts, in the riding direction."""
         rs = self._spoke._rs
-        return rs[self._j][3] if self.reverse else rs[self._i][3]
+        return rs[self._j][3] if self.toward_start else rs[self._i][3]
 
     @cached_property
     def mean_grade_pct(self) -> float:
         """Average grade in the riding direction."""
         rs, i, j = self._spoke._rs, self._i, self._j
-        rise = rs[i][2] - rs[j][2] if self.reverse else rs[j][2] - rs[i][2]
+        rise = rs[i][2] - rs[j][2] if self.toward_start else rs[j][2] - rs[i][2]
         return rise / self.length_m * 100.0 if self.length_m else 0.0
 
     @cached_property
@@ -312,7 +316,7 @@ class Stretch:
         a = min(round(rs[self._i][3] / PROFILE_STEP_M), last)
         b = min(round(rs[self._j][3] / PROFILE_STEP_M), last)
         piece = profile[a:b + 1]
-        return ascent(reversed(piece) if self.reverse else piece)
+        return ascent(reversed(piece) if self.toward_start else piece)
 
     @property
     def climb_m_per_km(self) -> float:
@@ -320,16 +324,16 @@ class Stretch:
         return self.climb_m / max(self.length_m / 1000.0, 0.001)
 
     def lap_seconds(self, watts: float, total_kg: float = DEFAULT_TOTAL_KG,
-                    back: bool = False) -> float:
+                    other_way: bool = False) -> float:
         """How long one Lap takes holding `watts`, along the Stretch's grade
         profile (~100 m pieces), not its average grade: a 10% ramp costs
         more time than the gentle parts around it give back, so averaging
         it away made Laps 8-10% fast on a real ride (White Crossing).
-        `back`: the Lap ridden the other way."""
+        `other_way`: the Lap ridden opposite to the riding direction."""
         if watts <= 0:
             return math.inf
-        out, home = self._spoke._seconds_cum(watts, total_kg)
-        cum = home if self.reverse != back else out
+        away, towards = self._spoke._seconds_cum(watts, total_kg)
+        cum = towards if self.toward_start != other_way else away
         return cum[self._j] - cum[self._i]
 
     def lap_times(self, plan: RepPlan) -> LapTimes | None:
@@ -338,14 +342,14 @@ class Stretch:
         if not plan.watts:
             return None
         return LapTimes(self.lap_seconds(plan.watts, plan.total_kg),
-                        self.lap_seconds(plan.watts, plan.total_kg, back=True))
+                        self.lap_seconds(plan.watts, plan.total_kg, other_way=True))
 
     def _deciding_lap_seconds(self, watts: float, plan: RepPlan) -> float:
         """The Lap that decides how a Rep fits: this way, or for an
         either-direction plan (out-and-back Reps) the faster of the two."""
         lap = self.lap_seconds(watts, plan.total_kg)
         if plan.kind == "any":
-            lap = min(lap, self.lap_seconds(watts, plan.total_kg, back=True))
+            lap = min(lap, self.lap_seconds(watts, plan.total_kg, other_way=True))
         return lap
 
     def fits_rep(self, plan: RepPlan) -> bool:
@@ -361,9 +365,9 @@ class Stretch:
         (an either-direction plan: the faster Lap decides), by distance
         without."""
         if plan.watts:
-            return _laps(self._deciding_lap_seconds(plan.watts, plan),
-                         plan.rep_minutes * 60.0)
-        return _laps(self.length_m, plan.rep_distance_m)
+            return _laps_needed(self._deciding_lap_seconds(plan.watts, plan),
+                                plan.rep_minutes * 60.0)
+        return _laps_needed(self.length_m, plan.rep_distance_m)
 
     def _share(self, cum: list[int]) -> float:
         return (cum[self._j + 1] - cum[self._i]) / (self._j - self._i + 1)
@@ -414,4 +418,4 @@ class Stretch:
         spoke, rs = self._spoke, self._spoke._rs
         piece = spoke._raw[bisect_left(spoke._raw_cum, rs[self._i][3]):
                            bisect_left(spoke._raw_cum, rs[self._j][3]) + 1]
-        return list(reversed(piece)) if self.reverse else piece
+        return list(reversed(piece)) if self.toward_start else piece

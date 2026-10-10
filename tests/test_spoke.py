@@ -126,8 +126,8 @@ def climb_spoke():
 def test_a_lap_up_a_climb_takes_longer_than_the_lap_back_down():
     up = climb_spoke().stretch(0.0, 1500.0)
     down = climb_spoke().stretch(1500.0, 0.0)
-    assert up.lap_seconds(285, 84) > up.lap_seconds(285, 84, back=True)
-    assert down.lap_seconds(285, 84) == up.lap_seconds(285, 84, back=True)
+    assert up.lap_seconds(285, 84) > up.lap_seconds(285, 84, other_way=True)
+    assert down.lap_seconds(285, 84) == up.lap_seconds(285, 84, other_way=True)
     assert 3.5 * 60 < up.lap_seconds(285, 84) < 4.5 * 60  # ~1.5 km at 4%: ~22 km/h at 285 W
     assert up.lap_seconds(350, 84) < up.lap_seconds(285, 84)
     assert up.lap_seconds(285, 70) < up.lap_seconds(285, 84)
@@ -135,7 +135,7 @@ def test_a_lap_up_a_climb_takes_longer_than_the_lap_back_down():
 
 def test_a_stretch_fits_a_rep_by_lap_time_and_out_and_backs_by_the_faster_lap():
     up = climb_spoke().stretch(0.0, 1500.0)
-    between = (up.lap_seconds(285, 84) + up.lap_seconds(285, 84, back=True)) / 2 / 60
+    between = (up.lap_seconds(285, 84) + up.lap_seconds(285, 84, other_way=True)) / 2 / 60
     climb_plan = IntervalSpec("x", 5, between, "incline", watts=285, total_kg=84)
     either_way = IntervalSpec("x", 5, between, "any", watts=285, total_kg=84)
     assert not up.fits_rep(climb_plan)        # the climb outlasts the Rep
@@ -163,7 +163,7 @@ def test_a_stretch_fits_a_rep_exactly_when_its_lap_does(kind):
     up = whole(ramp_spoke())
     lap = up.lap_seconds(285, 84)
     if kind == "any":
-        lap = min(lap, up.lap_seconds(285, 84, back=True))
+        lap = min(lap, up.lap_seconds(285, 84, other_way=True))
     assert up.fits_rep(IntervalSpec("x", 5, lap * 1.01 / 60, kind, watts=285, total_kg=84))
     assert not up.fits_rep(IntervalSpec("x", 5, lap * 0.99 / 60, kind, watts=285, total_kg=84))
 
@@ -270,7 +270,7 @@ def test_an_either_direction_stretch_grows_until_the_faster_lap_fills_the_rep():
     assert straight(L * 1.2, 2.0).fits_rep(plan)
     assert straight(L * 1.2, -2.0).fits_rep(plan)     # which way it tilts doesn't matter
     two_pct = straight(L, 2.0)
-    assert two_pct.lap_seconds(285, back=True) < two_pct.lap_seconds(285)
+    assert two_pct.lap_seconds(285, other_way=True) < two_pct.lap_seconds(285)
 
 
 def test_a_road_crossing_on_a_trail_is_a_stop_but_a_crosswalk_on_the_ridden_road_is_not():
