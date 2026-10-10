@@ -66,10 +66,10 @@ def run_spot_search(spec: IntervalSpec, profile: str | None = None,
         write_track(st.points, f"{spec.kind} spot #{i} ({spec.reps}x{spec.rep_minutes:.0f})",
                     desc, path)
         gpx_paths.append(path)
-        t_w = (f"{mmss(s.stretch.lap_seconds(spec.watts, spec.total_kg)):>8}"
-               if spec.watts else "")
-        if spec.watts and spec.kind == "any":
-            t_w += f"{mmss(s.stretch.lap_seconds(spec.watts, spec.total_kg, back=True)):>8}"
+        lap = st.lap_times(spec)
+        t_w = f"{mmss(lap.this_way):>8}" if lap is not None else ""
+        if lap is not None and spec.kind == "any":
+            t_w += f"{mmss(lap.other_way):>8}"
         print(f"{i:<5}{st.length_m / METERS_PER_MILE:>7.1f}{st.mean_grade_pct:>9.1f}"
               f"{climb_ft_per_mile(s):>7.0f}"
               f"{st.grade_std_pct:>6.1f}{st.turns_per_km:>10.1f}"
@@ -94,15 +94,14 @@ def best_summary(spec: IntervalSpec, best: Spot) -> str:
     """The one line a rider plans around: where, how long a pass takes,
     and how many laps a rep needs."""
     timing = ""
-    if spec.watts:
-        one_pass = best.stretch.lap_seconds(spec.watts, spec.total_kg)
+    lap = best.stretch.lap_times(spec)
+    if lap is not None:
         if spec.kind == "any":
-            # Both directions get ridden; show the timing of each pass.
-            back = best.stretch.lap_seconds(spec.watts, spec.total_kg, back=True)
-            timing = (f"; one pass takes {mmss(one_pass)} out / {mmss(back)} "
-                      f"back at {spec.watts:.0f} W")
+            # Both directions get ridden; show the time of each Lap.
+            timing = (f"; one pass takes {mmss(lap.this_way)} out / "
+                      f"{mmss(lap.other_way)} back at {spec.watts:.0f} W")
         else:
-            timing = f"; one pass takes {mmss(one_pass)} at {spec.watts:.0f} W"
+            timing = f"; one pass takes {mmss(lap.this_way)} at {spec.watts:.0f} W"
         timing += f" ({spec.total_kg:.0f} kg rider+bike)"
     laps = best.stretch.laps_per_rep(spec)
     note = "" if laps == 1 else f" (~{laps} laps per rep — expect turnarounds)"
@@ -125,17 +124,16 @@ def spot_warnings(spec: IntervalSpec, spot: Spot) -> list[str]:
 
 def spot_metrics(spec: IntervalSpec, spot: Spot) -> dict[str, Any]:
     st = spot.stretch
+    lap = st.lap_times(spec)
     return {"distance_m": st.length_m, "mean_grade_pct": st.mean_grade_pct,
             "climb_ft_per_mile": climb_ft_per_mile(spot),
             "stops": st.stops if st.stops_known else None,
             "unpaved_fraction": st.gravel_share, "busy_fraction": st.busy_share,
             "travel_distance_m": spot.dist_from_start_m,
-            "laps_per_rep": spot.stretch.laps_per_rep(spec),
+            "laps_per_rep": st.laps_per_rep(spec),
             "road_name": spot.road_name,
-            "seconds_out": (spot.stretch.lap_seconds(spec.watts, spec.total_kg)
-                            if spec.watts else None),
-            "seconds_back": (spot.stretch.lap_seconds(spec.watts, spec.total_kg, back=True)
-                             if spec.watts else None)}
+            "seconds_out": lap.this_way if lap is not None else None,
+            "seconds_back": lap.other_way if lap is not None else None}
 
 
 def spot_label(spec: IntervalSpec, spot: Spot) -> str:
@@ -146,12 +144,12 @@ def spot_label(spec: IntervalSpec, spot: Spot) -> str:
              f"{climb_ft_per_mile(spot):.0f} ft/mi, {stops} stops, "
              f"{spot.dist_from_start_m / METERS_PER_MILE:.1f} mi out, "
              f"{st.gravel_share:.0%} unpaved, {st.busy_share:.0%} busy")
-    laps = spot.stretch.laps_per_rep(spec)
+    laps = st.laps_per_rep(spec)
     if laps > 1:
         label += f" - {laps} laps per rep (turnarounds)"
-    if spec.watts:
-        label += f"; {mmss(spot.stretch.lap_seconds(spec.watts, spec.total_kg))} at {spec.watts:g} W"
+    lap = st.lap_times(spec)
+    if lap is not None:
+        label += f"; {mmss(lap.this_way)} at {spec.watts:g} W"
         if spec.kind == "any":
-            back = spot.stretch.lap_seconds(spec.watts, spec.total_kg, back=True)
-            label += f" out / {mmss(back)} back"
+            label += f" out / {mmss(lap.other_way)} back"
     return label

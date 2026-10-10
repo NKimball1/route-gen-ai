@@ -202,9 +202,7 @@ def _acceptable(spec: IntervalSpec, stretch: Stretch) -> bool:
 
 
 def _rank(spec: IntervalSpec, stretch: Stretch) -> float:
-    laps_s = ((stretch.lap_seconds(spec.watts, spec.total_kg),
-               stretch.lap_seconds(spec.watts, spec.total_kg, back=True))
-              if spec.watts and spec.kind == "any" else None)
+    laps_s = stretch.lap_times(spec) if spec.kind == "any" else None
     # each share of the stretch on a busy road costs that share of the score
     return _score(spec, stretch.length_m, stretch.mean_grade_pct,
                   stretch.grade_std_pct, stretch.turns_per_km,

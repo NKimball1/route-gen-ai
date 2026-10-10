@@ -13,7 +13,7 @@ facts only; what is acceptable and how to rank lives in routes/intervals.py.
 import math
 from bisect import bisect_left, bisect_right
 from functools import cached_property
-from typing import Iterator, Protocol, Sequence
+from typing import Iterator, NamedTuple, Protocol, Sequence
 
 from routes.elevation import PROFILE_STEP_M, ascent, smoothed_profile
 from routes.interruptions import controls_along, is_path_only
@@ -70,6 +70,12 @@ class RepPlan(Protocol):
 
     @property
     def rep_distance_m(self) -> float: ...
+
+
+class LapTimes(NamedTuple):
+    """One Lap's riding time each way at the plan's power, in seconds."""
+    this_way: float    # in the Stretch's riding direction
+    other_way: float   # the same road ridden the opposite way
 
 
 def _laps(lap: float, rep: float) -> int:
@@ -325,6 +331,14 @@ class Stretch:
         out, home = self._spoke._seconds_cum(watts, total_kg)
         cum = home if self.reverse != back else out
         return cum[self._j] - cum[self._i]
+
+    def lap_times(self, plan: RepPlan) -> LapTimes | None:
+        """One Lap each way at the plan's power and weight (an out-and-back
+        Rep rides both); None when the plan names no power."""
+        if not plan.watts:
+            return None
+        return LapTimes(self.lap_seconds(plan.watts, plan.total_kg),
+                        self.lap_seconds(plan.watts, plan.total_kg, back=True))
 
     def _deciding_lap_seconds(self, watts: float, plan: RepPlan) -> float:
         """The Lap that decides how a Rep fits: this way, or for an
