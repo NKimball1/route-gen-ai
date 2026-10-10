@@ -83,6 +83,16 @@ def is_busy(way_tags: str) -> bool:
     return m is not None and m.group(1) in BUSY_HIGHWAYS
 
 
+# Paths and trails: a rider on one meets every road it crosses as a stop.
+PATH_HIGHWAYS: frozenset[str] = frozenset({
+    "cycleway", "path", "footway", "bridleway"})
+
+
+def is_path(way_tags: str) -> bool:
+    m = re.search(r"highway=(\S+)", way_tags)
+    return m is not None and m.group(1) in PATH_HIGHWAYS
+
+
 def _runs_to_polylines(points: Track,
                        runs: Sequence[tuple[float, float]]) -> list[list[LatLon]]:
     """Distance ranges along `points` -> the polylines they cover."""
@@ -182,6 +192,7 @@ class BRouterProvider:
         # the unpaved ones as polylines so interval search can see surface.
         unpaved_runs: list[tuple[float, float]] = []
         busy_runs: list[tuple[float, float]] = []
+        path_runs: list[tuple[float, float]] = []
         pos = 0.0
         for row in props.get("messages", [])[1:]:
             d = float(row[3])
@@ -192,9 +203,12 @@ class BRouterProvider:
                 unpaved_runs.append((pos, pos + d))
             if len(row) > 9 and is_busy(row[9]):
                 busy_runs.append((pos, pos + d))
+            if len(row) > 9 and is_path(row[9]):
+                path_runs.append((pos, pos + d))
             pos += d
         unpaved = _runs_to_polylines(points, unpaved_runs)
         busy = _runs_to_polylines(points, busy_runs)
+        path = _runs_to_polylines(points, path_runs)
         # Cut out-and-back spur artifacts BEFORE distance/climb accounting, so
         # rescaling and ranking see the route as it would be ridden. The naive
         # spur-ascent estimate can overshoot the provider's filtered figure,
@@ -218,6 +232,7 @@ class BRouterProvider:
             "major_m": major_m,
             "unpaved": unpaved,
             "busy": busy,
+            "path": path,
         }
 
     def candidates(self, spec: RouteSpec, lat: float, lon: float,
