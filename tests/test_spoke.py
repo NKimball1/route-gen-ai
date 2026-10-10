@@ -65,6 +65,24 @@ def test_a_steady_climb_reads_its_grade_in_the_riding_direction():
     assert 35 < up.climb_m_per_km < 45 and down.climb_m_per_km == 0.0
 
 
+def test_sub_metre_elevation_jitter_is_not_climbing():
+    """The calibrated elevation model (routes/elevation.py) ignores DEM
+    noise under its 1 m threshold; a Stretch ranked on summed 100 m rises
+    read this road as ~3 m/km of climbing while the rider was shown 0."""
+    jitter = whole(Spoke(leg(road(60, ele_fn=lambda k: 300.0 + 0.8 * (k % 2))), controls=[]))
+    assert jitter.climb_m_per_km < 0.5
+
+
+def test_rollers_climb_what_the_calibrated_model_says_either_way():
+    """5 m rollers on a 1 km wavelength: ~10 m up per km, ridden either way
+    (smoothing softens each crest a little)."""
+    rollers = road(60, ele_fn=lambda k: 300.0 + 5.0 * math.sin(2 * math.pi * k * 122.0 / 1000.0))
+    spoke = Spoke(leg(rollers), controls=[])
+    out, back = spoke.stretch(0.0, 7000.0), spoke.stretch(7000.0, 0.0)
+    assert 8.5 < out.climb_m_per_km < 10.5
+    assert 8.5 < back.climb_m_per_km < 10.5
+
+
 def test_stops_on_a_stretch_and_at_its_turnaround_count_with_their_weight():
     pts = road(60)                                   # ~7.2 km north
     signal = (pts[10][0], pts[10][1], 2.0)           # ~1.2 km along

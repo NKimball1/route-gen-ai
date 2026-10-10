@@ -1,7 +1,6 @@
 """Interval search application and shared CLI/web descriptions."""
 import os
 from typing import Any
-from routes.elevation import track_ascent
 from routes.geocode import geocode
 from routes.gpx_out import write_track
 from routes.intervals import IntervalSpec, Spot, find_spots
@@ -17,8 +16,9 @@ OUT_DIR = os.path.join("output", "spots")
 
 def climb_ft_per_mile(s: Spot) -> float:
     """Total climbing per mile -- the honest flatness number (an average
-    grade of 0% can hide 300 ft of rollers)."""
-    return track_ascent(s.points) / METERS_PER_FOOT / max(s.length_mi, 0.01)
+    grade of 0% can hide 300 ft of rollers). The Stretch's own climbing,
+    the figure the finder ranked it on."""
+    return s.stretch.climb_m / METERS_PER_FOOT / max(s.length_mi, 0.01)
 
 
 def where_lines(spots: list[Spot], lookup: Lookup = road_at) -> list[str]:

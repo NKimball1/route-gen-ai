@@ -15,6 +15,7 @@ from bisect import bisect_left, bisect_right
 from functools import cached_property
 from typing import Iterator, Protocol, Sequence
 
+from routes.elevation import PROFILE_STEP_M, ascent, smoothed_profile
 from routes.interruptions import controls_along, is_path_only
 from routes.policy import REP_FIT_TOLERANCE
 from routes.power import DEFAULT_TOTAL_KG, seconds_for
@@ -197,6 +198,13 @@ class Spoke:
     def length_m(self) -> float:
         return self._rs[-1][3] if self._rs else 0.0
 
+    @cached_property
+    def _profile(self) -> list[float | None]:
+        """The calibrated elevation model's smoothed profile of the whole
+        Spoke, built once: a Stretch's climbing is the model's threshold
+        run over its slice of it."""
+        return smoothed_profile(self._raw) if self._raw else []
+
     def _index(self, along_m: float) -> int:
         """The resampled point nearest `along_m` meters along the Spoke."""
         cums = [s[3] for s in self._rs]
@@ -294,14 +302,21 @@ class Stretch:
         return turns / max(self.length_m / 1000.0, 0.001)
 
     @cached_property
+    def climb_m(self) -> float:
+        """Meters climbed riding in the stated direction, by the calibrated
+        elevation model (routes/elevation.py): the figure the rider's
+        devices would show, and the one the finder ranks on."""
+        profile, rs = self._spoke._profile, self._spoke._rs
+        last = len(profile) - 1
+        a = min(round(rs[self._i][3] / PROFILE_STEP_M), last)
+        b = min(round(rs[self._j][3] / PROFILE_STEP_M), last)
+        piece = profile[a:b + 1]
+        return ascent(reversed(piece) if self.reverse else piece)
+
+    @property
     def climb_m_per_km(self) -> float:
         """Meters climbed per km, riding in the stated direction."""
-        rs, i, j = self._spoke._rs, self._i, self._j
-        if self.reverse:
-            climb = sum(max(0.0, rs[k][2] - rs[k + 1][2]) for k in range(j - 1, i - 1, -1))
-        else:
-            climb = sum(max(0.0, rs[k + 1][2] - rs[k][2]) for k in range(i, j))
-        return climb / max(self.length_m / 1000.0, 0.001)
+        return self.climb_m / max(self.length_m / 1000.0, 0.001)
 
     def lap_seconds(self, watts: float, total_kg: float = DEFAULT_TOTAL_KG,
                     back: bool = False) -> float:
