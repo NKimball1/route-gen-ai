@@ -24,7 +24,8 @@ import time
 from typing import Any, Callable, Sequence
 
 import requests
-from routes.policy import CONTROL_ON_ROUTE_M, SIGNAL_REACH_M
+from routes.policy import (CONTROL_ON_ROUTE_M, SIGNAL_REACH_M,
+                           TRAIL_CROSSING_WEIGHT)
 from routes.spec import METERS_PER_DEG_LAT, METERS_PER_DEG_LON_EQ
 
 # (lat, lon, weight, reach_m, path_only): one traffic control, how badly it
@@ -53,17 +54,6 @@ WEIGHTS: dict[str, float] = {
     "level_crossing": 1.0,
     "give_way": 0.4,
 }
-
-# A road crossing a trail: OSM tags it highway=crossing on the node the
-# path shares with the road, usually with no sign mapped. It weighs as a
-# stop, not a yield (0.4): a yield on a road lets a rider merge rolling
-# with traffic going their way, but crossing a road from a trail means
-# looking both ways across every lane with no right of way, which at
-# effort pace is a stop whenever anything is coming (the Military Ridge
-# trail meets Cross Country Road near 43.0014,-89.5167 unsigned, and a
-# rider still has to stop for a car). Where a crossing does have a stop
-# sign for trail users, the two count as one control at the same weight.
-TRAIL_CROSSING_WEIGHT: float = WEIGHTS["stop"]
 
 # Nodes within this distance are one intersection.
 CLUSTER_M: float = 35.0

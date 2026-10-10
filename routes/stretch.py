@@ -17,16 +17,11 @@ from typing import Iterator, Protocol, Sequence
 
 from routes.elevation import PROFILE_STEP_M, ascent, smoothed_profile
 from routes.interruptions import controls_along, is_path_only
-from routes.policy import REP_FIT_TOLERANCE
+from routes.policy import CONTROL_PAD_M, ON_WAY_M, REP_FIT_TOLERANCE, TURN_DEG
 from routes.power import DEFAULT_TOTAL_KG, seconds_for
 from routes.spec import EARTH_RADIUS_M, Coord, LatLon, Leg, Point, Sample, Track
 
 BIN_M: float = 100.0  # resample step: kills GPS-style elevation jitter in grades
-# Controls just past a Stretch's ends still interrupt every Lap (you
-# turn around there), and mapped positions carry a little noise.
-CONTROL_PAD_M: float = 150.0
-ON_WAY_M: float = 15.0   # a resampled point this close to a gravel/busy line is on it
-TURN_DEG: float = 35.0  # a bearing change sharper than this between bins is a turn
 
 
 def _hav_m(a: Coord, b: Coord) -> float:

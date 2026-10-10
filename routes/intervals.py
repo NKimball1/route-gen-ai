@@ -17,6 +17,7 @@ stop signs and signals; unavailable control data remains explicitly unknown.
 """
 from dataclasses import dataclass, field
 
+from routes.policy import MIN_STRETCH_M, MIN_STRETCH_REP_SHARE
 from routes.power import DEFAULT_TOTAL_KG, speed_mps
 from routes.spec import METERS_PER_MILE, Router, Track
 from routes.stretch import Spoke, Stretch
@@ -233,7 +234,8 @@ def find_spots(spec: IntervalSpec, lat: float, lon: float, provider: Router,
 def _acceptable(spec: IntervalSpec, stretch: Stretch) -> bool:
     """Search policy: long enough to be worth a Rep, reachable within the
     ride-out budget, paved, and within the rider's stop limit."""
-    if stretch.length_m < 0.35 * spec.rep_distance_m or stretch.length_m < 400:
+    if (stretch.length_m < MIN_STRETCH_REP_SHARE * spec.rep_distance_m
+            or stretch.length_m < MIN_STRETCH_M):
         return False
     if stretch.starts_at_m > spec.travel_radius_m:
         return False
