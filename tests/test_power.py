@@ -1,7 +1,7 @@
 """Rider physics (routes/power.py) and power-based interval sizing."""
 import math
 
-from routes.intervals import IntervalSpec, IntervalSpot
+from routes.intervals import IntervalSpec, Spot
 from routes.power import mmss, seconds_for, speed_mps
 from routes.spec import METERS_PER_MILE
 
@@ -54,7 +54,7 @@ def test_watts_size_the_rep_and_the_default_still_works():
 
 
 def test_spot_times_itself_at_its_own_grade():
-    spot = IntervalSpot(points=[], length_m=1200.0, mean_grade_pct=5.0)
+    spot = Spot(points=[], length_m=1200.0, mean_grade_pct=5.0)
     steep = spot.seconds_at(285)
     spot.mean_grade_pct = 1.0
     assert spot.seconds_at(285) < steep
@@ -93,5 +93,5 @@ def test_kind_any_window_fills_the_rep_in_the_faster_direction():
     # fits one rep -- the window keeps growing until the descent fills it
     assert spec.rep_fits(L * 1.2, 2.0)
     assert spec.rep_fits(L * 1.2, -2.0)   # sign of the grade doesn't matter
-    spot = IntervalSpot(points=[], length_m=L, mean_grade_pct=2.0)
+    spot = Spot(points=[], length_m=L, mean_grade_pct=2.0)
     assert spot.seconds_at(285, reverse=True) < spot.seconds_at(285)

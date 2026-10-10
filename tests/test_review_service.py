@@ -4,7 +4,7 @@ import copy
 import pytest
 
 from routes import service, storage, edit_service
-from routes.intervals import IntervalSpot
+from routes.intervals import Spot
 from routes.spec import METERS_PER_MILE
 from routes.editing import _cum
 from routes.requests_model import ParsedRequest
@@ -98,8 +98,8 @@ def test_unknown_stops_and_power_settings_survive_to_the_web_result(tmp_path, mo
     install_parse(monkeypatch, parsed)
     monkeypatch.setattr(service, "_router_preflight", lambda: None)
     captured = []
-    spot = IntervalSpot(points=[(43, -89, 0), (43.01, -89, 0)],
-                        length_m=7 * METERS_PER_MILE, controls_known=False)
+    spot = Spot(points=[(43, -89, 0), (43.01, -89, 0)],
+                length_m=7 * METERS_PER_MILE, controls_known=False)
     def search(spec, **kw):
         captured.append(spec)
         return [spot]

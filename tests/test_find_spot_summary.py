@@ -1,13 +1,13 @@
 """The 'Best:' line a rider plans a session around (find_spot.best_summary)."""
 from find_spot import best_summary
-from routes.intervals import IntervalSpec, IntervalSpot
+from routes.intervals import IntervalSpec, Spot
 from routes.spec import METERS_PER_MILE
 
 
-def spot(mi: float, grade: float, known: bool = True) -> IntervalSpot:
-    return IntervalSpot(points=[], length_m=mi * METERS_PER_MILE,
-                        mean_grade_pct=grade, dist_from_start_m=6 * METERS_PER_MILE,
-                        controls_known=known)
+def spot(mi: float, grade: float, known: bool = True) -> Spot:
+    return Spot(points=[], length_m=mi * METERS_PER_MILE,
+                mean_grade_pct=grade, dist_from_start_m=6 * METERS_PER_MILE,
+                controls_known=known)
 
 
 def test_either_way_reports_both_directions():

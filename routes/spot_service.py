@@ -6,7 +6,7 @@ from routes.policy import REP_FIT_TOLERANCE
 from routes.elevation import track_ascent
 from routes.geocode import geocode
 from routes.gpx_out import write_track
-from routes.intervals import IntervalSpec, IntervalSpot, find_spots
+from routes.intervals import IntervalSpec, Spot, find_spots
 from routes.places import Lookup, describe_stretch, road_at
 from routes.power import mmss
 from routes.preview import build_preview
@@ -17,13 +17,13 @@ from routes.storage import artifact_path
 OUT_DIR = os.path.join("output", "spots")
 
 
-def climb_ft_per_mile(s: IntervalSpot) -> float:
+def climb_ft_per_mile(s: Spot) -> float:
     """Total climbing per mile -- the honest flatness number (an average
     grade of 0% can hide 300 ft of rollers)."""
     return track_ascent(s.points) / METERS_PER_FOOT / max(s.length_mi, 0.01)
 
 
-def where_lines(spots: list[IntervalSpot], lookup: Lookup = road_at) -> list[str]:
+def where_lines(spots: list[Spot], lookup: Lookup = road_at) -> list[str]:
     """'#1: Hope Road, Madison (Femrite Drive -> Nora Road), starts at ...'"""
     return [f"#{i}: {(s.road_name or describe_stretch([(p[0], p[1]) for p in s.points], lookup))}  "
             f"(starts at {s.points[0][0]:.5f},{s.points[0][1]:.5f})"
@@ -31,7 +31,7 @@ def where_lines(spots: list[IntervalSpot], lookup: Lookup = road_at) -> list[str
 
 
 def run_spot_search(spec: IntervalSpec, profile: str | None = None,
-                    out_dir: str = OUT_DIR, names: bool = True) -> list[IntervalSpot]:
+                    out_dir: str = OUT_DIR, names: bool = True) -> list[Spot]:
     lat, lon, place = geocode(spec.address)
     print(f"Start: {place} ({lat:.5f}, {lon:.5f})")
     sized = (f" at {spec.watts:.0f} W" if spec.watts else "")
@@ -89,7 +89,7 @@ def run_spot_search(spec: IntervalSpec, profile: str | None = None,
     return spots
 
 
-def best_summary(spec: IntervalSpec, best: IntervalSpot) -> str:
+def best_summary(spec: IntervalSpec, best: Spot) -> str:
     """The one line a rider plans around: where, how long a pass takes,
     and how many laps a rep needs."""
     if spec.watts:
@@ -122,7 +122,7 @@ def laps_for_rep(stretch_m: float, rep_m: float) -> int:
     return max(1, math.ceil(rep_m * (1.0 - REP_FIT_TOLERANCE) / stretch_m))
 
 
-def rep_laps(spec: IntervalSpec, spot: IntervalSpot) -> int:
+def rep_laps(spec: IntervalSpec, spot: Spot) -> int:
     if spec.watts:
         seconds = spot.seconds_at(spec.watts, spec.total_kg)
         if spec.kind == "any":
@@ -131,7 +131,7 @@ def rep_laps(spec: IntervalSpec, spot: IntervalSpot) -> int:
     return laps_for_rep(spot.length_m, spec.rep_distance_m)
 
 
-def spot_warnings(spec: IntervalSpec, spot: IntervalSpot) -> list[str]:
+def spot_warnings(spec: IntervalSpec, spot: Spot) -> list[str]:
     warnings = []
     if not spot.controls_known:
         warnings.append("Stop/signal counts are UNKNOWN because traffic-control data is unavailable.")
@@ -141,7 +141,7 @@ def spot_warnings(spec: IntervalSpec, spot: IntervalSpot) -> list[str]:
     return warnings
 
 
-def spot_metrics(spec: IntervalSpec, spot: IntervalSpot) -> dict[str, Any]:
+def spot_metrics(spec: IntervalSpec, spot: Spot) -> dict[str, Any]:
     return {"distance_m": spot.length_m, "mean_grade_pct": spot.mean_grade_pct,
             "climb_ft_per_mile": climb_ft_per_mile(spot),
             "stops": spot.n_controls if spot.controls_known else None,
@@ -152,7 +152,7 @@ def spot_metrics(spec: IntervalSpec, spot: IntervalSpot) -> dict[str, Any]:
             "seconds_back": spot.seconds_at(spec.watts, spec.total_kg, reverse=True) if spec.watts else None}
 
 
-def spot_label(spec: IntervalSpec, spot: IntervalSpot) -> str:
+def spot_label(spec: IntervalSpec, spot: Spot) -> str:
     stops = str(spot.n_controls) if spot.controls_known else "UNKNOWN"
     road = (spot.road_name + ": ") if spot.road_name else ""
     label = (f"{road}{spot.length_mi:.1f} mi @ {spot.mean_grade_pct:+.1f}%, "

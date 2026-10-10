@@ -189,7 +189,7 @@ def test_short_interval_spot_discloses_the_lap_count(monkeypatch, tmp_path):
     """Case D18. Lapping a short stretch is a supported answer; presenting
     it as if it held a full rep is not. run_spot_search already printed the
     lap count to the log -- the label the rider reads dropped it."""
-    from routes.intervals import IntervalSpot
+    from routes.intervals import Spot
 
     _install_parse(monkeypatch, _parse(
         request_type="interval_spot", route=None,
@@ -197,10 +197,10 @@ def test_short_interval_spot_discloses_the_lap_count(monkeypatch, tmp_path):
                   "max_travel_minutes": 20}))
     monkeypatch.setattr("routes.providers.brouter_reachable",
                         lambda url, timeout_s=1.0: True)
-    short = IntervalSpot(points=[(43.07, -89.38, 260.0), (43.10, -89.38, 261.0)],
-                         length_m=5500.0, mean_grade_pct=0.1,
-                         grade_std_pct=0.4, turns_per_km=0.5, n_controls=11,
-                         dist_from_start_m=100.0, bearing=0.0, score=0.5)
+    short = Spot(points=[(43.07, -89.38, 260.0), (43.10, -89.38, 261.0)],
+                 length_m=5500.0, mean_grade_pct=0.1,
+                 grade_std_pct=0.4, turns_per_km=0.5, n_controls=11,
+                 dist_from_start_m=100.0, bearing=0.0, score=0.5)
     monkeypatch.setattr("routes.spot_service.run_spot_search",
                         lambda spec, out_dir=None: [short])
 
@@ -213,7 +213,7 @@ def test_short_interval_spot_discloses_the_lap_count(monkeypatch, tmp_path):
 def test_long_enough_interval_spot_says_nothing_about_laps(monkeypatch, tmp_path):
     """Teeth: the disclosure must be conditional, not boilerplate on every
     result."""
-    from routes.intervals import IntervalSpot
+    from routes.intervals import Spot
 
     _install_parse(monkeypatch, _parse(
         request_type="interval_spot", route=None,
@@ -221,10 +221,10 @@ def test_long_enough_interval_spot_says_nothing_about_laps(monkeypatch, tmp_path
                   "max_travel_minutes": 20}))
     monkeypatch.setattr("routes.providers.brouter_reachable",
                         lambda url, timeout_s=1.0: True)
-    roomy = IntervalSpot(points=[(43.07, -89.38, 260.0), (43.20, -89.38, 261.0)],
-                         length_m=12000.0, mean_grade_pct=0.1,
-                         grade_std_pct=0.4, turns_per_km=0.5, n_controls=2,
-                         dist_from_start_m=100.0, bearing=0.0, score=0.9)
+    roomy = Spot(points=[(43.07, -89.38, 260.0), (43.20, -89.38, 261.0)],
+                 length_m=12000.0, mean_grade_pct=0.1,
+                 grade_std_pct=0.4, turns_per_km=0.5, n_controls=2,
+                 dist_from_start_m=100.0, bearing=0.0, score=0.9)
     monkeypatch.setattr("routes.spot_service.run_spot_search",
                         lambda spec, out_dir=None: [roomy])
     result = service.handle_request("2x20 threshold", workdir=str(tmp_path))

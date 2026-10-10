@@ -1,6 +1,6 @@
 """find_spot output: named roads, and a hard stop limit (offline)."""
 from find_spot import where_lines
-from routes.intervals import IntervalSpec, IntervalSpot, find_spots
+from routes.intervals import IntervalSpec, Spot, find_spots
 from routes.places import describe_stretch
 from tests.test_spot_results import DenseProvider
 
@@ -36,7 +36,7 @@ def test_failed_lookups_degrade_to_a_question_mark_not_a_crash():
 
 
 def test_where_lines_number_the_spots_and_give_a_start_point():
-    spot = IntervalSpot(points=[(p[0], p[1], 300.0) for p in LINE], length_m=1100.0)
+    spot = Spot(points=[(p[0], p[1], 300.0) for p in LINE], length_m=1100.0)
     look = lookup_by_lat([(42.9, 43.1, ("Oncken Road", "Westport"))])
     line = where_lines([spot], look)[0]
     assert line.startswith("#1: Oncken Road, Westport") and "starts at 43.00000,-89.50000" in line

@@ -78,7 +78,8 @@ class IntervalSpec:
 
 
 @dataclass
-class IntervalSpot:
+class Spot:
+    """A Stretch the finder recommends, plus the ride out to it and its road."""
     points: Track = field(repr=False)  # the stretch itself
     length_m: float = 0.0
     mean_grade_pct: float = 0.0
@@ -253,7 +254,7 @@ def _score(spec: IntervalSpec, length: float, mean_grade: float,
 
 
 def find_spots(spec: IntervalSpec, lat: float, lon: float, provider: Router,
-               n_spokes: int = 12, top: int = 3) -> list[IntervalSpot]:
+               n_spokes: int = 12, top: int = 3) -> list[Spot]:
     """Search spokes around the start for the best interval stretches."""
     from bisect import bisect_left, bisect_right
 
@@ -271,7 +272,7 @@ def find_spots(spec: IntervalSpec, lat: float, lon: float, provider: Router,
           "  warning: no traffic-control data (Overpass down?) — scoring "
           "without interruption counts; stop counts will read '?'")
 
-    spots: list[IntervalSpot] = []
+    spots: list[Spot] = []
     for i in range(n_spokes):
         bearing = 360.0 * i / n_spokes
         dest = _destination(lat, lon, bearing, spec.travel_radius_m / 1.2)
@@ -305,7 +306,7 @@ def find_spots(spec: IntervalSpec, lat: float, lon: float, provider: Router,
         for _, w in hits:
             hit_wt_cum.append(hit_wt_cum[-1] + w)
         # Slide a window of up to rep_distance along the spoke.
-        best_for_spoke: IntervalSpot | None = None
+        best_for_spoke: Spot | None = None
         for i0 in range(0, len(rs) - 3):
             # "within N minutes" is riding distance, not the crow-flies reach
             # of the spoke: a winding road runs past the budget before the
@@ -350,7 +351,7 @@ def find_spots(spec: IntervalSpec, lat: float, lon: float, provider: Router,
                 # of the score
                 score = _score(spec, length, mean, std, tpk, wt,
                                climb_m_per_km=_window_climb(rs, i0, j)) * (1.0 - busy_frac)
-                spot = IntervalSpot(
+                spot = Spot(
                     points=raw_points[bisect_left(raw_cum, rs[i0][3]):
                                       bisect_left(raw_cum, rs[j][3]) + 1],
                     length_m=length, mean_grade_pct=mean, grade_std_pct=std,
@@ -385,7 +386,7 @@ ON_SAME_ROAD_M: float = 40.0
 DUPLICATE_OVERLAP: float = 0.5
 
 
-def _overlap(a: IntervalSpot, b: IntervalSpot) -> float:
+def _overlap(a: Spot, b: Spot) -> float:
     """Fraction of the shorter stretch lying on the other's road."""
     from routes.road_avoid import dist_to_road
     short, long_ = (a, b) if a.length_m <= b.length_m else (b, a)
@@ -395,10 +396,10 @@ def _overlap(a: IntervalSpot, b: IntervalSpot) -> float:
     return on / len(pts) if pts else 0.0
 
 
-def _dedupe(spots: list[IntervalSpot]) -> list[IntervalSpot]:
+def _dedupe(spots: list[Spot]) -> list[Spot]:
     """Drop stretches that are the same road as a better-scored one.
     `spots` must already be sorted best-first."""
-    kept: list[IntervalSpot] = []
+    kept: list[Spot] = []
     for s in spots:
         if all(_overlap(s, k) < DUPLICATE_OVERLAP for k in kept):
             kept.append(s)

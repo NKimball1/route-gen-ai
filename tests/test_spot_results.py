@@ -1,6 +1,6 @@
 """Interval-spot result hygiene: no duplicate stretches, and 'unknown' is
 never printed as 0 (routes/intervals.py, find_spot.py)."""
-from routes.intervals import IntervalSpec, IntervalSpot, _dedupe, find_spots
+from routes.intervals import IntervalSpec, Spot, _dedupe, find_spots
 from tests.test_editing import LAT_STEP, FakeProvider
 
 
@@ -17,9 +17,9 @@ class DenseProvider(FakeProvider):
                 "major_m": 0.0}
 
 
-def stretch(lat0: float, lon0: float, n: int = 40) -> IntervalSpot:
+def stretch(lat0: float, lon0: float, n: int = 40) -> Spot:
     pts = [(lat0 + k * LAT_STEP, lon0, 300.0) for k in range(n)]
-    return IntervalSpot(points=pts, length_m=n * 28.0)
+    return Spot(points=pts, length_m=n * 28.0)
 
 
 def test_same_road_from_adjacent_spokes_collapses_to_one_result():
@@ -41,10 +41,10 @@ def test_dedupe_keeps_the_better_scored_copy():
     assert _dedupe([better, worse]) == [better]
 
 
-def along(lat0: float, lon0: float, first: int, last: int) -> IntervalSpot:
+def along(lat0: float, lon0: float, first: int, last: int) -> Spot:
     """Points first..last of one straight road heading north from lat0."""
     pts = [(lat0 + k * LAT_STEP, lon0, 300.0) for k in range(first, last + 1)]
-    return IntervalSpot(points=pts, length_m=(last - first) * 28.0)
+    return Spot(points=pts, length_m=(last - first) * 28.0)
 
 
 def test_a_stretch_inside_a_longer_one_is_the_same_spot():
