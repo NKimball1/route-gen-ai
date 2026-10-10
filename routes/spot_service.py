@@ -51,7 +51,7 @@ def run_spot_search(spec: IntervalSpec, profile: str | None = None,
     gpx_paths = []
     at_w = f"{'@' + format(spec.watts, '.0f') + 'W':>8}" if spec.watts else ""
     if spec.watts and spec.kind == "any":
-        at_w += f"{'back':>8}"   # the same stretch ridden the other way
+        at_w += f"{'back':>8}"   # the same Stretch ridden the other way
     print(f"\n{'rank':<5}{'len mi':>7}{'grade %':>9}{'ft/mi':>7}{'±%':>6}{'turns/km':>10}"
           f"{'stops':>7}{'unpaved':>9}{'busy':>6}{'ride out mi':>13}{at_w}  file")
     for i, s in enumerate(spots, 1):
@@ -91,8 +91,8 @@ def run_spot_search(spec: IntervalSpec, profile: str | None = None,
 
 
 def best_summary(spec: IntervalSpec, best: Spot) -> str:
-    """The one line a rider plans around: where, how long a pass takes,
-    and how many laps a rep needs."""
+    """The one line a rider plans around: where, how long a Lap takes,
+    and how many Laps a Rep needs."""
     timing = ""
     lap = best.stretch.lap_times(spec)
     if lap is not None:

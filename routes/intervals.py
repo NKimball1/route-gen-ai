@@ -2,14 +2,14 @@
 
 The idea: a Spot is a continuous Stretch of quiet road with the right
 gradient character — flat and steady for threshold work, a consistent
-slight climb for VO2 reps. We search by routing Spokes outward from the
+slight climb for VO2 Reps. We search by routing Spokes outward from the
 start in many directions (the router already prefers quiet roads); each
 Spoke offers the Stretches worth trying along it (routes/stretch.py
 measures them), and this module keeps the search policy: what is
 acceptable and how to rank.
 
-- flat spots:    minimize |mean grade|, grade variability, and turn density
-- incline spots: mean grade near the sweet spot (~4%), climbing one way,
+- flat Spots:    minimize |mean grade|, grade variability, and turn density
+- incline Spots: mean grade near the sweet spot (~4%), climbing one way,
                  low variability, low turn density
 
 Turn density is a proxy for junction interruptions. Overpass supplies mapped
@@ -22,14 +22,14 @@ from routes.power import DEFAULT_TOTAL_KG, speed_mps
 from routes.spec import METERS_PER_MILE, Router
 from routes.stretch import LapTimes, Spoke, Stretch
 
-# Speed assumptions for turning rep duration into stretch length when
+# Speed assumptions for turning Rep duration into Stretch length when
 # the rider gives no power figure. With watts, physics decides instead.
 FLAT_SPEED_MPH: float = 20.0      # threshold pace on flat road
 INCLINE_SPEED_MPH: float = 11.0   # VO2 pace into a grade
-TRAVEL_SPEED_MPH: float = 15.0    # easy riding out to the spot
-# Grade the power model assumes while SIZING the search window (the
-# scorer's own ideal for each kind); each found stretch is then timed
-# at its real grade.
+TRAVEL_SPEED_MPH: float = 15.0    # easy riding out to the Spot
+# Grade the power model assumes while SIZING a Rep's distance (the
+# scorer's own ideal for each kind); each Stretch found is then timed
+# along its own grade.
 ASSUMED_GRADE_PCT: dict[str, float] = {"flat": 0.0, "incline": 4.0,
                                        "any": 0.0}
 
@@ -40,13 +40,13 @@ class IntervalSpec:
     reps: int
     rep_minutes: float
     kind: str                      # "flat", "incline", or "any"
-    # "any": grade is not a goal; what matters is that the stretch works
-    # ridden in EITHER direction (out-and-back reps), so it is scored on
-    # how evenly the two directions take the rep time.
+    # "any": grade is not a goal; what matters is that the Stretch works
+    # ridden in EITHER direction (out-and-back Reps), so it is scored on
+    # how evenly the two directions take the Rep time.
     max_travel_minutes: float = 30.0
-    watts: float | None = None     # target power; sizes reps by physics
+    watts: float | None = None     # target power; sizes Reps by physics
     total_kg: float = DEFAULT_TOTAL_KG   # rider + bike, for the physics
-    # Hard limit on stops/signals per stretch. The scorer already prefers
+    # Hard limit on stops/signals per Stretch. The scorer already prefers
     # fewer, but "no interruptions" is a requirement, not a preference.
     # Can't be enforced when Overpass is down (counts unknown).
     max_stops: int | None = None
@@ -78,14 +78,14 @@ class Spot:
     road_name: str = ""
 
 
-# Climbing per km at which a "flat" stretch has no flatness credit left
+# Climbing per km at which a "flat" Stretch has no flatness credit left
 # (~80 ft/mi). Average grade alone can't see rollers: a road that climbs
 # and descends 30 m averages 0% (Paulson Rd ranked as the flattest 2x20
-# stretch with 370 ft of climbing). Paved-trail flat is ~2.5 m/km.
+# Stretch with 370 ft of climbing). Paved-trail flat is ~2.5 m/km.
 ROLLING_ZERO_M_PER_KM: float = 15.0
-# Interval stretches are for road bikes at threshold: crushed-limestone
+# Interval Spots are for road bikes at threshold: crushed-limestone
 # trails kept making the lists (Military Ridge, a third-limestone 'flat'
-# pick). A window more than this share unpaved is skipped outright.
+# pick). A Stretch more than this share unpaved is skipped outright.
 MAX_UNPAVED_FRAC: float = 0.10
 
 
@@ -98,8 +98,8 @@ def _score(spec: IntervalSpec, length: float, mean_grade: float,
     (Stretch.lap_times, None without a power figure). An either-direction
     plan is ranked on their ratio when they are known, on its average
     grade when not."""
-    # Longer is better up to the full rep distance (you can lap a shorter
-    # stretch, but every turnaround interrupts the effort).
+    # Longer is better up to the full Rep distance (you can lap a shorter
+    # Stretch, but every turnaround interrupts the effort).
     len_score = min(length / spec.rep_distance_m, 1.0)
     rolling_score = max(0.0, 1.0 - climb_m_per_km / ROLLING_ZERO_M_PER_KM)
     if spec.kind == "flat":
@@ -107,7 +107,7 @@ def _score(spec: IntervalSpec, length: float, mean_grade: float,
                           rolling_score)
         steady_score = max(0.0, 1.0 - grade_std / 3.0)
     elif spec.kind == "any":
-        # symmetry: how evenly the two directions take the rep. With
+        # symmetry: how evenly the two directions take the Rep. With
         # watts this is the ratio of the Stretch's two Lap times (1.0 on
         # the flat, ~0.8 at 1.5%, ~0.6 at 3%); without, a gentler grade
         # penalty than "flat" -- rolling is fine, a hill is not.
@@ -116,7 +116,7 @@ def _score(spec: IntervalSpec, length: float, mean_grade: float,
             grade_score = fast / slow if slow > 0 else 0.0
         else:
             grade_score = max(0.0, 1.0 - abs(mean_grade) / 4.0)
-        # symmetric pass times don't make rollers smooth: hold power over
+        # symmetric Lap times don't make rollers smooth: hold power over
         # them and it spikes on every rise
         grade_score = min(grade_score, rolling_score)
         steady_score = max(0.0, 1.0 - grade_std / 4.0)
@@ -125,10 +125,10 @@ def _score(spec: IntervalSpec, length: float, mean_grade: float,
         steady_score = max(0.0, 1.0 - grade_std / 4.0)
     turn_score = max(0.0, 1.0 - turns_per_km / 4.0)
     # What matters for an interval is interruptions PER REP: lapping a short
-    # stretch re-encounters its controls, so scale the window's weighted
-    # control count to one rep distance. This term dominates — a single
-    # signal per rep halves it, and a clean short stretch should beat a long
-    # stretch with stops (turnarounds interrupt less than traffic lights).
+    # Stretch re-encounters its controls, so scale the Stretch's weighted
+    # control count to one Rep distance. This term dominates — a single
+    # signal per Rep halves it, and a clean short Stretch should beat a long
+    # Stretch with stops (turnarounds interrupt less than traffic lights).
     wt_per_rep = control_wt * spec.rep_distance_m / max(length, 1.0)
     control_score = 1.0 / (1.0 + wt_per_rep)
     return (0.25 * len_score + 0.25 * grade_score + 0.1 * steady_score
@@ -166,8 +166,8 @@ def find_spots(spec: IntervalSpec, lat: float, lon: float, provider: Router,
         spoke = Spoke(leg, controls)
         best: tuple[float, Stretch] | None = None
         # "within N minutes" is riding distance, not the crow-flies reach
-        # of the spoke: a winding road runs past the budget before the
-        # spoke's endpoint does (a 10 mi ask once returned 12.5 mi out)
+        # of the Spoke: a winding road runs past the budget before the
+        # Spoke's endpoint does (a 10 mi ask once returned 12.5 mi out)
         for stretch in spoke.stretches_worth_trying(
                 spec, starting_within_m=spec.travel_radius_m):
             if _acceptable(spec, stretch):
@@ -200,7 +200,7 @@ def _acceptable(spec: IntervalSpec, stretch: Stretch) -> bool:
 
 
 def _rank(spec: IntervalSpec, stretch: Stretch) -> float:
-    # each share of the stretch on a busy road costs that share of the score
+    # each share of the Stretch on a busy road costs that share of the score
     return _score(spec, stretch.length_m, stretch.mean_grade_pct,
                   stretch.grade_std_pct, stretch.turns_per_km,
                   stretch.stop_weight,
@@ -208,18 +208,18 @@ def _rank(spec: IntervalSpec, stretch: Stretch) -> float:
                   lap_times=stretch.lap_times(spec)) * (1.0 - stretch.busy_share)
 
 
-# Two spokes a few degrees apart often share their first miles of road, so
-# the same stretch came back as #1, #2 and #3. Comparing midpoints missed a
-# piece sitting inside a longer stretch (Highway 12 Path, listed twice) and
+# Two Spokes a few degrees apart often share their first miles of road, so
+# the same Stretch came back as #1, #2 and #3. Comparing midpoints missed a
+# piece sitting inside a longer Stretch (Highway 12 Path, listed twice) and
 # half-overlapping sections of one trail -- and merged parallel roads that
-# are genuinely different spots. Two stretches are one spot when at least
+# are genuinely different Spots. Two Stretches are one Spot when at least
 # DUPLICATE_OVERLAP of the shorter lies within ON_SAME_ROAD_M of the other.
 ON_SAME_ROAD_M: float = 40.0
 DUPLICATE_OVERLAP: float = 0.5
 
 
 def _overlap(a: Spot, b: Spot) -> float:
-    """Fraction of the shorter stretch lying on the other's road."""
+    """Fraction of the shorter Spot's Stretch lying on the other's road."""
     from routes.road_avoid import dist_to_road
     short, long_ = ((a.stretch, b.stretch) if a.stretch.length_m <= b.stretch.length_m
                     else (b.stretch, a.stretch))
@@ -230,7 +230,7 @@ def _overlap(a: Spot, b: Spot) -> float:
 
 
 def _dedupe(spots: list[Spot]) -> list[Spot]:
-    """Drop stretches that are the same road as a better-scored one.
+    """Drop Spots that are the same road as a better-scored one.
     `spots` must already be sorted best-first."""
     kept: list[Spot] = []
     for s in spots:

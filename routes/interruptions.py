@@ -2,7 +2,7 @@
 
 Stop signs, traffic signals, yields, and level crossings are tagged nodes in
 OSM. One Overpass query fetches every control in the search area; counting
-them along a candidate stretch is then pure local math. Free, no API key.
+them along a Stretch is then pure local math. Free, no API key.
 
 Whose stop is it? A stop sign mapped on a SIDE street sits ~10-20 m off
 the main road, so a wide match counted it against riders who have the

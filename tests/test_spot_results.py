@@ -113,9 +113,9 @@ class WindingProvider(DenseProvider):
 
 
 def test_within_the_travel_budget_means_riding_distance(monkeypatch):
-    """Stop signs along the first 8 km of every spoke make the far end the
-    best-scoring window -- and on a winding road the far end is beyond the
-    riding budget even though the spoke's endpoint is not."""
+    """Stop signs along the first 8 km of every Spoke make the far end the
+    best-scoring Stretch -- and on a winding road the far end is beyond the
+    riding budget even though the Spoke's endpoint is not."""
     import routes.interruptions as interruptions
     from routes.editing import _cum
     from routes.providers import _destination

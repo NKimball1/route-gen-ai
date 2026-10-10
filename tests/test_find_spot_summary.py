@@ -14,7 +14,7 @@ def test_either_way_reports_both_directions():
     line = best_summary(IntervalSpec("x", 4, 4.0, "any", watts=285),
                         spot(1.13, 2.5))
     assert " out / " in line and " back at 285 W" in line
-    # the 2:12 descent can't fill a 4-min rep: two passes
+    # the 2:12 descent can't fill a 4-min Rep: two Laps
     assert "~2 laps per rep" in line
 
 

@@ -1,8 +1,8 @@
-"""Busy roads count against an interval stretch.
+"""Busy roads count against an interval Stretch.
 
 Field case 2026-10-02: the top 4x10 result ran its last stretch onto South
-Fish Hatchery Road, a busy county road; a slightly shorter window that
-stopped before it was the better spot, but the finder couldn't see road
+Fish Hatchery Road, a busy county road; a slightly shorter Stretch that
+stopped before it was the better Spot, but the finder couldn't see road
 class, so length won.
 """
 import math
