@@ -218,3 +218,19 @@ def test_an_either_direction_stretch_grows_until_the_faster_lap_fills_the_rep():
     assert straight(L * 1.2, -2.0).fits_rep(plan)     # which way it tilts doesn't matter
     two_pct = straight(L, 2.0)
     assert two_pct.lap_seconds(285, back=True) < two_pct.lap_seconds(285)
+
+
+def test_a_road_crossing_on_a_trail_is_a_stop_but_a_crosswalk_on_the_ridden_road_is_not():
+    """OSM tags both highway=crossing. Riding a trail, every road it
+    crosses interrupts the Rep, signed or not; riding the road, a
+    crosswalk across it is the pedestrians' stop, not the rider's."""
+    from routes.interruptions import trail_crossing
+    pts = road(60)                                         # ~7.2 km north
+    trail = [(p[0], p[1]) for p in pts[:30]]               # the first ~3.6 km is a trail
+    road_across_trail = trail_crossing(pts[12][0], pts[12][1])   # ~1.5 km along
+    crosswalk = trail_crossing(pts[45][0], pts[45][1])           # ~5.5 km along, on the road
+    spoke = Spoke(leg(pts, path=[trail]), controls=[road_across_trail, crosswalk])
+    on_trail = spoke.stretch(500.0, 3000.0)
+    assert on_trail.stops == 1 and on_trail.stop_weight == 1.0
+    assert spoke.stretch(4500.0, 7000.0).stops == 0
+    assert spoke.stretch(0.0, spoke.length_m).stops == 1

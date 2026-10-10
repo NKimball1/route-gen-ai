@@ -15,7 +15,7 @@ from bisect import bisect_left, bisect_right
 from functools import cached_property
 from typing import Iterator, Protocol, Sequence
 
-from routes.interruptions import controls_along
+from routes.interruptions import controls_along, is_path_only
 from routes.policy import REP_FIT_TOLERANCE
 from routes.power import DEFAULT_TOTAL_KG, seconds_for
 from routes.spec import EARTH_RADIUS_M, Coord, LatLon, Leg, Point, Sample, Track
@@ -110,6 +110,37 @@ def _on_ways_cum(rs: list[Sample], ways: list[list[LatLon]]) -> list[int]:
     return cum
 
 
+class _OnLines:
+    """Is a point within a few meters of these lines? An area holds
+    thousands of crossing nodes (every crosswalk in town) and a trail
+    Spoke thousands of points, so a coarse grid of the cells the lines
+    pass through rules out almost every node before the exact check."""
+    CELL_DEG = 0.001   # ~110 m of latitude: far wider than any reach used here
+
+    def __init__(self, lines: list[list[LatLon]]) -> None:
+        self._lines = lines
+        self._cells: set[tuple[int, int]] = set()
+        for line in lines:
+            for a, b in zip(line, line[1:] or line):
+                # sample each segment at under a cell's spacing, so every
+                # point on it lies in or next to a registered cell
+                n = int(max(abs(b[0] - a[0]), abs(b[1] - a[1])) / self.CELL_DEG) + 1
+                for t in range(n + 1):
+                    self._cells.add(self._cell(a[0] + (b[0] - a[0]) * t / n,
+                                               a[1] + (b[1] - a[1]) * t / n))
+
+    def _cell(self, lat: float, lon: float) -> tuple[int, int]:
+        return math.floor(lat / self.CELL_DEG), math.floor(lon / self.CELL_DEG)
+
+    def within(self, lat: float, lon: float, reach_m: float) -> bool:
+        i, j = self._cell(lat, lon)
+        if not any((i + di, j + dj) in self._cells
+                   for di in (-1, 0, 1) for dj in (-1, 0, 1)):
+            return False
+        from routes.road_avoid import dist_to_road
+        return dist_to_road((lat, lon), self._lines) <= reach_m
+
+
 class Spoke:
     """One routed direction from the start, ready to measure Stretches on.
     Built from the router's leg (points with elevation, plus its optional
@@ -134,9 +165,14 @@ class Spoke:
                    or self._unpaved_cum[k + 1] > self._unpaved_cum[k])
             self._bad_next[k] = k if bad else self._bad_next[k + 1]
         # Map every control onto the road once; a Stretch then counts hits
-        # in its distance range with two bisects.
+        # in its distance range with two bisects. A road crossing counts
+        # only where this Spoke rides a path through it: on the road being
+        # crossed it is a crosswalk, someone else's stop.
         self.stops_known = controls is not None
-        hits = controls_along([(p[0], p[1]) for p in self._raw], controls or [])
+        on_path = _OnLines(leg.get("path", []))
+        mine = [c for c in controls or []
+                if not is_path_only(c) or on_path.within(c[0], c[1], c[3])]
+        hits = controls_along([(p[0], p[1]) for p in self._raw], mine)
         self._hit_pos = [h[0] for h in hits]
         self._hit_wt_cum = [0.0]
         for _, w in hits:

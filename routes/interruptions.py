@@ -10,6 +10,10 @@ right of way. Measured on the Madison-area map (2026-10-07), side-street
 signs within 40 m of a road outnumbered the road's own 5,037 to 2,082.
 Stops, yields and rail crossings now count only on the routed line itself;
 signals, which stop everyone, keep a wide reach.
+
+Road crossings (highway=crossing) stop a rider on a trail, signed or not,
+but the same tag marks crosswalks across a road: they count only where the
+route rides a path through them (see trail_crossing and the Spoke).
 """
 import glob
 import hashlib
@@ -23,10 +27,12 @@ import requests
 from routes.policy import CONTROL_ON_ROUTE_M, SIGNAL_REACH_M
 from routes.spec import METERS_PER_DEG_LAT, METERS_PER_DEG_LON_EQ
 
-# (lat, lon, weight, reach_m): one traffic control, how badly it breaks an
-# effort, and how close to the route it must be to apply to the rider.
-# Hand-built 3-tuples (tests, older callers) use controls_along's tolerance.
-Control = tuple[float, float, float, float]
+# (lat, lon, weight, reach_m, path_only): one traffic control, how badly it
+# breaks an effort, how close to the route it must be to apply to the
+# rider, and whether it applies only where the rider is on a path (a road
+# crossing: see trail_crossing). Hand-built 3-tuples (tests, older callers)
+# use controls_along's tolerance and apply everywhere.
+Control = tuple[float, float, float, float, bool]
 # (meters along the polyline, weight): a control mapped onto a route
 ControlHit = tuple[float, float]
 
@@ -48,18 +54,42 @@ WEIGHTS: dict[str, float] = {
     "give_way": 0.4,
 }
 
+# A road crossing a trail: OSM tags it highway=crossing on the node the
+# path shares with the road, usually with no sign mapped. It weighs as a
+# stop, not a yield (0.4): a yield on a road lets a rider merge rolling
+# with traffic going their way, but crossing a road from a trail means
+# looking both ways across every lane with no right of way, which at
+# effort pace is a stop whenever anything is coming (the Military Ridge
+# trail meets Cross Country Road near 43.0014,-89.5167 unsigned, and a
+# rider still has to stop for a car). Where a crossing does have a stop
+# sign for trail users, the two count as one control at the same weight.
+TRAIL_CROSSING_WEIGHT: float = WEIGHTS["stop"]
+
 # Nodes within this distance are one intersection.
 CLUSTER_M: float = 35.0
-# Cached control lists carry each control's reach; the "2" keeps lists cached
-# before reach existed (stops clustered, no reach) from being read back.
-CONTROLS_PREFIX: str = "controls2_"
+# Cached control lists carry each control's reach and whether it applies
+# only on a path; the "3" keeps lists cached before trail crossings existed
+# (no crossings, 4-element controls) from being read back.
+CONTROLS_PREFIX: str = "controls3_"
 
 QUERY: str = """[out:json][timeout:60];
 (
-  node["highway"~"^(stop|give_way|traffic_signals)$"]({bbox});
+  node["highway"~"^(stop|give_way|traffic_signals|crossing)$"]({bbox});
   node["railway"="level_crossing"]({bbox});
 );
 out;"""
+
+
+def trail_crossing(lat: float, lon: float) -> Control:
+    """A highway=crossing node. The same tag marks a trail's crossing of a
+    road and a pedestrian crosswalk on a road: it interrupts a rider ON
+    the path (the Spoke checks where its router line rides a path) and
+    never a rider on the road being crossed."""
+    return (lat, lon, TRAIL_CROSSING_WEIGHT, CONTROL_ON_ROUTE_M, True)
+
+
+def is_path_only(control: Sequence[float]) -> bool:
+    return len(control) > 4 and bool(control[4])
 
 
 def bbox_around(lat: float, lon: float, radius_m: float) -> str:
@@ -183,14 +213,16 @@ def _covering_controls(want: BBox4, fresh_only: bool) -> tuple[list[Control], di
             best = entry
     if best is None:
         return None
-    inside = [(la, lo, wt, reach) for la, lo, wt, reach in best["controls"]
+    inside = [(la, lo, wt, reach, bool(path_only))
+              for la, lo, wt, reach, path_only in best["controls"]
               if want[0] <= la <= want[2] and want[1] <= lo <= want[3]]
     return inside, best
 
 
 def fetch_controls(lat: float, lon: float,
                    radius_m: float) -> list[Control] | None:
-    """All traffic controls within radius of (lat, lon): (lat, lon, weight).
+    """All traffic controls within radius of (lat, lon), road crossings
+    included (they apply only where a route rides a path).
     None when Overpass did not answer and nothing cached covers the area --
     'no data' and 'no controls' are different facts, and a result table
     must not show the first as 0."""
@@ -210,6 +242,10 @@ def fetch_controls(lat: float, lon: float,
     on_route: list[Control] = []
     for el in data.get("elements", []):
         tags = el.get("tags", {})
+        if tags.get("highway") == "crossing":
+            if tags.get("crossing") != "no":     # "no": crossing is not allowed here
+                on_route.append(trail_crossing(el["lat"], el["lon"]))
+            continue
         kind = tags.get("highway") or ("level_crossing"
                                        if tags.get("railway") == "level_crossing"
                                        else None)
@@ -217,9 +253,9 @@ def fetch_controls(lat: float, lon: float,
         if not weight:
             continue
         if kind == "traffic_signals":
-            signals.append((el["lat"], el["lon"], weight, SIGNAL_REACH_M))
+            signals.append((el["lat"], el["lon"], weight, SIGNAL_REACH_M, False))
         else:
-            on_route.append((el["lat"], el["lon"], weight, CONTROL_ON_ROUTE_M))
+            on_route.append((el["lat"], el["lon"], weight, CONTROL_ON_ROUTE_M, False))
     # Only signal heads cluster: merging a side-street stop with the main
     # road's own would move it off the line and lose it.
     clustered = _cluster(signals) + on_route
@@ -237,14 +273,14 @@ def _cluster(controls: Sequence[Sequence[float]],
     for c in controls:
         lat, lon, weight = c[0], c[1], c[2]
         reach = c[3] if len(c) > 3 else SIGNAL_REACH_M
-        for i, (mlat, mlon, mweight, mreach) in enumerate(merged):
+        for i, (mlat, mlon, mweight, mreach, _) in enumerate(merged):
             dy = (lat - mlat) * METERS_PER_DEG_LAT
             dx = (lon - mlon) * METERS_PER_DEG_LON_EQ * math.cos(math.radians(lat))
             if dx * dx + dy * dy <= radius_m * radius_m:
-                merged[i] = (mlat, mlon, max(mweight, weight), max(mreach, reach))
+                merged[i] = (mlat, mlon, max(mweight, weight), max(mreach, reach), False)
                 break
         else:
-            merged.append((lat, lon, weight, reach))
+            merged.append((lat, lon, weight, reach, False))
     return merged
 
 
