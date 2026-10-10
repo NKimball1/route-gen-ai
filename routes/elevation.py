@@ -11,13 +11,14 @@ Calibration history (each field measurement improved the model):
    ~125 m rolling-mean smooth, 1 m threshold. Flat route: 1,689 ft
    (RWGPS 1,600 / Garmin-derived 1,870); hilly: 2,927 (RWGPS 2,483).
 """
-from typing import Sequence
+from typing import Iterable, Sequence
 
-from routes.despur import _resample
+from routes.despur import RESAMPLE_STEP_M, _resample
 from routes.spec import Track
 
 SMOOTH_WINDOW_SAMPLES: int = 5   # x 25 m resample step ~= 125 m
 HYSTERESIS_M: float = 1.0
+PROFILE_STEP_M: float = RESAMPLE_STEP_M   # spacing of smoothed_profile samples
 
 
 def _smooth(eles: Sequence[float | None],
@@ -30,14 +31,21 @@ def _smooth(eles: Sequence[float | None],
     return out
 
 
-def track_ascent(points: Track, hysteresis_m: float = HYSTERESIS_M) -> float:
-    """Total climb in meters over (lat, lon, ele) points."""
-    rs = _resample(points)
-    eles = _smooth([p[2] for p in rs])
+def smoothed_profile(points: Track) -> list[float | None]:
+    """The model's elevation profile: one smoothed elevation every
+    PROFILE_STEP_M along the points (sample k sits k * PROFILE_STEP_M
+    in; the last one at the end)."""
+    return _smooth([p[2] for p in _resample(points)])
+
+
+def ascent(profile: Iterable[float | None],
+           hysteresis_m: float = HYSTERESIS_M) -> float:
+    """Meters climbed over a smoothed profile, in the order given: rises
+    count once they top HYSTERESIS_M, so DEM noise under it is not climbing."""
     total = 0.0
     low: float | None = None    # bottom of the rise being tracked
     high: float | None = None   # its running top
-    for e in eles:
+    for e in profile:
         if e is None:
             continue
         if low is None or high is None:
@@ -52,3 +60,9 @@ def track_ascent(points: Track, hysteresis_m: float = HYSTERESIS_M) -> float:
     if low is not None and high is not None and high - low >= hysteresis_m:
         total += high - low
     return total
+
+
+def track_ascent(points: Track, hysteresis_m: float = HYSTERESIS_M) -> float:
+    """Total climb in meters over (lat, lon, ele) points."""
+    return ascent(smoothed_profile(points), hysteresis_m)
+
