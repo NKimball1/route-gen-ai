@@ -11,10 +11,10 @@ Two sources, merged:
 import math
 from dataclasses import dataclass
 
-from routes.intervals import _resample
 from routes.spec import (METERS_PER_DEG_LAT, METERS_PER_DEG_LON_EQ,
                          METERS_PER_MILE, ClimbRow, Coord, LatLon, Router,
                          Sample)
+from routes.stretch import _resample
 
 
 # Climb-start dedupe grid: cells per degree (~600 m squares).

@@ -100,7 +100,10 @@ def _on_ways_cum(rs: list[Sample], ways: list[list[LatLon]]) -> list[int]:
 
 
 class Spoke:
-    """One routed direction from the start, ready to measure Stretches on."""
+    """One routed direction from the start, ready to measure Stretches on.
+    Built from the router's leg (points with elevation, plus its optional
+    `unpaved` / `busy` lines) and the area's traffic controls, or None when
+    they could not be fetched (stop counts are then unknown)."""
 
     def __init__(self, leg: Leg, controls: Sequence[Sequence[float]] | None) -> None:
         self._raw: Track = leg["points"]

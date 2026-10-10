@@ -1,10 +1,12 @@
-"""Find a stretch of road suited to structured intervals.
+"""Find a Stretch of road suited to structured intervals.
 
-The idea: an interval spot is a continuous stretch of quiet road with the
-right gradient character — flat and steady for threshold work, a consistent
-slight climb for VO2 reps. We search by routing spokes outward from the start
-in many directions (the router already prefers quiet roads), then slide a
-window along each spoke's geometry and score every window:
+The idea: a Spot is a continuous Stretch of quiet road with the right
+gradient character — flat and steady for threshold work, a consistent
+slight climb for VO2 reps. We search by routing Spokes outward from the
+start in many directions (the router already prefers quiet roads); each
+Spoke offers the Stretches worth trying along it (routes/stretch.py
+measures them), and this module keeps the search policy: what is
+acceptable and how to rank.
 
 - flat spots:    minimize |mean grade|, grade variability, and turn density
 - incline spots: mean grade near the sweet spot (~4%), climbing one way,
@@ -13,12 +15,11 @@ window along each spoke's geometry and score every window:
 Turn density is a proxy for junction interruptions. Overpass supplies mapped
 stop signs and signals; unavailable control data remains explicitly unknown.
 """
-import math
 from dataclasses import dataclass, field
 
 from routes.power import DEFAULT_TOTAL_KG, seconds_for, speed_mps
-from routes.spec import (EARTH_RADIUS_M, METERS_PER_FOOT, METERS_PER_MILE,
-                         Coord, Point, Router, Sample, Track)
+from routes.spec import METERS_PER_FOOT, METERS_PER_MILE, Router, Track
+from routes.stretch import Spoke, Stretch
 
 # Speed assumptions for turning rep duration into stretch length when
 # the rider gives no power figure. With watts, physics decides instead.
@@ -114,72 +115,6 @@ class Spot:
         return seconds_for(self.length_m, grade, watts, total_kg)
 
 
-def _hav_m(a: Coord, b: Coord) -> float:
-    phi1, phi2 = math.radians(a[0]), math.radians(b[0])
-    dphi = phi2 - phi1
-    dlam = math.radians(b[1] - a[1])
-    h = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlam / 2) ** 2
-    return 2 * EARTH_RADIUS_M * math.asin(math.sqrt(h))
-
-
-def _bearing_deg(a: Coord, b: Coord) -> float:
-    phi1, phi2 = math.radians(a[0]), math.radians(b[0])
-    dlam = math.radians(b[1] - a[1])
-    y = math.sin(dlam) * math.cos(phi2)
-    x = math.cos(phi1) * math.sin(phi2) - math.sin(phi1) * math.cos(phi2) * math.cos(dlam)
-    return (math.degrees(math.atan2(y, x)) + 360.0) % 360.0
-
-
-BIN_M: float = 100.0  # resample step: kills GPS-style elevation jitter in grades
-# Controls just past a window's ends still interrupt every lap (you
-# turn around there), and mapped positions carry a little noise.
-CONTROL_PAD_M: float = 150.0
-
-
-def _resample(points: Track, step_m: float = BIN_M) -> list[Sample]:
-    """Points at ~step_m spacing with cumulative distance: (lat, lon, ele, cum)."""
-    out: list[Sample] = []
-    cum = carry = 0.0
-    last: Point | None = None
-    for p in points:
-        if p[2] is None:
-            continue
-        if last is None:
-            out.append((p[0], p[1], p[2], 0.0))
-        else:
-            d = _hav_m(last, p)
-            cum += d
-            carry += d
-            if carry >= step_m:
-                out.append((p[0], p[1], p[2], cum))
-                carry = 0.0
-        last = p
-    return out
-
-
-def _window_stats(rs: list[Sample], i: int,
-                  j: int) -> tuple[float, float, float, float]:
-    """Stats for resampled slice rs[i..j]: (length m, mean grade %,
-    grade std %, turns per km)."""
-    length = rs[j][3] - rs[i][3]
-    grades: list[float] = []
-    turns = 0
-    for k in range(i, j):
-        d = rs[k + 1][3] - rs[k][3]
-        if d > 0:
-            grades.append((rs[k + 1][2] - rs[k][2]) / d * 100.0)
-    for k in range(i + 1, j):
-        turn = abs(_bearing_deg(rs[k - 1][:2], rs[k][:2])
-                   - _bearing_deg(rs[k][:2], rs[k + 1][:2]))
-        if turn > 180.0:
-            turn = 360.0 - turn
-        if turn > 35.0:
-            turns += 1
-    mean = (rs[j][2] - rs[i][2]) / length * 100.0 if length else 0.0
-    var = (sum((g - mean) ** 2 for g in grades) / len(grades)) if grades else 0.0
-    return length, mean, math.sqrt(var), turns / max(length / 1000.0, 0.001)
-
-
 # Climbing per km at which a "flat" stretch has no flatness credit left
 # (~80 ft/mi). Average grade alone can't see rollers: a road that climbs
 # and descends 30 m averages 0% (Paulson Rd ranked as the flattest 2x20
@@ -189,25 +124,6 @@ ROLLING_ZERO_M_PER_KM: float = 15.0
 # trails kept making the lists (Military Ridge, a third-limestone 'flat'
 # pick). A window more than this share unpaved is skipped outright.
 MAX_UNPAVED_FRAC: float = 0.10
-ON_UNPAVED_M: float = 15.0   # a resampled point this close to an unpaved way is on it
-
-
-def _on_ways_cum(rs: list[Sample], ways: list[list[tuple[float, float]]]) -> list[int]:
-    """Prefix counts of resampled points lying on `ways` (within ON_UNPAVED_M):
-    points on ways in rs[i..j] = cum[j + 1] - cum[i]."""
-    if not ways:
-        return [0] * (len(rs) + 1)
-    from routes.road_avoid import dist_to_road
-    cum = [0]
-    for p in rs:
-        cum.append(cum[-1] + int(dist_to_road((p[0], p[1]), ways) <= ON_UNPAVED_M))
-    return cum
-
-
-def _window_climb(rs: list[Sample], i: int, j: int) -> float:
-    """Meters of climbing per km across resampled slice rs[i..j]."""
-    climb = sum(max(0.0, rs[k + 1][2] - rs[k][2]) for k in range(i, j))
-    return climb / max((rs[j][3] - rs[i][3]) / 1000.0, 0.001)
 
 
 def _score(spec: IntervalSpec, length: float, mean_grade: float,
@@ -255,20 +171,19 @@ def _score(spec: IntervalSpec, length: float, mean_grade: float,
 
 def find_spots(spec: IntervalSpec, lat: float, lon: float, provider: Router,
                n_spokes: int = 12, top: int = 3) -> list[Spot]:
-    """Search spokes around the start for the best interval stretches."""
-    from bisect import bisect_left, bisect_right
-
-    from routes.interruptions import controls_along, fetch_controls
+    """Search Spokes around the start for the best interval Stretches.
+    Every Stretch is measured by its Spoke (routes/stretch.py); this
+    function only decides what is acceptable and how to rank."""
+    from routes.interruptions import fetch_controls
     from routes.providers import _destination
 
-    fetched = fetch_controls(lat, lon, spec.travel_radius_m + 2000)
-    controls_known = fetched is not None
-    controls = fetched or []
+    controls = fetch_controls(lat, lon, spec.travel_radius_m + 2000)
+    controls_known = controls is not None
     if spec.max_stops is not None and not controls_known:
         print("Cannot verify the requested stop limit while traffic-control data is unavailable.")
         return []
     print(f"  {len(controls)} traffic controls (stops/signals/crossings) in area"
-          if controls_known else
+          if controls is not None else
           "  warning: no traffic-control data (Overpass down?) — scoring "
           "without interruption counts; stop counts will read '?'")
 
@@ -279,101 +194,59 @@ def find_spots(spec: IntervalSpec, lat: float, lon: float, provider: Router,
         leg = provider.route([(lat, lon), dest])
         if leg is None:
             continue
-        raw_points = leg["points"]
-        if any(p[2] is None for p in raw_points):
+        if any(p[2] is None for p in leg["points"]):
             print("  skipping a spoke with missing elevation data")
             continue
-        raw_cum = [0.0]
-        for point_a, point_b in zip(raw_points, raw_points[1:]):
-            raw_cum.append(raw_cum[-1] + _hav_m(point_a, point_b))
-        rs = _resample(raw_points)
-        if len(rs) < 5:
-            continue
-        # Surface and road class: flag each resampled point once, then every
-        # window reads its unpaved / busy share from a prefix sum.
-        unpaved_cum = _on_ways_cum(rs, leg.get("unpaved", []))
-        busy_cum = _on_ways_cum(rs, leg.get("busy", []))
-        # bad_next[k]: first index >= k that is busy or unpaved (len(rs) if none)
-        bad_next = [len(rs)] * (len(rs) + 1)
-        for k in range(len(rs) - 1, -1, -1):
-            bad = (busy_cum[k + 1] > busy_cum[k]) or (unpaved_cum[k + 1] > unpaved_cum[k])
-            bad_next[k] = k if bad else bad_next[k + 1]
-        # Map every control onto this spoke once; windows then count hits in
-        # their distance range with two bisects.
-        hits = controls_along([(p[0], p[1]) for p in raw_points], controls)
-        hit_pos = [h[0] for h in hits]
-        hit_wt_cum = [0.0]
-        for _, w in hits:
-            hit_wt_cum.append(hit_wt_cum[-1] + w)
-        # Slide a window of up to rep_distance along the spoke.
-        best_for_spoke: Spot | None = None
-        for i0 in range(0, len(rs) - 3):
-            # "within N minutes" is riding distance, not the crow-flies reach
-            # of the spoke: a winding road runs past the budget before the
-            # spoke's endpoint does (a 10 mi ask once returned 12.5 mi out)
-            if rs[i0][3] > spec.travel_radius_m:
-                break
-            j_full = i0
-            while j_full + 1 < len(rs) and spec.rep_fits(
-                    rs[j_full + 1][3] - rs[i0][3],
-                    (rs[j_full + 1][2] - rs[i0][2])
-                    / max(rs[j_full + 1][3] - rs[i0][3], 1.0) * 100.0):
-                j_full += 1
-            # Also try the window cut off just before the first busy or
-            # unpaved point: a full-length window is no use if its last
-            # kilometer is on a county highway, and stopping short (then
-            # lapping) is exactly how a rider would use that road.
-            candidates = [j_full]
-            k_bad = bad_next[i0]
-            if i0 < k_bad - 1 < j_full:
-                candidates.append(k_bad - 1)
-            for j in candidates:
-                length, mean, std, tpk = _window_stats(rs, i0, j)
-                if length < 0.35 * spec.rep_distance_m or length < 400:
-                    continue
-                travel_m = rs[j][3] if spec.kind == "incline" and mean < 0 else rs[i0][3]
-                if travel_m > spec.travel_radius_m:
-                    continue
-                unpaved_frac = (unpaved_cum[j + 1] - unpaved_cum[i0]) / (j - i0 + 1)
-                if unpaved_frac > MAX_UNPAVED_FRAC:
-                    continue
-                # Pad the range: a light AT the turnaround point still
-                # interrupts every lap, and mapped positions carry noise.
-                a = bisect_left(hit_pos, rs[i0][3] - CONTROL_PAD_M)
-                b = bisect_right(hit_pos, rs[j][3] + CONTROL_PAD_M)
-                if (spec.max_stops is not None and controls_known
-                        and b - a > spec.max_stops):
-                    continue
-                wt = hit_wt_cum[b] - hit_wt_cum[a]
-                wt_per_km = wt / max(length / 1000.0, 0.001)
-                busy_frac = (busy_cum[j + 1] - busy_cum[i0]) / (j - i0 + 1)
-                # each share of the stretch on a busy road costs that share
-                # of the score
-                score = _score(spec, length, mean, std, tpk, wt,
-                               climb_m_per_km=_window_climb(rs, i0, j)) * (1.0 - busy_frac)
-                spot = Spot(
-                    points=raw_points[bisect_left(raw_cum, rs[i0][3]):
-                                      bisect_left(raw_cum, rs[j][3]) + 1],
-                    length_m=length, mean_grade_pct=mean, grade_std_pct=std,
-                    turns_per_km=tpk, n_controls=b - a, control_wt_per_km=wt_per_km,
-                    controls_known=controls_known, unpaved_frac=unpaved_frac,
-                    busy_frac=busy_frac,
-                    dist_from_start_m=travel_m,
-                    bearing=bearing, score=score,
-                )
-                if best_for_spoke is None or spot.score > best_for_spoke.score:
-                    best_for_spoke = spot
-        if best_for_spoke is not None:
-            spots.append(best_for_spoke)
+        spoke = Spoke(leg, controls)
+        best: tuple[float, Stretch] | None = None
+        # "within N minutes" is riding distance, not the crow-flies reach
+        # of the spoke: a winding road runs past the budget before the
+        # spoke's endpoint does (a 10 mi ask once returned 12.5 mi out)
+        for stretch in spoke.stretches_worth_trying(
+                spec, starting_within_m=spec.travel_radius_m):
+            if _acceptable(spec, stretch):
+                score = _rank(spec, stretch)
+                if best is None or score > best[0]:
+                    best = (score, stretch)
+        if best is not None:
+            score, stretch = best
+            spots.append(Spot(
+                points=stretch.points, length_m=stretch.length_m,
+                mean_grade_pct=stretch.mean_grade_pct,
+                grade_std_pct=stretch.grade_std_pct,
+                turns_per_km=stretch.turns_per_km, n_controls=stretch.stops,
+                control_wt_per_km=stretch.stop_weight_per_km,
+                controls_known=stretch.stops_known,
+                unpaved_frac=stretch.gravel_share, busy_frac=stretch.busy_share,
+                dist_from_start_m=stretch.starts_at_m,
+                bearing=bearing, score=score,
+            ))
 
-    # For incline spots a downhill window is the same road ridden the other
-    # way: flip the sign so scoring saw it, but report positive grade.
-    for s in spots:
-        if spec.kind == "incline" and s.mean_grade_pct < 0:
-            s.points = list(reversed(s.points))
-            s.mean_grade_pct = -s.mean_grade_pct
     spots.sort(key=lambda s: s.score, reverse=True)
     return _dedupe(spots)[:top]
+
+
+def _acceptable(spec: IntervalSpec, stretch: Stretch) -> bool:
+    """Search policy: long enough to be worth a Rep, reachable within the
+    ride-out budget, paved, and within the rider's stop limit."""
+    if stretch.length_m < 0.35 * spec.rep_distance_m or stretch.length_m < 400:
+        return False
+    if stretch.starts_at_m > spec.travel_radius_m:
+        return False
+    if stretch.gravel_share > MAX_UNPAVED_FRAC:
+        return False
+    if (spec.max_stops is not None and stretch.stops_known
+            and stretch.stops > spec.max_stops):
+        return False
+    return True
+
+
+def _rank(spec: IntervalSpec, stretch: Stretch) -> float:
+    # each share of the stretch on a busy road costs that share of the score
+    return _score(spec, stretch.length_m, stretch.mean_grade_pct,
+                  stretch.grade_std_pct, stretch.turns_per_km,
+                  stretch.stop_weight,
+                  climb_m_per_km=stretch.climb_m_per_km) * (1.0 - stretch.busy_share)
 
 
 # Two spokes a few degrees apart often share their first miles of road, so

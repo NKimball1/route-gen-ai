@@ -73,7 +73,7 @@ def climb_to_peak(start_lat: float, start_lon: float, peak: Peak,
     Returns a dict like climbs.extract_climbs rows plus the peak name, or
     None when no substantial climb tops out near the peak."""
     from routes.climbs import extract_climbs
-    from routes.intervals import _resample
+    from routes.stretch import _resample
 
     leg = provider.route([(start_lat, start_lon), (peak["lat"], peak["lon"])])
     if leg is None:
