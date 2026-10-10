@@ -1,8 +1,6 @@
 """Interval search application and shared CLI/web descriptions."""
-import math
 import os
 from typing import Any
-from routes.policy import REP_FIT_TOLERANCE
 from routes.elevation import track_ascent
 from routes.geocode import geocode
 from routes.gpx_out import write_track
@@ -65,10 +63,10 @@ def run_spot_search(spec: IntervalSpec, profile: str | None = None,
         write_track(s.points, f"{spec.kind} spot #{i} ({spec.reps}x{spec.rep_minutes:.0f})",
                     desc, path)
         gpx_paths.append(path)
-        t_w = (f"{mmss(s.seconds_at(spec.watts, spec.total_kg)):>8}"
+        t_w = (f"{mmss(s.stretch.lap_seconds(spec.watts, spec.total_kg)):>8}"
                if spec.watts else "")
         if spec.watts and spec.kind == "any":
-            t_w += f"{mmss(s.seconds_at(spec.watts, spec.total_kg, reverse=True)):>8}"
+            t_w += f"{mmss(s.stretch.lap_seconds(spec.watts, spec.total_kg, back=True)):>8}"
         print(f"{i:<5}{s.length_mi:>7.1f}{s.mean_grade_pct:>9.1f}"
               f"{climb_ft_per_mile(s):>7.0f}"
               f"{s.grade_std_pct:>6.1f}{s.turns_per_km:>10.1f}"
@@ -92,22 +90,18 @@ def run_spot_search(spec: IntervalSpec, profile: str | None = None,
 def best_summary(spec: IntervalSpec, best: Spot) -> str:
     """The one line a rider plans around: where, how long a pass takes,
     and how many laps a rep needs."""
+    timing = ""
     if spec.watts:
-        # laps from TIME at the stretch's real grade, not from the
-        # search window's assumed one
-        one_pass = best.seconds_at(spec.watts, spec.total_kg)
+        one_pass = best.stretch.lap_seconds(spec.watts, spec.total_kg)
         if spec.kind == "any":
             # Both directions get ridden; show the timing of each pass.
-            back = best.seconds_at(spec.watts, spec.total_kg, reverse=True)
+            back = best.stretch.lap_seconds(spec.watts, spec.total_kg, back=True)
             timing = (f"; one pass takes {mmss(one_pass)} out / {mmss(back)} "
                       f"back at {spec.watts:.0f} W")
         else:
             timing = f"; one pass takes {mmss(one_pass)} at {spec.watts:.0f} W"
         timing += f" ({spec.total_kg:.0f} kg rider+bike)"
-        laps = rep_laps(spec, best)
-    else:
-        laps = rep_laps(spec, best)
-        timing = ""
+    laps = best.stretch.laps_per_rep(spec)
     note = "" if laps == 1 else f" (~{laps} laps per rep — expect turnarounds)"
     if not best.controls_known:
         note += " — stop/signal counts UNKNOWN this run (Overpass was down)"
@@ -115,27 +109,11 @@ def best_summary(spec: IntervalSpec, best: Spot) -> str:
             f"{best.dist_from_start_m / METERS_PER_MILE:.1f} mi ride out{timing}{note}")
 
 
-
-def laps_for_rep(stretch_m: float, rep_m: float) -> int:
-    if stretch_m <= 0:
-        return 1
-    return max(1, math.ceil(rep_m * (1.0 - REP_FIT_TOLERANCE) / stretch_m))
-
-
-def rep_laps(spec: IntervalSpec, spot: Spot) -> int:
-    if spec.watts:
-        seconds = spot.seconds_at(spec.watts, spec.total_kg)
-        if spec.kind == "any":
-            seconds = min(seconds, spot.seconds_at(spec.watts, spec.total_kg, reverse=True))
-        return laps_for_rep(seconds, spec.rep_minutes * 60.0)
-    return laps_for_rep(spot.length_m, spec.rep_distance_m)
-
-
 def spot_warnings(spec: IntervalSpec, spot: Spot) -> list[str]:
     warnings = []
     if not spot.controls_known:
         warnings.append("Stop/signal counts are UNKNOWN because traffic-control data is unavailable.")
-    laps = rep_laps(spec, spot)
+    laps = spot.stretch.laps_per_rep(spec)
     if laps > 1:
         warnings.append(f"{laps} laps per rep; turnarounds interrupt the effort.")
     return warnings
@@ -146,10 +124,13 @@ def spot_metrics(spec: IntervalSpec, spot: Spot) -> dict[str, Any]:
             "climb_ft_per_mile": climb_ft_per_mile(spot),
             "stops": spot.n_controls if spot.controls_known else None,
             "unpaved_fraction": spot.unpaved_frac, "busy_fraction": spot.busy_frac,
-            "travel_distance_m": spot.dist_from_start_m, "laps_per_rep": rep_laps(spec, spot),
+            "travel_distance_m": spot.dist_from_start_m,
+            "laps_per_rep": spot.stretch.laps_per_rep(spec),
             "road_name": spot.road_name,
-            "seconds_out": spot.seconds_at(spec.watts, spec.total_kg) if spec.watts else None,
-            "seconds_back": spot.seconds_at(spec.watts, spec.total_kg, reverse=True) if spec.watts else None}
+            "seconds_out": (spot.stretch.lap_seconds(spec.watts, spec.total_kg)
+                            if spec.watts else None),
+            "seconds_back": (spot.stretch.lap_seconds(spec.watts, spec.total_kg, back=True)
+                             if spec.watts else None)}
 
 
 def spot_label(spec: IntervalSpec, spot: Spot) -> str:
@@ -159,11 +140,12 @@ def spot_label(spec: IntervalSpec, spot: Spot) -> str:
              f"{climb_ft_per_mile(spot):.0f} ft/mi, {stops} stops, "
              f"{spot.dist_from_start_m / METERS_PER_MILE:.1f} mi out, "
              f"{spot.unpaved_frac:.0%} unpaved, {spot.busy_frac:.0%} busy")
-    laps = rep_laps(spec, spot)
+    laps = spot.stretch.laps_per_rep(spec)
     if laps > 1:
         label += f" - {laps} laps per rep (turnarounds)"
     if spec.watts:
-        label += f"; {mmss(spot.seconds_at(spec.watts, spec.total_kg))} at {spec.watts:g} W"
+        label += f"; {mmss(spot.stretch.lap_seconds(spec.watts, spec.total_kg))} at {spec.watts:g} W"
         if spec.kind == "any":
-            label += f" out / {mmss(spot.seconds_at(spec.watts, spec.total_kg, reverse=True))} back"
+            back = spot.stretch.lap_seconds(spec.watts, spec.total_kg, back=True)
+            label += f" out / {mmss(back)} back"
     return label

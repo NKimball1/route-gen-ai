@@ -2,12 +2,12 @@
 from find_spot import best_summary
 from routes.intervals import IntervalSpec, Spot
 from routes.spec import METERS_PER_MILE
+from tests.test_spoke import straight
 
 
 def spot(mi: float, grade: float, known: bool = True) -> Spot:
-    return Spot(points=[], length_m=mi * METERS_PER_MILE,
-                mean_grade_pct=grade, dist_from_start_m=6 * METERS_PER_MILE,
-                controls_known=known)
+    return Spot(straight(mi * METERS_PER_MILE, grade, controls=[] if known else None),
+                dist_from_start_m=6 * METERS_PER_MILE)
 
 
 def test_either_way_reports_both_directions():

@@ -18,7 +18,7 @@ stop signs and signals; unavailable control data remains explicitly unknown.
 from dataclasses import dataclass, field
 
 from routes.power import DEFAULT_TOTAL_KG, seconds_for, speed_mps
-from routes.spec import METERS_PER_FOOT, METERS_PER_MILE, Router, Track
+from routes.spec import METERS_PER_MILE, Router, Track
 from routes.stretch import Spoke, Stretch
 
 # Speed assumptions for turning rep duration into stretch length when
@@ -59,20 +59,6 @@ class IntervalSpec:
         mph = INCLINE_SPEED_MPH if self.kind == "incline" else FLAT_SPEED_MPH
         return self.rep_minutes * mph / 60.0 * METERS_PER_MILE
 
-    def rep_fits(self, length_m: float, grade_pct: float) -> bool:
-        """Is a stretch of this length and grade still within one rep?
-        With watts, the answer is TIME at the stretch's own grade — the
-        search window can then grow past the assumed-grade distance on a
-        gentler road, or stop short on a steeper one."""
-        if self.watts:
-            if self.kind == "any":
-                # both directions get ridden: grow until even the faster
-                # (downhill) pass fills the rep
-                grade_pct = -abs(grade_pct)
-            return (seconds_for(length_m, grade_pct, self.watts, self.total_kg)
-                    <= self.rep_minutes * 60.0)
-        return length_m <= self.rep_distance_m
-
     @property
     def travel_radius_m(self) -> float:
         return self.max_travel_minutes * TRAVEL_SPEED_MPH / 60.0 * METERS_PER_MILE
@@ -80,39 +66,61 @@ class IntervalSpec:
 
 @dataclass
 class Spot:
-    """A Stretch the finder recommends, plus the ride out to it and its road."""
-    points: Track = field(repr=False)  # the stretch itself
-    length_m: float = 0.0
-    mean_grade_pct: float = 0.0
-    grade_std_pct: float = 0.0
-    turns_per_km: float = 0.0
-    n_controls: int = 0                # stop signs/signals/etc. on the stretch
-    controls_known: bool = True        # False: Overpass was down; count is unknown
-    unpaved_frac: float = 0.0          # share of the stretch on gravel/compacted/dirt
-    busy_frac: float = 0.0             # share on secondary-or-bigger roads
-    control_wt_per_km: float = 0.0     # severity-weighted interruptions per km
-    dist_from_start_m: float = 0.0     # riding distance out to the stretch
+    """A Stretch the finder recommends, plus the ride out to it and its road.
+    Every fact about the road itself (Lap time, Laps per Rep included) is
+    the Stretch's; the read-only fields below are its facts under the
+    names the outputs have always used."""
+    stretch: Stretch = field(repr=False)
+    dist_from_start_m: float = 0.0     # riding distance out to the Stretch
     bearing: float = 0.0
     score: float = 0.0
     gpx_path: str | None = None
     road_name: str = ""
 
     @property
-    def length_mi(self) -> float:
-        return self.length_m / METERS_PER_MILE
+    def points(self) -> Track:
+        return self.stretch.points
 
     @property
-    def climb_ft(self) -> float:
-        return self.length_m * self.mean_grade_pct / 100.0 / METERS_PER_FOOT
+    def length_m(self) -> float:
+        return self.stretch.length_m
 
-    def seconds_at(self, watts: float,
-                   total_kg: float = DEFAULT_TOTAL_KG,
-                   reverse: bool = False) -> float:
-        """How long one pass of this stretch takes at `watts`, using the
-        stretch's own mean grade — the number a rider plans a rep around.
-        `reverse`: ridden the other way (grade sign flipped)."""
-        grade = -self.mean_grade_pct if reverse else self.mean_grade_pct
-        return seconds_for(self.length_m, grade, watts, total_kg)
+    @property
+    def length_mi(self) -> float:
+        return self.stretch.length_m / METERS_PER_MILE
+
+    @property
+    def mean_grade_pct(self) -> float:
+        return self.stretch.mean_grade_pct
+
+    @property
+    def grade_std_pct(self) -> float:
+        return self.stretch.grade_std_pct
+
+    @property
+    def turns_per_km(self) -> float:
+        return self.stretch.turns_per_km
+
+    @property
+    def n_controls(self) -> int:
+        """Stop signs/signals/crossings on one Lap (0 when not known)."""
+        return self.stretch.stops
+
+    @property
+    def controls_known(self) -> bool:
+        return self.stretch.stops_known
+
+    @property
+    def control_wt_per_km(self) -> float:
+        return self.stretch.stop_weight_per_km
+
+    @property
+    def unpaved_frac(self) -> float:
+        return self.stretch.gravel_share
+
+    @property
+    def busy_frac(self) -> float:
+        return self.stretch.busy_share
 
 
 # Climbing per km at which a "flat" stretch has no flatness credit left
@@ -210,17 +218,8 @@ def find_spots(spec: IntervalSpec, lat: float, lon: float, provider: Router,
                     best = (score, stretch)
         if best is not None:
             score, stretch = best
-            spots.append(Spot(
-                points=stretch.points, length_m=stretch.length_m,
-                mean_grade_pct=stretch.mean_grade_pct,
-                grade_std_pct=stretch.grade_std_pct,
-                turns_per_km=stretch.turns_per_km, n_controls=stretch.stops,
-                control_wt_per_km=stretch.stop_weight_per_km,
-                controls_known=stretch.stops_known,
-                unpaved_frac=stretch.gravel_share, busy_frac=stretch.busy_share,
-                dist_from_start_m=stretch.starts_at_m,
-                bearing=bearing, score=score,
-            ))
+            spots.append(Spot(stretch, dist_from_start_m=stretch.starts_at_m,
+                              bearing=bearing, score=score))
 
     spots.sort(key=lambda s: s.score, reverse=True)
     return _dedupe(spots)[:top]

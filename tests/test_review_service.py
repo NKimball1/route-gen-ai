@@ -9,6 +9,7 @@ from routes.spec import METERS_PER_MILE
 from routes.editing import _cum
 from routes.requests_model import ParsedRequest
 from tests.test_review_storage import artifact
+from tests.test_spoke import straight
 
 
 def request(kind="route", **changes):
@@ -98,8 +99,7 @@ def test_unknown_stops_and_power_settings_survive_to_the_web_result(tmp_path, mo
     install_parse(monkeypatch, parsed)
     monkeypatch.setattr(service, "_router_preflight", lambda: None)
     captured = []
-    spot = Spot(points=[(43, -89, 0), (43.01, -89, 0)],
-                length_m=7 * METERS_PER_MILE, controls_known=False)
+    spot = Spot(straight(7 * METERS_PER_MILE, controls=None))
     def search(spec, **kw):
         captured.append(spec)
         return [spot]

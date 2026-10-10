@@ -15,6 +15,7 @@ import pytest
 
 from routes import service
 from routes.geocode import GeocodeNotFound
+from tests.test_spoke import straight
 
 
 def _parse(**over):
@@ -170,19 +171,7 @@ def test_genuine_no_candidates_still_says_loosen_the_target(monkeypatch, tmp_pat
 
 # ---- D18: an interval stretch shorter than one rep ----------------------
 
-@pytest.mark.parametrize("stretch_m,rep_m,laps", [
-    (10000.0, 6700.0, 1),      # holds a whole rep
-    (6700.0, 6700.0, 1),       # exactly one rep
-    (6600.0, 6700.0, 1),       # 1.5% short: rep pace is an assumption, not
-                               # a measurement, so this is still one lap
-    (6400.0, 6700.0, 1),       # 4.5% short: inside the 5% grace
-    (6200.0, 6700.0, 2),       # 7.5% short: outside it, so say so
-    (5500.0, 6700.0, 2),       # D18: 5.5 mi stretch, 6.7 mi rep
-    (2000.0, 6700.0, 4),
-    (0.0, 6700.0, 1),          # degenerate input must not divide by zero
-])
-def test_lap_arithmetic(stretch_m, rep_m, laps):
-    assert service._laps_for_rep(stretch_m, rep_m) == laps
+# Laps per Rep (and its 5% grace) is a Stretch fact: tests/test_spoke.py.
 
 
 def test_short_interval_spot_discloses_the_lap_count(monkeypatch, tmp_path):
@@ -197,10 +186,7 @@ def test_short_interval_spot_discloses_the_lap_count(monkeypatch, tmp_path):
                   "max_travel_minutes": 20}))
     monkeypatch.setattr("routes.providers.brouter_reachable",
                         lambda url, timeout_s=1.0: True)
-    short = Spot(points=[(43.07, -89.38, 260.0), (43.10, -89.38, 261.0)],
-                 length_m=5500.0, mean_grade_pct=0.1,
-                 grade_std_pct=0.4, turns_per_km=0.5, n_controls=11,
-                 dist_from_start_m=100.0, bearing=0.0, score=0.5)
+    short = Spot(straight(5500.0, 0.1), dist_from_start_m=100.0, bearing=0.0, score=0.5)
     monkeypatch.setattr("routes.spot_service.run_spot_search",
                         lambda spec, out_dir=None: [short])
 
@@ -221,10 +207,7 @@ def test_long_enough_interval_spot_says_nothing_about_laps(monkeypatch, tmp_path
                   "max_travel_minutes": 20}))
     monkeypatch.setattr("routes.providers.brouter_reachable",
                         lambda url, timeout_s=1.0: True)
-    roomy = Spot(points=[(43.07, -89.38, 260.0), (43.20, -89.38, 261.0)],
-                 length_m=12000.0, mean_grade_pct=0.1,
-                 grade_std_pct=0.4, turns_per_km=0.5, n_controls=2,
-                 dist_from_start_m=100.0, bearing=0.0, score=0.9)
+    roomy = Spot(straight(12000.0, 0.1), dist_from_start_m=100.0, bearing=0.0, score=0.9)
     monkeypatch.setattr("routes.spot_service.run_spot_search",
                         lambda spec, out_dir=None: [roomy])
     result = service.handle_request("2x20 threshold", workdir=str(tmp_path))

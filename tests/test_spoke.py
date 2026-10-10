@@ -24,14 +24,19 @@ def whole(spoke):
     return spoke.stretch(0.0, spoke.length_m)
 
 
+def on_road(points, controls=()):
+    """The whole of a Spoke routed along `points`, as one Stretch.
+    `controls=None`: traffic-control data was unavailable."""
+    return whole(Spoke(leg(list(points)),
+                       controls=None if controls is None else list(controls)))
+
+
 def straight(length_m, grade_pct=0.0, controls=()):
     """A Stretch of exactly `length_m` due north at a steady `grade_pct`:
     a two-point road, so nothing snaps to the measuring points."""
     north = (43.0 + math.degrees(length_m / EARTH_RADIUS_M), -89.5,
              300.0 + length_m * grade_pct / 100.0)
-    spoke = Spoke(leg([(43.0, -89.5, 300.0), north]),
-                  controls=None if controls is None else list(controls))
-    return whole(spoke)
+    return on_road([(43.0, -89.5, 300.0), north], controls)
 
 
 def no_power_plan(rep_m, kind="flat"):

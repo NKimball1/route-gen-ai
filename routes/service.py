@@ -149,17 +149,6 @@ if not isinstance(sys.stdout, _StdoutRouter):
     sys.stdout = _StdoutRouter(sys.stdout)
 
 
-# Rep length is derived from an ASSUMED fixed pace (20 mph flat, 11 mph into
-# a grade), so it is already a rough number. A stretch within this much of a
-# full rep is one lap: telling a rider to turn around because they are 0.1%
-# short would be precision the input never had.
-
-
-def _laps_for_rep(stretch_m: float, rep_m: float) -> int:
-    from routes.spot_service import laps_for_rep
-    return laps_for_rep(stretch_m, rep_m)
-
-
 def _downsample(points: Sequence[Coord],
                 max_pts: int = 800) -> list[list[float]]:
     step = max(1, math.ceil(len(points) / max_pts))
