@@ -16,6 +16,7 @@ from functools import cached_property
 from typing import Iterator, Protocol, Sequence
 
 from routes.interruptions import controls_along
+from routes.policy import REP_FIT_TOLERANCE
 from routes.power import DEFAULT_TOTAL_KG, seconds_for
 from routes.spec import EARTH_RADIUS_M, Coord, LatLon, Leg, Point, Sample, Track
 
@@ -85,6 +86,16 @@ def _lap_fits_rep(length_m: float, grade_pct: float, plan: RepPlan) -> bool:
         return (seconds_for(length_m, grade_pct, plan.watts, plan.total_kg)
                 <= plan.rep_minutes * 60.0)
     return length_m <= plan.rep_distance_m
+
+
+def _laps(lap: float, rep: float) -> int:
+    """Laps of `lap` (seconds or meters) one `rep` needs. A Rep's length
+    comes from an assumed pace, so it is already a rough number: a Lap
+    within REP_FIT_TOLERANCE of a full Rep is one Lap, not a turnaround
+    for being 0.1% short."""
+    if lap <= 0:
+        return 1
+    return max(1, math.ceil(rep * (1.0 - REP_FIT_TOLERANCE) / lap))
 
 
 def _on_ways_cum(rs: list[Sample], ways: list[list[LatLon]]) -> list[int]:
@@ -262,6 +273,17 @@ class Stretch:
         """One Lap is within one Rep of the plan (an either-direction plan:
         the faster Lap is). The search grows a Stretch while this holds."""
         return _lap_fits_rep(self.length_m, self.mean_grade_pct, plan)
+
+    def laps_per_rep(self, plan: RepPlan) -> int:
+        """How many Laps one Rep of the plan needs: by Lap time with watts
+        (an either-direction plan: the faster Lap decides), by distance
+        without."""
+        if plan.watts:
+            lap = self.lap_seconds(plan.watts, plan.total_kg)
+            if plan.kind == "any":
+                lap = min(lap, self.lap_seconds(plan.watts, plan.total_kg, back=True))
+            return _laps(lap, plan.rep_minutes * 60.0)
+        return _laps(self.length_m, plan.rep_distance_m)
 
     def _share(self, cum: list[int]) -> float:
         return (cum[self._j + 1] - cum[self._i]) / (self._j - self._i + 1)

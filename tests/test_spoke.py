@@ -1,6 +1,11 @@
 """The Spoke seam (routes/stretch.py): build a Spoke from one routed road
 plus the area's traffic controls, then ask about Stretches along it."""
+import math
+
+import pytest
+
 from routes.intervals import IntervalSpec
+from routes.spec import EARTH_RADIUS_M, METERS_PER_MILE
 from routes.stretch import Spoke
 
 LAT_STEP = 0.0011  # ~122 m of latitude per step
@@ -17,6 +22,21 @@ def leg(points, **lines):
 
 def whole(spoke):
     return spoke.stretch(0.0, spoke.length_m)
+
+
+def straight(length_m, grade_pct=0.0, controls=()):
+    """A Stretch of exactly `length_m` due north at a steady `grade_pct`:
+    a two-point road, so nothing snaps to the measuring points."""
+    north = (43.0 + math.degrees(length_m / EARTH_RADIUS_M), -89.5,
+             300.0 + length_m * grade_pct / 100.0)
+    spoke = Spoke(leg([(43.0, -89.5, 300.0), north]),
+                  controls=None if controls is None else list(controls))
+    return whole(spoke)
+
+
+def no_power_plan(rep_m, kind="flat"):
+    """A plan without watts whose Rep needs `rep_m` of road (at 20 mph)."""
+    return IntervalSpec("x", 2, rep_m / METERS_PER_MILE * 3.0, kind)
 
 
 def test_a_flat_straight_road_is_a_flat_steady_turnless_stretch():
@@ -140,3 +160,56 @@ def test_an_incline_plan_rides_a_descending_spoke_uphill():
         assert s.mean_grade_pct > 3.5
         assert s.points[0][2] < s.points[-1][2]
         assert s.starts_at_m > 1000.0      # the climb starts at its far, low end
+
+
+@pytest.mark.parametrize("stretch_m,rep_m,laps", [
+    (10000.0, 6700.0, 1),      # holds a whole Rep
+    (6700.0, 6700.0, 1),       # exactly one Rep
+    (6600.0, 6700.0, 1),       # 1.5% short: Rep pace is an assumption, not
+                               # a measurement, so this is still one Lap
+    (6400.0, 6700.0, 1),       # 4.5% short: inside the 5% grace
+    (6200.0, 6700.0, 2),       # 7.5% short: outside it, so say so
+    (5500.0, 6700.0, 2),       # D18: 5.5 mi stretch, 6.7 mi Rep
+    (2000.0, 6700.0, 4),
+    (0.0, 6700.0, 1),          # a degenerate Stretch must not divide by zero
+])
+def test_laps_per_rep_by_distance_allow_a_little_grace(stretch_m, rep_m, laps):
+    assert straight(stretch_m).laps_per_rep(no_power_plan(rep_m)) == laps
+
+
+def test_with_power_laps_per_rep_go_by_lap_time_and_the_faster_lap_decides():
+    climb = straight(1.13 * METERS_PER_MILE, 2.5)          # ~3:55 up, ~2:12 down at 285 W
+    assert climb.laps_per_rep(IntervalSpec("x", 4, 4.0, "incline", watts=285)) == 1
+    assert climb.laps_per_rep(IntervalSpec("x", 4, 4.0, "any", watts=285)) == 2
+    # the grace is on time too: a Lap 4% short of the Rep is still one Lap
+    lap = climb.lap_seconds(285)
+    assert climb.laps_per_rep(IntervalSpec("x", 4, lap / 0.96 / 60, "incline", watts=285)) == 1
+    assert climb.laps_per_rep(IntervalSpec("x", 4, lap / 0.94 / 60, "incline", watts=285)) == 2
+
+
+def test_a_steeper_stretch_takes_longer_to_lap():
+    assert straight(1200.0, 1.0).lap_seconds(285) < straight(1200.0, 5.0).lap_seconds(285)
+
+
+def test_a_gentler_road_fits_a_longer_stretch_in_one_rep():
+    plan = IntervalSpec("x", 4, 4.0, "incline", watts=285)
+    d = plan.rep_distance_m                      # sized assuming 4%
+    assert straight(d * 1.15, 3.0).fits_rep(plan)     # 3%: faster, so longer fits
+    assert not straight(d * 1.15, 4.0).fits_rep(plan)
+    assert not straight(d, 6.0).fits_rep(plan)        # steeper: even the sized length is too long
+    guess = IntervalSpec("x", 4, 4.0, "incline")      # no watts: distance only
+    assert straight(guess.rep_distance_m - 0.5, 8.0).fits_rep(guess)
+    assert not straight(guess.rep_distance_m + 1, 0.0).fits_rep(guess)
+
+
+def test_an_either_direction_stretch_grows_until_the_faster_lap_fills_the_rep():
+    plan = IntervalSpec("x", 4, 4.0, "any", watts=285)
+    L = plan.rep_distance_m                      # sized at 0%
+    assert straight(L * 0.999, 0.0).fits_rep(plan)
+    assert not straight(L * 1.2, 0.0).fits_rep(plan)
+    # on a 2% road the descent is the faster Lap, so a LONGER Stretch still
+    # fits one Rep
+    assert straight(L * 1.2, 2.0).fits_rep(plan)
+    assert straight(L * 1.2, -2.0).fits_rep(plan)     # which way it tilts doesn't matter
+    two_pct = straight(L, 2.0)
+    assert two_pct.lap_seconds(285, back=True) < two_pct.lap_seconds(285)
