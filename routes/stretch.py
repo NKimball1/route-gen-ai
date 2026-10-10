@@ -16,7 +16,7 @@ from functools import cached_property
 from typing import Iterator, NamedTuple, Protocol, Sequence
 
 from routes.elevation import PROFILE_STEP_M, ascent, smoothed_profile
-from routes.interruptions import controls_along, is_path_only
+from routes.interruptions import as_control, controls_along
 from routes.policy import CONTROL_PAD_M, ON_WAY_M, REP_FIT_TOLERANCE, TURN_DEG
 from routes.power import DEFAULT_TOTAL_KG, seconds_for
 from routes.spec import EARTH_RADIUS_M, Coord, LatLon, Leg, Point, Sample, Track
@@ -165,8 +165,8 @@ class Spoke:
         # crossed it is a crosswalk, someone else's stop.
         self.stops_known = controls is not None
         paths = _NearLines(leg.get("path", []))
-        applying = [c for c in controls or []
-                    if not is_path_only(c) or paths.near(c[0], c[1], c[3])]
+        applying = [c for c in map(as_control, controls or [])
+                    if not c.path_only or paths.near(c.lat, c.lon, c.reach_m)]
         hits = controls_along([(p[0], p[1]) for p in self._raw], applying)
         self._hit_pos = [h[0] for h in hits]
         self._hit_wt_cum = [0.0]
