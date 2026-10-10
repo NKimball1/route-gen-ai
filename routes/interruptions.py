@@ -2,7 +2,7 @@
 
 Stop signs, traffic signals, yields, and level crossings are tagged nodes in
 OSM. One Overpass query fetches every control in the search area; counting
-them along a candidate stretch is then pure local math. Free, no API key.
+them along a Stretch is then pure local math. Free, no API key.
 
 Whose stop is it? A stop sign mapped on a SIDE street sits ~10-20 m off
 the main road, so a wide match counted it against riders who have the
@@ -10,6 +10,10 @@ right of way. Measured on the Madison-area map (2026-10-07), side-street
 signs within 40 m of a road outnumbered the road's own 5,037 to 2,082.
 Stops, yields and rail crossings now count only on the routed line itself;
 signals, which stop everyone, keep a wide reach.
+
+Road crossings (highway=crossing) stop a rider on a trail, signed or not,
+but the same tag marks crosswalks across a road: they count only where the
+route rides a path through them (see trail_crossing and the Spoke).
 """
 import glob
 import hashlib
@@ -17,16 +21,38 @@ import json
 import math
 import os
 import time
-from typing import Any, Callable, Sequence
+from typing import Any, Callable, NamedTuple, Sequence
 
 import requests
-from routes.policy import CONTROL_ON_ROUTE_M, SIGNAL_REACH_M
+from routes.policy import (CONTROL_ON_ROUTE_M, SIGNAL_REACH_M,
+                           TRAIL_CROSSING_WEIGHT)
 from routes.spec import METERS_PER_DEG_LAT, METERS_PER_DEG_LON_EQ
 
-# (lat, lon, weight, reach_m): one traffic control, how badly it breaks an
-# effort, and how close to the route it must be to apply to the rider.
-# Hand-built 3-tuples (tests, older callers) use controls_along's tolerance.
-Control = tuple[float, float, float, float]
+
+class Control(NamedTuple):
+    """One traffic control: where it is, how badly it breaks an effort
+    (WEIGHTS), how close to the route it must be to apply to the rider,
+    and whether it applies only where the rider is on a path (a road
+    crossing: see trail_crossing). Cached on disk as a plain 5-element
+    list in this field order."""
+    lat: float
+    lon: float
+    weight: float
+    reach_m: float = SIGNAL_REACH_M
+    path_only: bool = False
+
+
+def as_control(c: Sequence[float]) -> Control:
+    """A Control from a hand-built tuple (lat, lon, weight[, reach_m[,
+    path_only]]), as tests and stubs write them: without a reach it
+    applies within SIGNAL_REACH_M, and without path_only everywhere."""
+    if isinstance(c, Control):
+        return c
+    lat, lon, weight, *rest = c
+    return Control(lat, lon, weight, rest[0] if rest else SIGNAL_REACH_M,
+                   path_only=any(rest[1:2]))
+
+
 # (meters along the polyline, weight): a control mapped onto a route
 ControlHit = tuple[float, float]
 
@@ -50,16 +76,26 @@ WEIGHTS: dict[str, float] = {
 
 # Nodes within this distance are one intersection.
 CLUSTER_M: float = 35.0
-# Cached control lists carry each control's reach; the "2" keeps lists cached
-# before reach existed (stops clustered, no reach) from being read back.
-CONTROLS_PREFIX: str = "controls2_"
+# Cached control lists carry each control's reach and whether it applies
+# only on a path; the "3" keeps lists cached before trail crossings existed
+# (no crossings, 4-element controls) from being read back.
+CONTROLS_PREFIX: str = "controls3_"
 
 QUERY: str = """[out:json][timeout:60];
 (
-  node["highway"~"^(stop|give_way|traffic_signals)$"]({bbox});
+  node["highway"~"^(stop|give_way|traffic_signals|crossing)$"]({bbox});
   node["railway"="level_crossing"]({bbox});
 );
 out;"""
+
+
+def trail_crossing(lat: float, lon: float) -> Control:
+    """A highway=crossing node. The same tag marks a trail's crossing of a
+    road and a pedestrian crosswalk on a road: it interrupts a rider ON
+    the path (the Spoke checks where its router line rides a path) and
+    never a rider on the road being crossed."""
+    return Control(lat, lon, TRAIL_CROSSING_WEIGHT, CONTROL_ON_ROUTE_M,
+                   path_only=True)
 
 
 def bbox_around(lat: float, lon: float, radius_m: float) -> str:
@@ -183,14 +219,16 @@ def _covering_controls(want: BBox4, fresh_only: bool) -> tuple[list[Control], di
             best = entry
     if best is None:
         return None
-    inside = [(la, lo, wt, reach) for la, lo, wt, reach in best["controls"]
+    inside = [Control(la, lo, wt, reach, bool(path_only))
+              for la, lo, wt, reach, path_only in best["controls"]
               if want[0] <= la <= want[2] and want[1] <= lo <= want[3]]
     return inside, best
 
 
 def fetch_controls(lat: float, lon: float,
                    radius_m: float) -> list[Control] | None:
-    """All traffic controls within radius of (lat, lon): (lat, lon, weight).
+    """All traffic controls within radius of (lat, lon), road crossings
+    included (they apply only where a route rides a path).
     None when Overpass did not answer and nothing cached covers the area --
     'no data' and 'no controls' are different facts, and a result table
     must not show the first as 0."""
@@ -210,6 +248,10 @@ def fetch_controls(lat: float, lon: float,
     on_route: list[Control] = []
     for el in data.get("elements", []):
         tags = el.get("tags", {})
+        if tags.get("highway") == "crossing":
+            if tags.get("crossing") != "no":     # "no": crossing is not allowed here
+                on_route.append(trail_crossing(el["lat"], el["lon"]))
+            continue
         kind = tags.get("highway") or ("level_crossing"
                                        if tags.get("railway") == "level_crossing"
                                        else None)
@@ -217,9 +259,9 @@ def fetch_controls(lat: float, lon: float,
         if not weight:
             continue
         if kind == "traffic_signals":
-            signals.append((el["lat"], el["lon"], weight, SIGNAL_REACH_M))
+            signals.append(Control(el["lat"], el["lon"], weight, SIGNAL_REACH_M))
         else:
-            on_route.append((el["lat"], el["lon"], weight, CONTROL_ON_ROUTE_M))
+            on_route.append(Control(el["lat"], el["lon"], weight, CONTROL_ON_ROUTE_M))
     # Only signal heads cluster: merging a side-street stop with the main
     # road's own would move it off the line and lose it.
     clustered = _cluster(signals) + on_route
@@ -234,17 +276,16 @@ def _cluster(controls: Sequence[Sequence[float]],
     """Merge control nodes within radius into one (a signalized intersection
     is typically mapped as one node per corner — that's one light, not four)."""
     merged: list[Control] = []
-    for c in controls:
-        lat, lon, weight = c[0], c[1], c[2]
-        reach = c[3] if len(c) > 3 else SIGNAL_REACH_M
-        for i, (mlat, mlon, mweight, mreach) in enumerate(merged):
-            dy = (lat - mlat) * METERS_PER_DEG_LAT
-            dx = (lon - mlon) * METERS_PER_DEG_LON_EQ * math.cos(math.radians(lat))
+    for c in map(as_control, controls):
+        for i, m in enumerate(merged):
+            dy = (c.lat - m.lat) * METERS_PER_DEG_LAT
+            dx = (c.lon - m.lon) * METERS_PER_DEG_LON_EQ * math.cos(math.radians(c.lat))
             if dx * dx + dy * dy <= radius_m * radius_m:
-                merged[i] = (mlat, mlon, max(mweight, weight), max(mreach, reach))
+                merged[i] = Control(m.lat, m.lon, max(m.weight, c.weight),
+                                    max(m.reach_m, c.reach_m))
                 break
         else:
-            merged.append((lat, lon, weight, reach))
+            merged.append(Control(c.lat, c.lon, c.weight, c.reach_m))
     return merged
 
 
@@ -259,11 +300,10 @@ def _project(lat0: float,
 
 
 def controls_along(points: Sequence[tuple[float, ...]],
-                   controls: Sequence[Sequence[float]],
-                   tolerance_m: float = SIGNAL_REACH_M) -> list[ControlHit]:
-    """Map controls onto a polyline: sorted (cum_distance_m, weight) for each
-    control within its reach of the line (a control without its own reach
-    uses tolerance_m). Hits within CLUSTER_M of each other along the line are
+                   controls: Sequence[Sequence[float]]) -> list[ControlHit]:
+    """Map controls (Control, or hand-built tuples: see as_control) onto a
+    polyline: sorted (cum_distance_m, weight) for each control within its
+    reach of the line. Hits within CLUSTER_M of each other along the line are
     one intersection (an all-way stop has a sign on both approaches of our
     road), keeping the heavier weight. `points` are (lat, lon, ...); when a
     4th element is present it is taken as that point's cumulative road
@@ -281,10 +321,8 @@ def controls_along(points: Sequence[tuple[float, ...]],
             cum.append(cum[-1] + math.dist(xy[k - 1], xy[k]))
 
     hits: list[ControlHit] = []
-    for c in controls:
-        clat, clon, weight = c[0], c[1], c[2]
-        reach = c[3] if len(c) > 3 else tolerance_m
-        cx, cy = to_xy(clat, clon)
+    for c in map(as_control, controls):
+        cx, cy = to_xy(c.lat, c.lon)
         best_d: float | None = None
         best_pos = 0.0
         for k in range(len(xy) - 1):
@@ -298,8 +336,8 @@ def controls_along(points: Sequence[tuple[float, ...]],
             if best_d is None or d < best_d:
                 best_d = d
                 best_pos = cum[k] + t * math.sqrt(seg_len2)
-        if best_d is not None and best_d <= reach:
-            hits.append((best_pos, weight))
+        if best_d is not None and best_d <= c.reach_m:
+            hits.append((best_pos, c.weight))
     hits.sort()
     merged: list[ControlHit] = []
     for pos, weight in hits:

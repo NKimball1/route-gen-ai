@@ -1,20 +1,20 @@
 """The 'Best:' line a rider plans a session around (find_spot.best_summary)."""
 from find_spot import best_summary
-from routes.intervals import IntervalSpec, IntervalSpot
+from routes.intervals import IntervalSpec, Spot
 from routes.spec import METERS_PER_MILE
+from tests.test_spoke import straight
 
 
-def spot(mi: float, grade: float, known: bool = True) -> IntervalSpot:
-    return IntervalSpot(points=[], length_m=mi * METERS_PER_MILE,
-                        mean_grade_pct=grade, dist_from_start_m=6 * METERS_PER_MILE,
-                        controls_known=known)
+def spot(mi: float, grade: float, known: bool = True) -> Spot:
+    return Spot(straight(mi * METERS_PER_MILE, grade, controls=[] if known else None),
+                dist_from_start_m=6 * METERS_PER_MILE)
 
 
 def test_either_way_reports_both_directions():
     line = best_summary(IntervalSpec("x", 4, 4.0, "any", watts=285),
                         spot(1.13, 2.5))
     assert " out / " in line and " back at 285 W" in line
-    # the 2:12 descent can't fill a 4-min rep: two passes
+    # the 2:12 descent can't fill a 4-min Rep: two Laps
     assert "~2 laps per rep" in line
 
 

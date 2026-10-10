@@ -73,12 +73,12 @@ def climb_to_peak(start_lat: float, start_lon: float, peak: Peak,
     Returns a dict like climbs.extract_climbs rows plus the peak name, or
     None when no substantial climb tops out near the peak."""
     from routes.climbs import extract_climbs
-    from routes.intervals import _resample
+    from routes.stretch import measuring_points
 
     leg = provider.route([(start_lat, start_lon), (peak["lat"], peak["lon"])])
     if leg is None:
         return None
-    candidates = extract_climbs(_resample(leg["points"]))
+    candidates = extract_climbs(measuring_points(leg["points"]))
     best: ClimbRow | None = None
     for c in candidates:
         d = math.hypot((c["end"][0] - peak["lat"]) * METERS_PER_DEG_LAT,

@@ -54,6 +54,25 @@ def test_router_reports_unpaved_stretches_where_they_are(monkeypatch):
     assert max(p[1] for p in piece) >= end[0] - 1e-6        # runs to the end
 
 
+def test_router_reports_where_the_route_rides_a_path(monkeypatch):
+    """A road crossing interrupts a rider on a trail, not one on the road;
+    the Spoke needs to know which parts of its road are paths."""
+    coords = [[O[1] + (k * 50.0) / KX, O[0], 300.0] for k in range(61)]   # 3 km east
+    a, b, c = coords[20], coords[40], coords[60]
+    rows = [["Longitude", "Latitude", "Elevation", "Distance", "c", "e", "t", "n", "i", "WayTags"],
+            [int(a[0] * 1e6), int(a[1] * 1e6), 300, 1000, 0, 0, 0, 0, 0, "highway=residential surface=asphalt"],
+            [int(b[0] * 1e6), int(b[1] * 1e6), 300, 1000, 0, 0, 0, 0, 0, "highway=cycleway surface=asphalt"],
+            [int(c[0] * 1e6), int(c[1] * 1e6), 300, 1000, 0, 0, 0, 0, 0, "highway=footway footway=crossing"]]
+    payload = {"features": [{"geometry": {"coordinates": coords},
+                             "properties": {"track-length": "3000", "messages": rows}}]}
+    monkeypatch.setattr(providers.requests, "get", lambda *a, **k: Resp(payload))
+    leg = BRouterProvider().route([(O[0], coords[0][0]), (O[0], c[0])])
+    assert leg is not None and leg["path"]
+    on_path = [p for piece in leg["path"] for p in piece]
+    assert min(p[1] for p in on_path) >= a[0] - 1e-6        # the road's first km is not a path
+    assert max(p[1] for p in on_path) >= c[0] - 1e-6        # the cycleway and footway are
+
+
 class PavedWestGravelEast(DenseProvider):
     """Two identical flat spokes; the eastern one is all crushed limestone."""
     def route(self, waypoints, avoid=None, protect=None):
@@ -72,5 +91,5 @@ def test_finder_skips_an_unpaved_stretch(monkeypatch):
     spec = IntervalSpec("x", 2, 10.0, "flat", 30.0)
     spots = find_spots(spec, O[0], O[1], PavedWestGravelEast(), n_spokes=4, top=3)
     assert spots, "the paved western spoke should still yield a spot"
-    assert all(s.points[-1][1] < O[1] for s in spots), "an all-gravel stretch was returned"
-    assert all(s.unpaved_frac == 0.0 for s in spots)
+    assert all(s.stretch.points[-1][1] < O[1] for s in spots), "an all-gravel stretch was returned"
+    assert all(s.stretch.gravel_share == 0.0 for s in spots)

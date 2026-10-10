@@ -1,7 +1,8 @@
 """Interval-spot result hygiene: no duplicate stretches, and 'unknown' is
 never printed as 0 (routes/intervals.py, find_spot.py)."""
-from routes.intervals import IntervalSpec, IntervalSpot, _dedupe, find_spots
+from routes.intervals import IntervalSpec, Spot, _dedupe, find_spots
 from tests.test_editing import LAT_STEP, FakeProvider
+from tests.test_spoke import on_road
 
 
 class DenseProvider(FakeProvider):
@@ -17,9 +18,9 @@ class DenseProvider(FakeProvider):
                 "major_m": 0.0}
 
 
-def stretch(lat0: float, lon0: float, n: int = 40) -> IntervalSpot:
+def stretch(lat0: float, lon0: float, n: int = 40) -> Spot:
     pts = [(lat0 + k * LAT_STEP, lon0, 300.0) for k in range(n)]
-    return IntervalSpot(points=pts, length_m=n * 28.0)
+    return Spot(on_road(pts))
 
 
 def test_same_road_from_adjacent_spokes_collapses_to_one_result():
@@ -41,10 +42,10 @@ def test_dedupe_keeps_the_better_scored_copy():
     assert _dedupe([better, worse]) == [better]
 
 
-def along(lat0: float, lon0: float, first: int, last: int) -> IntervalSpot:
+def along(lat0: float, lon0: float, first: int, last: int) -> Spot:
     """Points first..last of one straight road heading north from lat0."""
     pts = [(lat0 + k * LAT_STEP, lon0, 300.0) for k in range(first, last + 1)]
-    return IntervalSpot(points=pts, length_m=(last - first) * 28.0)
+    return Spot(on_road(pts))
 
 
 def test_a_stretch_inside_a_longer_one_is_the_same_spot():
@@ -80,8 +81,8 @@ def test_overpass_down_marks_counts_unknown_not_zero(monkeypatch):
     spec = IntervalSpec("x", 2, 20.0, "flat", 20.0)
     spots = find_spots(spec, 43.0, -89.5, DenseProvider(), n_spokes=4, top=3)
     assert spots, "the fake provider's straight flat spokes should yield spots"
-    assert all(s.controls_known is False for s in spots)
-    assert all(s.n_controls == 0 for s in spots)   # 0 hits, flagged unknown
+    assert all(s.stretch.stops_known is False for s in spots)
+    assert all(s.stretch.stops == 0 for s in spots)   # 0 hits, flagged unknown
 
 
 def test_overpass_up_but_empty_is_a_real_zero(monkeypatch):
@@ -89,7 +90,7 @@ def test_overpass_up_but_empty_is_a_real_zero(monkeypatch):
     monkeypatch.setattr(interruptions, "fetch_controls", lambda *a, **k: [])
     spec = IntervalSpec("x", 2, 20.0, "flat", 20.0)
     spots = find_spots(spec, 43.0, -89.5, DenseProvider(), n_spokes=4, top=3)
-    assert spots and all(s.controls_known for s in spots)
+    assert spots and all(s.stretch.stops_known for s in spots)
 
 
 class WindingProvider(DenseProvider):
@@ -112,9 +113,9 @@ class WindingProvider(DenseProvider):
 
 
 def test_within_the_travel_budget_means_riding_distance(monkeypatch):
-    """Stop signs along the first 8 km of every spoke make the far end the
-    best-scoring window -- and on a winding road the far end is beyond the
-    riding budget even though the spoke's endpoint is not."""
+    """Stop signs along the first 8 km of every Spoke make the far end the
+    best-scoring Stretch -- and on a winding road the far end is beyond the
+    riding budget even though the Spoke's endpoint is not."""
     import routes.interruptions as interruptions
     from routes.editing import _cum
     from routes.providers import _destination
