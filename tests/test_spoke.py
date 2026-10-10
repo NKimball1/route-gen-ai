@@ -287,3 +287,77 @@ def test_a_road_crossing_on_a_trail_is_a_stop_but_a_crosswalk_on_the_ridden_road
     assert on_trail.stops == 1 and on_trail.stop_weight == 1.0
     assert spoke.stretch(4500.0, 7000.0).stops == 0
     assert spoke.stretch(0.0, spoke.length_m).stops == 1
+
+
+# ---- trail crossings on a router-built Spoke ----
+# BRouter says where the route rides a path through its per-way rows: each
+# row's coordinate is the route point where that run of one way ends, and
+# its Distance is the run's length in whole meters by BRouter's own
+# measure. Live (2026-10-09, Fitchburg to Madison, 12-14 km), every row
+# coordinate lay on the geometry while the summed Distances ran 10-20 m
+# ahead of the geometry's own length.
+STEP_M = 50.0                    # the fake route's point spacing, due north
+NORTH_STEP = math.degrees(STEP_M / EARTH_RADIUS_M)
+
+
+class _Reply:
+    def __init__(self, payload):
+        self.payload = payload
+
+    def raise_for_status(self):
+        pass
+
+    def json(self):
+        return self.payload
+
+
+def routed(monkeypatch, runs):
+    """A Spoke's leg from a fake BRouter reply due north from 43.0, -89.5.
+    `runs`: (meters, way_tags, meters BRouter reports), back to back.
+    Returns the leg and the point where each run ends."""
+    from routes import providers
+    n = round(sum(m for m, _, _ in runs) / STEP_M)
+    coords = [[-89.5, 43.0 + k * NORTH_STEP, 300.0] for k in range(n + 1)]
+    rows = [["Longitude", "Latitude", "Elevation", "Distance", "c", "e", "t", "n", "i", "WayTags"]]
+    ends, at = [], 0
+    for meters, tags, reported in runs:
+        at += round(meters / STEP_M)
+        end = coords[at]
+        rows.append([round(end[0] * 1e6), round(end[1] * 1e6), 300, reported,
+                     0, 0, 0, 0, 0, tags])
+        ends.append((end[1], end[0]))
+    payload = {"features": [{"geometry": {"coordinates": coords},
+                             "properties": {"track-length": str(sum(r for _, _, r in runs)),
+                                            "messages": rows}}]}
+    monkeypatch.setattr(providers.requests, "get", lambda *a, **k: _Reply(payload))
+    route = providers.BRouterProvider().route([(43.0, -89.5), ends[-1]])
+    assert route is not None
+    return route, ends
+
+
+ROAD = "highway=residential surface=asphalt"
+TRAIL = "highway=cycleway surface=asphalt"
+
+
+def test_a_crossing_where_the_trail_meets_the_road_counts_at_either_end(monkeypatch):
+    """Where a trail meets a road, OSM puts the crossing on the node the
+    two share: the first point of the rider's run on the trail, and the
+    last. A rider coming off 3 km of road onto the trail stops there, and
+    again where the trail ends at the next road."""
+    from routes.interruptions import trail_crossing
+    route, (onto_trail, off_trail, _) = routed(
+        monkeypatch, [(3000.0, ROAD, 3004), (1000.0, TRAIL, 1001), (1000.0, ROAD, 1001)])
+    spoke = Spoke(route, controls=[trail_crossing(*onto_trail), trail_crossing(*off_trail)])
+    assert spoke.stretch(0.0, spoke.length_m).stops == 2
+
+
+def test_a_crossing_mapped_a_meter_or_two_off_the_trail_line_counts(monkeypatch):
+    """A mapped crossing node and the router's line need not coincide to
+    the centimeter: one 1-2 m to either side is still on the trail."""
+    from routes.interruptions import trail_crossing
+    route, _ = routed(monkeypatch, [(1000.0, ROAD, 1001), (3000.0, TRAIL, 3004)])
+    lon_m = math.degrees(1.0 / (EARTH_RADIUS_M * math.cos(math.radians(43.0))))
+    east = trail_crossing(43.0 + 30 * NORTH_STEP, -89.5 + 1.5 * lon_m)   # 1.5 km along
+    west = trail_crossing(43.0 + 61 * NORTH_STEP, -89.5 - 2.0 * lon_m)   # 3.05 km along
+    spoke = Spoke(route, controls=[east, west])
+    assert spoke.stretch(0.0, spoke.length_m).stops == 2
