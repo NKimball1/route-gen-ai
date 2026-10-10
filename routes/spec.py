@@ -35,6 +35,9 @@ class Leg(TypedDict):
     unpaved: NotRequired[list[list[LatLon]]]
     # stretches on busy roads (secondary and bigger), same shape
     busy: NotRequired[list[list[LatLon]]]
+    # stretches ridden on a path or trail (cycleway, path, footway,
+    # bridleway), same shape: where a road crossing interrupts the rider
+    path: NotRequired[list[list[LatLon]]]
 
 
 class ClimbRow(TypedDict):

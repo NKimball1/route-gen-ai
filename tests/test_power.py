@@ -1,7 +1,8 @@
-"""Rider physics (routes/power.py) and power-based interval sizing."""
+"""Rider physics (routes/power.py) and power-based interval sizing.
+Lap time and fills-a-Rep are Stretch facts: tests/test_spoke.py."""
 import math
 
-from routes.intervals import IntervalSpec, IntervalSpot
+from routes.intervals import IntervalSpec
 from routes.power import mmss, seconds_for, speed_mps
 from routes.spec import METERS_PER_MILE
 
@@ -53,45 +54,27 @@ def test_watts_size_the_rep_and_the_default_still_works():
     assert flat.rep_distance_m > powered.rep_distance_m
 
 
-def test_spot_times_itself_at_its_own_grade():
-    spot = IntervalSpot(points=[], length_m=1200.0, mean_grade_pct=5.0)
-    steep = spot.seconds_at(285)
-    spot.mean_grade_pct = 1.0
-    assert spot.seconds_at(285) < steep
+def test_lap_times_read_as_minutes_and_seconds():
     assert mmss(125) == "2:05"
 
 
-def test_window_grows_by_time_on_a_gentler_road():
-    spec = IntervalSpec("x", 4, 4.0, "incline", watts=285)
-    d = spec.rep_distance_m                 # sized assuming 4%
-    assert spec.rep_fits(d * 1.15, 3.0)     # 3%: faster, so a longer stretch fits
-    assert not spec.rep_fits(d * 1.15, 4.0)
-    assert not spec.rep_fits(d, 6.0)        # steeper: even the sized length is too long
-    guess = IntervalSpec("x", 4, 4.0, "incline")
-    assert guess.rep_fits(guess.rep_distance_m, 8.0)   # no watts: distance only
-    assert not guess.rep_fits(guess.rep_distance_m + 1, 0.0)
-
-
 def test_kind_any_prefers_a_stretch_that_works_both_ways():
-    from routes.intervals import _score
+    """Ranked on how evenly its two Laps (the Stretch's own Lap times,
+    the ones the rider is shown) take the Rep."""
+    from routes.intervals import _rank
+    from routes.spec import EARTH_RADIUS_M
+    from routes.stretch import Spoke
+
+    def straight(length_m, grade_pct):
+        north = (43.0 + math.degrees(length_m / EARTH_RADIUS_M), -89.5,
+                 300.0 + length_m * grade_pct / 100.0)
+        spoke = Spoke({"points": [(43.0, -89.5, 300.0), north], "distance_m": 0.0,
+                       "ascent_m": 0.0, "major_m": 0.0}, controls=[])
+        return spoke.stretch(0.0, spoke.length_m)
+
     spec = IntervalSpec("x", 4, 4.0, "any", watts=285)
     L = spec.rep_distance_m
-    flat = _score(spec, L, 0.0, 0.5, 0.0)
-    rolling = _score(spec, L, 1.5, 0.5, 0.0)
-    hill = _score(spec, L, 4.0, 0.5, 0.0)
+    flat, rolling, hill = (_rank(spec, straight(L, g)) for g in (0.0, 1.5, 4.0))
     assert flat > rolling > hill
     # a 4% hill is the INCLINE ideal, but for "either way" it is a poor spot
     assert flat - hill > 0.08
-
-
-def test_kind_any_window_fills_the_rep_in_the_faster_direction():
-    spec = IntervalSpec("x", 4, 4.0, "any", watts=285)
-    L = spec.rep_distance_m            # sized at 0%
-    assert spec.rep_fits(L, 0.0)
-    assert not spec.rep_fits(L * 1.2, 0.0)
-    # on a 2% road the descent is the faster pass, so a LONGER stretch still
-    # fits one rep -- the window keeps growing until the descent fills it
-    assert spec.rep_fits(L * 1.2, 2.0)
-    assert spec.rep_fits(L * 1.2, -2.0)   # sign of the grade doesn't matter
-    spot = IntervalSpot(points=[], length_m=L, mean_grade_pct=2.0)
-    assert spot.seconds_at(285, reverse=True) < spot.seconds_at(285)

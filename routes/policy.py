@@ -30,6 +30,29 @@ EDIT_DISTANCE_TOLERANCE = 0.15
 REP_FIT_TOLERANCE = 0.05
 MAX_PLACES = 8
 
+# ---- interval Spots ----
+# Controls just past a Stretch's ends still interrupt every Lap (you
+# turn around there), and mapped positions carry a little noise.
+CONTROL_PAD_M: float = 150.0
+ON_WAY_M: float = 15.0   # a resampled point this close to a gravel/busy line is on it
+TURN_DEG: float = 35.0  # a bearing change sharper than this between bins is a turn
+# A Stretch is worth a Rep only when one Lap is at least this share of the
+# Rep's distance and at least this long: shorter, and the Rep is mostly
+# turnarounds.
+MIN_STRETCH_REP_SHARE: float = 0.35
+MIN_STRETCH_M: float = 400.0
+# A road crossing a trail: OSM tags it highway=crossing on the node the
+# path shares with the road, usually with no sign mapped. It weighs as a
+# stop (1.0 in routes/interruptions.py WEIGHTS), not a yield (0.4): a
+# yield on a road lets a rider merge rolling with traffic going their way,
+# but crossing a road from a trail means looking both ways across every
+# lane with no right of way, which at effort pace is a stop whenever
+# anything is coming (the Military Ridge trail meets Cross Country Road
+# near 43.0014,-89.5167 unsigned, and a rider still has to stop for a
+# car). Where a crossing does have a stop sign for trail users, the two
+# count as one control at the same weight.
+TRAIL_CROSSING_WEIGHT: float = 1.0
+
 PARSE_BOUNDS: dict[str, dict[str, tuple[float, float]]] = {
     "route": {"distance_miles": (2.0, 150.0), "max_climb_ft": (0.0, 20000.0)},
     "interval": {"reps": (1, 20), "rep_minutes": (1.0, 60.0),

@@ -72,7 +72,9 @@ def despur(points: Track, tolerance_m: float = 10.0, min_spur_m: float = 40.0,
 
 
 def _resample(points: Track, step_m: float = RESAMPLE_STEP_M) -> Track:
-    """Uniformly spaced copy of the polyline (linear interpolation)."""
+    """Uniformly spaced copy of the polyline (linear interpolation). Not
+    routes/stretch.py's measuring_points, which keeps the road's own
+    points and adds cumulative distance."""
     first, final = points[0], points[-1]
     out: Track = [(first[0], first[1], first[2])]
     prev: Point = first

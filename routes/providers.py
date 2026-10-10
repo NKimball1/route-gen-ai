@@ -83,17 +83,41 @@ def is_busy(way_tags: str) -> bool:
     return m is not None and m.group(1) in BUSY_HIGHWAYS
 
 
+# Paths and trails: a rider on one meets every road it crosses as a stop.
+PATH_HIGHWAYS: frozenset[str] = frozenset({
+    "cycleway", "path", "footway", "bridleway"})
+
+
+def is_path(way_tags: str) -> bool:
+    m = re.search(r"highway=(\S+)", way_tags)
+    return m is not None and m.group(1) in PATH_HIGHWAYS
+
+
+# A message row's coordinate names a route point to BRouter's 1e-6 degree
+# rounding (~0.1 m); nearer than this is that point.
+ROW_ON_POINT_M: float = 1.0
+
+
+def _row_point(points: Track, lat: float, lon: float, start: int) -> int:
+    """Index of the route point a message row's coordinate names, searching
+    forward from `start` (rows come in route order, and a route may pass
+    the same place twice): the first point on it, else the nearest."""
+    best, best_d = start, math.inf
+    for k in range(start, len(points)):
+        d = _hav_m(points[k], (lat, lon))
+        if d <= ROW_ON_POINT_M:
+            return k
+        if d < best_d:
+            best, best_d = k, d
+    return best
+
+
 def _runs_to_polylines(points: Track,
-                       runs: Sequence[tuple[float, float]]) -> list[list[LatLon]]:
-    """Distance ranges along `points` -> the polylines they cover."""
-    if not runs:
-        return []
-    cum = [0.0]
-    for a, b in zip(points, points[1:]):
-        cum.append(cum[-1] + _hav_m(a, b))
+                       runs: Sequence[tuple[int, int]]) -> list[list[LatLon]]:
+    """Point-index ranges along `points` -> the polylines they cover."""
     out: list[list[LatLon]] = []
     for lo, hi in runs:
-        piece = [(p[0], p[1]) for p, c in zip(points, cum) if lo - 1.0 <= c <= hi + 1.0]
+        piece = [(p[0], p[1]) for p in points[lo:hi + 1]]
         if len(piece) >= 2:
             out.append(piece)
     return out
@@ -177,24 +201,33 @@ class BRouterProvider:
         # Counted pre-trim, so a trimmed spur on a highway still counts —
         # conservative in the right direction.
         major_m = 0.0
-        # Each message row covers the stretch ENDING at its coordinate
-        # (verified against the geometry: running Distance matches); keep
-        # the unpaved ones as polylines so interval search can see surface.
-        unpaved_runs: list[tuple[float, float]] = []
-        busy_runs: list[tuple[float, float]] = []
-        pos = 0.0
+        # Each message row covers the run of one way ENDING at its
+        # coordinate, which is a point of the geometry; keep the unpaved,
+        # busy and path runs as polylines so interval search can see them.
+        # A run is located by those coordinates, not by summing Distances:
+        # BRouter's whole-meter Distances drift from the geometry's own
+        # length (10-20 m over 12-14 km, measured live), enough to drop the
+        # point where a trail meets a road -- the crossing's own node.
+        unpaved_runs: list[tuple[int, int]] = []
+        busy_runs: list[tuple[int, int]] = []
+        path_runs: list[tuple[int, int]] = []
+        run_start = 0
         for row in props.get("messages", [])[1:]:
             d = float(row[3])
+            run_end = _row_point(points, int(row[1]) / 1e6, int(row[0]) / 1e6, run_start)
             if len(row) > 9 and any(f"highway={h}" in row[9]
                                     for h in ("motorway", "trunk", "primary")):
                 major_m += d
             if len(row) > 9 and is_unpaved(row[9]):
-                unpaved_runs.append((pos, pos + d))
+                unpaved_runs.append((run_start, run_end))
             if len(row) > 9 and is_busy(row[9]):
-                busy_runs.append((pos, pos + d))
-            pos += d
+                busy_runs.append((run_start, run_end))
+            if len(row) > 9 and is_path(row[9]):
+                path_runs.append((run_start, run_end))
+            run_start = run_end
         unpaved = _runs_to_polylines(points, unpaved_runs)
         busy = _runs_to_polylines(points, busy_runs)
+        path = _runs_to_polylines(points, path_runs)
         # Cut out-and-back spur artifacts BEFORE distance/climb accounting, so
         # rescaling and ranking see the route as it would be ridden. The naive
         # spur-ascent estimate can overshoot the provider's filtered figure,
@@ -218,6 +251,7 @@ class BRouterProvider:
             "major_m": major_m,
             "unpaved": unpaved,
             "busy": busy,
+            "path": path,
         }
 
     def candidates(self, spec: RouteSpec, lat: float, lon: float,

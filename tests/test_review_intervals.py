@@ -28,9 +28,10 @@ def test_interval_export_keeps_every_bend_and_measured_length(monkeypatch):
     monkeypatch.setattr("routes.interruptions.fetch_controls", lambda *a: [])
     spot = find_spots(IntervalSpec("public", 1, 5, "flat"), 43, -89,
                       FixedRoad(points), n_spokes=1)[0]
-    assert _leg_len(spot.points) == pytest.approx(spot.length_m, abs=.01)
-    start = points.index(spot.points[0])
-    assert spot.points == points[start:start + len(spot.points)]
+    stretch = spot.stretch
+    assert _leg_len(stretch.points) == pytest.approx(stretch.length_m, abs=.01)
+    start = points.index(stretch.points[0])
+    assert stretch.points == points[start:start + len(stretch.points)]
 
 
 def test_reversed_incline_travel_is_measured_to_its_new_start(monkeypatch):
@@ -38,8 +39,8 @@ def test_reversed_incline_travel_is_measured_to_its_new_start(monkeypatch):
     monkeypatch.setattr("routes.interruptions.fetch_controls", lambda *a: [])
     spec = IntervalSpec("public", 1, 5, "incline")
     spot = find_spots(spec, 43, -89, FixedRoad(points), n_spokes=1)[0]
-    assert spot.mean_grade_pct > 0
-    assert spot.dist_from_start_m == pytest.approx(_leg_len([points[0], spot.points[0]]), abs=1)
+    assert spot.stretch.mean_grade_pct > 0
+    assert spot.dist_from_start_m == pytest.approx(_leg_len([points[0], spot.stretch.points[0]]), abs=1)
     assert spot.dist_from_start_m <= spec.travel_radius_m
 
 
