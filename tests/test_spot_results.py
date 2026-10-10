@@ -81,8 +81,8 @@ def test_overpass_down_marks_counts_unknown_not_zero(monkeypatch):
     spec = IntervalSpec("x", 2, 20.0, "flat", 20.0)
     spots = find_spots(spec, 43.0, -89.5, DenseProvider(), n_spokes=4, top=3)
     assert spots, "the fake provider's straight flat spokes should yield spots"
-    assert all(s.controls_known is False for s in spots)
-    assert all(s.n_controls == 0 for s in spots)   # 0 hits, flagged unknown
+    assert all(s.stretch.stops_known is False for s in spots)
+    assert all(s.stretch.stops == 0 for s in spots)   # 0 hits, flagged unknown
 
 
 def test_overpass_up_but_empty_is_a_real_zero(monkeypatch):
@@ -90,7 +90,7 @@ def test_overpass_up_but_empty_is_a_real_zero(monkeypatch):
     monkeypatch.setattr(interruptions, "fetch_controls", lambda *a, **k: [])
     spec = IntervalSpec("x", 2, 20.0, "flat", 20.0)
     spots = find_spots(spec, 43.0, -89.5, DenseProvider(), n_spokes=4, top=3)
-    assert spots and all(s.controls_known for s in spots)
+    assert spots and all(s.stretch.stops_known for s in spots)
 
 
 class WindingProvider(DenseProvider):

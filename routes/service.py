@@ -340,7 +340,7 @@ def _spot_request(iv: dict[str, Any], address: str, workdir: str) -> ServiceResu
     candidates: list[CandidateOut] = []
     for i, spot in enumerate(spots, 1):
         candidates.append({"label": f"#{i}: {spot_label(spec, spot)}",
-                           "gpx": spot.gpx_path or "", "latlngs": _downsample(spot.points),
+                           "gpx": spot.gpx_path or "", "latlngs": _downsample(spot.stretch.points),
                            "metrics": spot_metrics(spec, spot), "warnings": spot_warnings(spec, spot)})
     warnings = list(dict.fromkeys(w for c in candidates for w in c.get("warnings", [])))
     if candidates:

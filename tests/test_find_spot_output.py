@@ -64,8 +64,8 @@ def test_max_stops_zero_drops_a_stretch_with_a_stop_sign(monkeypatch):
                        n_spokes=4, top=3)
     strict = find_spots(IntervalSpec("x", 2, 10.0, "flat", 30.0, max_stops=0), O[0], O[1],
                         EastWest(), n_spokes=4, top=3)
-    assert any(s.n_controls > 0 for s in loose)          # without the limit it shows up
-    assert strict and all(s.n_controls == 0 for s in strict)
+    assert any(s.stretch.stops > 0 for s in loose)          # without the limit it shows up
+    assert strict and all(s.stretch.stops == 0 for s in strict)
 
 
 class TrailEastRoadWest(EastWest):
@@ -93,10 +93,10 @@ def test_no_stops_excludes_a_trail_with_unsigned_road_crossings(monkeypatch):
                       for f in (0.05 + 0.15 * k for k in range(7))]
     monkeypatch.setattr(interruptions, "fetch_controls", lambda *a, **k: crossings)
     loose = find_spots(plan, O[0], O[1], TrailEastRoadWest(), n_spokes=4, top=3)
-    on_trail = [s for s in loose if s.points[-1][1] > O[1]]
-    on_road = [s for s in loose if s.points[-1][1] < O[1]]
-    assert on_trail and all(s.n_controls > 0 for s in on_trail)
-    assert on_road and all(s.n_controls == 0 for s in on_road)
+    on_trail = [s for s in loose if s.stretch.points[-1][1] > O[1]]
+    on_road = [s for s in loose if s.stretch.points[-1][1] < O[1]]
+    assert on_trail and all(s.stretch.stops > 0 for s in on_trail)
+    assert on_road and all(s.stretch.stops == 0 for s in on_road)
     strict = find_spots(IntervalSpec("x", 2, 10.0, "flat", 30.0, max_stops=0), O[0], O[1],
                         TrailEastRoadWest(), n_spokes=4, top=3)
-    assert strict and all(s.points[-1][1] < O[1] for s in strict)
+    assert strict and all(s.stretch.points[-1][1] < O[1] for s in strict)

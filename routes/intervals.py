@@ -19,7 +19,7 @@ from dataclasses import dataclass, field
 
 from routes.policy import MIN_STRETCH_M, MIN_STRETCH_REP_SHARE
 from routes.power import DEFAULT_TOTAL_KG, speed_mps
-from routes.spec import METERS_PER_MILE, Router, Track
+from routes.spec import METERS_PER_MILE, Router
 from routes.stretch import Spoke, Stretch
 
 # Speed assumptions for turning rep duration into stretch length when
@@ -68,60 +68,14 @@ class IntervalSpec:
 @dataclass
 class Spot:
     """A Stretch the finder recommends, plus the ride out to it and its road.
-    Every fact about the road itself (Lap time, Laps per Rep included) is
-    the Stretch's; the read-only fields below are its facts under the
-    names the outputs have always used."""
+    Every fact about the road itself (length, grade, stops, Lap time, Laps
+    per Rep) is read from `stretch`."""
     stretch: Stretch = field(repr=False)
     dist_from_start_m: float = 0.0     # riding distance out to the Stretch
     bearing: float = 0.0
     score: float = 0.0
     gpx_path: str | None = None
     road_name: str = ""
-
-    @property
-    def points(self) -> Track:
-        return self.stretch.points
-
-    @property
-    def length_m(self) -> float:
-        return self.stretch.length_m
-
-    @property
-    def length_mi(self) -> float:
-        return self.stretch.length_m / METERS_PER_MILE
-
-    @property
-    def mean_grade_pct(self) -> float:
-        return self.stretch.mean_grade_pct
-
-    @property
-    def grade_std_pct(self) -> float:
-        return self.stretch.grade_std_pct
-
-    @property
-    def turns_per_km(self) -> float:
-        return self.stretch.turns_per_km
-
-    @property
-    def n_controls(self) -> int:
-        """Stop signs/signals/crossings on one Lap (0 when not known)."""
-        return self.stretch.stops
-
-    @property
-    def controls_known(self) -> bool:
-        return self.stretch.stops_known
-
-    @property
-    def control_wt_per_km(self) -> float:
-        return self.stretch.stop_weight_per_km
-
-    @property
-    def unpaved_frac(self) -> float:
-        return self.stretch.gravel_share
-
-    @property
-    def busy_frac(self) -> float:
-        return self.stretch.busy_share
 
 
 # Climbing per km at which a "flat" stretch has no flatness credit left
@@ -272,7 +226,8 @@ DUPLICATE_OVERLAP: float = 0.5
 def _overlap(a: Spot, b: Spot) -> float:
     """Fraction of the shorter stretch lying on the other's road."""
     from routes.road_avoid import dist_to_road
-    short, long_ = (a, b) if a.length_m <= b.length_m else (b, a)
+    short, long_ = ((a.stretch, b.stretch) if a.stretch.length_m <= b.stretch.length_m
+                    else (b.stretch, a.stretch))
     way = [[(p[0], p[1]) for p in long_.points]]
     pts = short.points
     on = sum(1 for p in pts if dist_to_road(p, way) <= ON_SAME_ROAD_M)

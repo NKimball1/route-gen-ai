@@ -59,5 +59,5 @@ def test_a_window_running_onto_a_busy_road_loses_to_one_that_stops_short(monkeyp
     spec = IntervalSpec("x", 4, 10.0, "flat", 30.0)          # ~5.4 km reps
     best = find_spots(spec, O[0], O[1], QuietThenBusy(), n_spokes=4, top=1)[0]
     busy_lon = O[1] + QuietThenBusy.BUSY_FROM_KM * 1000 / (111320.0 * math.cos(math.radians(O[0])))
-    assert max(p[1] for p in best.points) <= busy_lon + 0.0003, \
+    assert max(p[1] for p in best.stretch.points) <= busy_lon + 0.0003, \
         "the best spot runs onto the busy road"

@@ -18,13 +18,14 @@ def climb_ft_per_mile(s: Spot) -> float:
     """Total climbing per mile -- the honest flatness number (an average
     grade of 0% can hide 300 ft of rollers). The Stretch's own climbing,
     the figure the finder ranked it on."""
-    return s.stretch.climb_m / METERS_PER_FOOT / max(s.length_mi, 0.01)
+    return (s.stretch.climb_m / METERS_PER_FOOT
+            / max(s.stretch.length_m / METERS_PER_MILE, 0.01))
 
 
 def where_lines(spots: list[Spot], lookup: Lookup = road_at) -> list[str]:
     """'#1: Hope Road, Madison (Femrite Drive -> Nora Road), starts at ...'"""
-    return [f"#{i}: {(s.road_name or describe_stretch([(p[0], p[1]) for p in s.points], lookup))}  "
-            f"(starts at {s.points[0][0]:.5f},{s.points[0][1]:.5f})"
+    return [f"#{i}: {(s.road_name or describe_stretch([(p[0], p[1]) for p in s.stretch.points], lookup))}  "
+            f"(starts at {s.stretch.points[0][0]:.5f},{s.stretch.points[0][1]:.5f})"
             for i, s in enumerate(spots, 1)]
 
 
@@ -56,29 +57,31 @@ def run_spot_search(spec: IntervalSpec, profile: str | None = None,
     for i, s in enumerate(spots, 1):
         path = artifact_path(out_dir, f"spot_{spec.kind}_{spec.reps}x{spec.rep_minutes:.0f}_{i}")
         s.gpx_path = path
-        desc = (f"{s.length_mi:.1f} mi @ {s.mean_grade_pct:+.1f}% "
-                f"(±{s.grade_std_pct:.1f}), {s.turns_per_km:.1f} turns/km, "
-                f"{s.n_controls if s.controls_known else '?'} stops/signals, "
+        st = s.stretch
+        stops = st.stops if st.stops_known else '?'
+        desc = (f"{st.length_m / METERS_PER_MILE:.1f} mi @ {st.mean_grade_pct:+.1f}% "
+                f"(±{st.grade_std_pct:.1f}), {st.turns_per_km:.1f} turns/km, "
+                f"{stops} stops/signals, "
                 f"{s.dist_from_start_m / METERS_PER_MILE:.1f} mi from start")
-        write_track(s.points, f"{spec.kind} spot #{i} ({spec.reps}x{spec.rep_minutes:.0f})",
+        write_track(st.points, f"{spec.kind} spot #{i} ({spec.reps}x{spec.rep_minutes:.0f})",
                     desc, path)
         gpx_paths.append(path)
         t_w = (f"{mmss(s.stretch.lap_seconds(spec.watts, spec.total_kg)):>8}"
                if spec.watts else "")
         if spec.watts and spec.kind == "any":
             t_w += f"{mmss(s.stretch.lap_seconds(spec.watts, spec.total_kg, back=True)):>8}"
-        print(f"{i:<5}{s.length_mi:>7.1f}{s.mean_grade_pct:>9.1f}"
+        print(f"{i:<5}{st.length_m / METERS_PER_MILE:>7.1f}{st.mean_grade_pct:>9.1f}"
               f"{climb_ft_per_mile(s):>7.0f}"
-              f"{s.grade_std_pct:>6.1f}{s.turns_per_km:>10.1f}"
-              f"{(str(s.n_controls) if s.controls_known else '?'):>7}"
-              f"{s.unpaved_frac:>9.0%}{s.busy_frac:>6.0%}"
+              f"{st.grade_std_pct:>6.1f}{st.turns_per_km:>10.1f}"
+              f"{str(stops):>7}"
+              f"{st.gravel_share:>9.0%}{st.busy_share:>6.0%}"
               f"{s.dist_from_start_m / METERS_PER_MILE:>13.1f}"
               f"{t_w}  {path}")
 
     build_preview(gpx_paths, os.path.splitext(gpx_paths[0])[0] + ".html")
     if names:
         for spot in spots:
-            spot.road_name = describe_stretch([(p[0], p[1]) for p in spot.points])
+            spot.road_name = describe_stretch([(p[0], p[1]) for p in spot.stretch.points])
         print("\nWhere:")
         for line in where_lines(spots):
             print("  " + line)
@@ -103,15 +106,16 @@ def best_summary(spec: IntervalSpec, best: Spot) -> str:
         timing += f" ({spec.total_kg:.0f} kg rider+bike)"
     laps = best.stretch.laps_per_rep(spec)
     note = "" if laps == 1 else f" (~{laps} laps per rep — expect turnarounds)"
-    if not best.controls_known:
+    if not best.stretch.stops_known:
         note += " — stop/signal counts UNKNOWN this run (Overpass was down)"
-    return (f"Best: {best.length_mi:.1f} mi at {best.mean_grade_pct:+.1f}%, "
+    return (f"Best: {best.stretch.length_m / METERS_PER_MILE:.1f} mi at "
+            f"{best.stretch.mean_grade_pct:+.1f}%, "
             f"{best.dist_from_start_m / METERS_PER_MILE:.1f} mi ride out{timing}{note}")
 
 
 def spot_warnings(spec: IntervalSpec, spot: Spot) -> list[str]:
     warnings = []
-    if not spot.controls_known:
+    if not spot.stretch.stops_known:
         warnings.append("Stop/signal counts are UNKNOWN because traffic-control data is unavailable.")
     laps = spot.stretch.laps_per_rep(spec)
     if laps > 1:
@@ -120,10 +124,11 @@ def spot_warnings(spec: IntervalSpec, spot: Spot) -> list[str]:
 
 
 def spot_metrics(spec: IntervalSpec, spot: Spot) -> dict[str, Any]:
-    return {"distance_m": spot.length_m, "mean_grade_pct": spot.mean_grade_pct,
+    st = spot.stretch
+    return {"distance_m": st.length_m, "mean_grade_pct": st.mean_grade_pct,
             "climb_ft_per_mile": climb_ft_per_mile(spot),
-            "stops": spot.n_controls if spot.controls_known else None,
-            "unpaved_fraction": spot.unpaved_frac, "busy_fraction": spot.busy_frac,
+            "stops": st.stops if st.stops_known else None,
+            "unpaved_fraction": st.gravel_share, "busy_fraction": st.busy_share,
             "travel_distance_m": spot.dist_from_start_m,
             "laps_per_rep": spot.stretch.laps_per_rep(spec),
             "road_name": spot.road_name,
@@ -134,12 +139,13 @@ def spot_metrics(spec: IntervalSpec, spot: Spot) -> dict[str, Any]:
 
 
 def spot_label(spec: IntervalSpec, spot: Spot) -> str:
-    stops = str(spot.n_controls) if spot.controls_known else "UNKNOWN"
+    st = spot.stretch
+    stops = str(st.stops) if st.stops_known else "UNKNOWN"
     road = (spot.road_name + ": ") if spot.road_name else ""
-    label = (f"{road}{spot.length_mi:.1f} mi @ {spot.mean_grade_pct:+.1f}%, "
+    label = (f"{road}{st.length_m / METERS_PER_MILE:.1f} mi @ {st.mean_grade_pct:+.1f}%, "
              f"{climb_ft_per_mile(spot):.0f} ft/mi, {stops} stops, "
              f"{spot.dist_from_start_m / METERS_PER_MILE:.1f} mi out, "
-             f"{spot.unpaved_frac:.0%} unpaved, {spot.busy_frac:.0%} busy")
+             f"{st.gravel_share:.0%} unpaved, {st.busy_share:.0%} busy")
     laps = spot.stretch.laps_per_rep(spec)
     if laps > 1:
         label += f" - {laps} laps per rep (turnarounds)"

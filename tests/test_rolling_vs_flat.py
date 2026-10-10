@@ -44,8 +44,8 @@ def test_a_flat_stretch_beats_a_longer_rolling_one(monkeypatch):
     spots = find_spots(spec, O[0], O[1], TwoSpokes(), n_spokes=4, top=2)
     assert len(spots) == 2
     best = spots[0]
-    assert best.points[-1][1] < O[1], "the rolling eastern spoke outranked the flat one"
-    assert max(p[2] for p in best.points) - min(p[2] for p in best.points) < 1.0
+    assert best.stretch.points[-1][1] < O[1], "the rolling eastern spoke outranked the flat one"
+    assert max(p[2] for p in best.stretch.points) - min(p[2] for p in best.stretch.points) < 1.0
 
 
 def test_the_climbing_shown_is_the_climbing_ranked(monkeypatch):
@@ -58,7 +58,7 @@ def test_the_climbing_shown_is_the_climbing_ranked(monkeypatch):
     monkeypatch.setattr(interruptions, "fetch_controls", lambda *a, **k: [])
     spec = IntervalSpec("x", 2, 10.0, "flat", 30.0)
     spots = find_spots(spec, O[0], O[1], TwoSpokes(), n_spokes=4, top=2)
-    rolling = next(s for s in spots if s.points[-1][1] > O[1])
+    rolling = next(s for s in spots if s.stretch.points[-1][1] > O[1])
     ranked_ft_per_mile = (rolling.stretch.climb_m_per_km * METERS_PER_MILE / 1000.0
                           / METERS_PER_FOOT)
     shown = spot_metrics(spec, rolling)["climb_ft_per_mile"]

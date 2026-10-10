@@ -91,5 +91,5 @@ def test_finder_skips_an_unpaved_stretch(monkeypatch):
     spec = IntervalSpec("x", 2, 10.0, "flat", 30.0)
     spots = find_spots(spec, O[0], O[1], PavedWestGravelEast(), n_spokes=4, top=3)
     assert spots, "the paved western spoke should still yield a spot"
-    assert all(s.points[-1][1] < O[1] for s in spots), "an all-gravel stretch was returned"
-    assert all(s.unpaved_frac == 0.0 for s in spots)
+    assert all(s.stretch.points[-1][1] < O[1] for s in spots), "an all-gravel stretch was returned"
+    assert all(s.stretch.gravel_share == 0.0 for s in spots)
