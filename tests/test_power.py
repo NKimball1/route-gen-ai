@@ -59,12 +59,22 @@ def test_lap_times_read_as_minutes_and_seconds():
 
 
 def test_kind_any_prefers_a_stretch_that_works_both_ways():
-    from routes.intervals import _score
+    """Ranked on how evenly its two Laps (the Stretch's own Lap times,
+    the ones the rider is shown) take the Rep."""
+    from routes.intervals import _rank
+    from routes.spec import EARTH_RADIUS_M
+    from routes.stretch import Spoke
+
+    def straight(length_m, grade_pct):
+        north = (43.0 + math.degrees(length_m / EARTH_RADIUS_M), -89.5,
+                 300.0 + length_m * grade_pct / 100.0)
+        spoke = Spoke({"points": [(43.0, -89.5, 300.0), north], "distance_m": 0.0,
+                       "ascent_m": 0.0, "major_m": 0.0}, controls=[])
+        return spoke.stretch(0.0, spoke.length_m)
+
     spec = IntervalSpec("x", 4, 4.0, "any", watts=285)
     L = spec.rep_distance_m
-    flat = _score(spec, L, 0.0, 0.5, 0.0)
-    rolling = _score(spec, L, 1.5, 0.5, 0.0)
-    hill = _score(spec, L, 4.0, 0.5, 0.0)
+    flat, rolling, hill = (_rank(spec, straight(L, g)) for g in (0.0, 1.5, 4.0))
     assert flat > rolling > hill
     # a 4% hill is the INCLINE ideal, but for "either way" it is a poor spot
     assert flat - hill > 0.08

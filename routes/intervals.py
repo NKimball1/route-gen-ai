@@ -17,7 +17,7 @@ stop signs and signals; unavailable control data remains explicitly unknown.
 """
 from dataclasses import dataclass, field
 
-from routes.power import DEFAULT_TOTAL_KG, seconds_for, speed_mps
+from routes.power import DEFAULT_TOTAL_KG, speed_mps
 from routes.spec import METERS_PER_MILE, Router, Track
 from routes.stretch import Spoke, Stretch
 
@@ -137,7 +137,11 @@ MAX_UNPAVED_FRAC: float = 0.10
 def _score(spec: IntervalSpec, length: float, mean_grade: float,
            grade_std: float, turns_per_km: float,
            control_wt: float = 0.0,
-           climb_m_per_km: float = 0.0) -> float:
+           climb_m_per_km: float = 0.0,
+           laps_s: tuple[float, float] | None = None) -> float:
+    """`laps_s`: the Stretch's Lap time each way at the rider's power
+    (Stretch.lap_seconds), which an either-direction plan with watts is
+    ranked on."""
     # Longer is better up to the full rep distance (you can lap a shorter
     # stretch, but every turnaround interrupts the effort).
     len_score = min(length / spec.rep_distance_m, 1.0)
@@ -148,14 +152,15 @@ def _score(spec: IntervalSpec, length: float, mean_grade: float,
         steady_score = max(0.0, 1.0 - grade_std / 3.0)
     elif spec.kind == "any":
         # symmetry: how evenly the two directions take the rep. With
-        # watts this is the ratio of pass times (1.0 on the flat, ~0.8
-        # at 1.5%, ~0.6 at 3%); without, a gentler grade penalty than
-        # "flat" -- rolling is fine, a hill is not.
+        # watts this is the ratio of the Stretch's two Lap times (1.0 on
+        # the flat, ~0.8 at 1.5%, ~0.6 at 3%); without, a gentler grade
+        # penalty than "flat" -- rolling is fine, a hill is not.
         if spec.watts:
-            up = seconds_for(length, abs(mean_grade), spec.watts, spec.total_kg)
-            down = seconds_for(length, -abs(mean_grade), spec.watts,
-                               spec.total_kg)
-            grade_score = down / up if up > 0 else 0.0
+            if laps_s is None:
+                raise ValueError("an either-direction plan with watts is "
+                                 "ranked on the Stretch's Lap times")
+            fast, slow = sorted(laps_s)
+            grade_score = fast / slow if slow > 0 else 0.0
         else:
             grade_score = max(0.0, 1.0 - abs(mean_grade) / 4.0)
         # symmetric pass times don't make rollers smooth: hold power over
@@ -241,11 +246,15 @@ def _acceptable(spec: IntervalSpec, stretch: Stretch) -> bool:
 
 
 def _rank(spec: IntervalSpec, stretch: Stretch) -> float:
+    laps_s = ((stretch.lap_seconds(spec.watts, spec.total_kg),
+               stretch.lap_seconds(spec.watts, spec.total_kg, back=True))
+              if spec.watts and spec.kind == "any" else None)
     # each share of the stretch on a busy road costs that share of the score
     return _score(spec, stretch.length_m, stretch.mean_grade_pct,
                   stretch.grade_std_pct, stretch.turns_per_km,
                   stretch.stop_weight,
-                  climb_m_per_km=stretch.climb_m_per_km) * (1.0 - stretch.busy_share)
+                  climb_m_per_km=stretch.climb_m_per_km,
+                  laps_s=laps_s) * (1.0 - stretch.busy_share)
 
 
 # Two spokes a few degrees apart often share their first miles of road, so
