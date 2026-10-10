@@ -227,22 +227,25 @@ class Spoke:
         rs = self._rs
         if len(rs) < 5:
             return
+
+        def as_ridden(i: int, j: int) -> Stretch:
+            uphill_is_back = plan.kind == "incline" and rs[j][2] < rs[i][2]
+            return Stretch(self, i, j, reverse=uphill_is_back)
+
         for i in range(0, len(rs) - 3):
             if rs[i][3] > starting_within_m:
                 break
-            # Grow outward while one Lap still fits a Rep.
+            # Grow outward while one Lap, ridden the way the plan rides
+            # it, still fits a Rep.
             j_full = i
-            while j_full + 1 < len(rs) and Stretch(self, i, j_full + 1).fits_rep(plan):
+            while j_full + 1 < len(rs) and as_ridden(i, j_full + 1).fits_rep(plan):
                 j_full += 1
             ends = [j_full]
             k_bad = self._bad_next[i]
             if i < k_bad - 1 < j_full:
                 ends.append(k_bad - 1)
             for j in ends:
-                stretch = Stretch(self, i, j)
-                if plan.kind == "incline" and stretch.mean_grade_pct < 0:
-                    stretch = Stretch(self, i, j, reverse=True)
-                yield stretch
+                yield as_ridden(i, j)
 
 
 class Stretch:

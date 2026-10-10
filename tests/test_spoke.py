@@ -191,6 +191,17 @@ def test_an_incline_plan_rides_a_descending_spoke_uphill():
         assert s.starts_at_m > 1000.0      # the climb starts at its far, low end
 
 
+def test_an_incline_plan_sizes_a_descending_spoke_by_its_uphill_lap():
+    plan = IntervalSpec("x", 4, 4.0, "incline", watts=285, total_kg=84)
+    spoke = Spoke(leg(road(60, ele_fn=lambda k: 500.0 - k * 4.9)), controls=[])  # ~4% down
+    offered = list(spoke.stretches_worth_trying(plan, starting_within_m=500.0))
+    assert offered
+    for s in offered:
+        assert s.mean_grade_pct > 3.5           # ridden uphill...
+        assert s.fits_rep(plan)                 # ...and its uphill Lap fits the Rep
+        assert s.lap_seconds(285, 84) > 0.9 * 4 * 60   # the longest that does
+
+
 @pytest.mark.parametrize("stretch_m,rep_m,laps", [
     (10000.0, 6700.0, 1),      # holds a whole Rep
     (6700.0, 6700.0, 1),       # exactly one Rep
