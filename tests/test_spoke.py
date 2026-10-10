@@ -126,6 +126,30 @@ def test_a_stretch_fits_a_rep_by_lap_time_and_out_and_backs_by_the_faster_lap():
     assert up.fits_rep(long_rep)
 
 
+def ramp_spoke():
+    """~3 km, flat then a 10% ramp then flat: ~2.4% on average, but the
+    ramp costs far more time than the average grade implies."""
+    return Spoke(leg(road(25, ele_fn=lambda k: 300.0 + 12.2 * min(max(k - 10, 0), 5))),
+                 controls=[])
+
+
+def test_a_lap_over_a_ramp_takes_longer_than_steady_power_on_its_average_grade():
+    from routes.power import seconds_for
+    up = whole(ramp_spoke())
+    assert 2.0 < up.mean_grade_pct < 3.0
+    assert up.lap_seconds(285, 84) > 1.05 * seconds_for(up.length_m, up.mean_grade_pct, 285, 84)
+
+
+@pytest.mark.parametrize("kind", ["incline", "any"])
+def test_a_stretch_fits_a_rep_exactly_when_its_lap_does(kind):
+    up = whole(ramp_spoke())
+    lap = up.lap_seconds(285, 84)
+    if kind == "any":
+        lap = min(lap, up.lap_seconds(285, 84, back=True))
+    assert up.fits_rep(IntervalSpec("x", 5, lap * 1.01 / 60, kind, watts=285, total_kg=84))
+    assert not up.fits_rep(IntervalSpec("x", 5, lap * 0.99 / 60, kind, watts=285, total_kg=84))
+
+
 def test_without_power_a_stretch_fits_a_rep_by_distance():
     plan = IntervalSpec("x", 2, 4.0, "flat")               # ~2.1 km at 20 mph
     spoke = Spoke(leg(road(40)), controls=[])

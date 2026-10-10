@@ -8,8 +8,9 @@ is ground truth for the estimates the finder makes before anyone rides:
 
 - the power model (routes/power.py): fed the rider's own second-by-second
   power over the barometric profile, it lands within 5% of the real time;
-- the finder's sizing shortcut (steady power on the stretch's AVERAGE grade):
-  measured 8-10% fast on every clean rep, pinned below as a known gap;
+- the finder's Lap time (steady power along the Stretch's grade profile):
+  within 6% of every clean rep (the old average-grade shortcut was 8-10%
+  fast), so a Rep of the real time is one Lap;
 - the router's elevation (live, opt-in): within 2.5 m of the altimeter's
   net climb on every rep.
 
@@ -25,6 +26,7 @@ import os
 
 import pytest
 
+from routes.intervals import IntervalSpec
 from routes.power import seconds_for
 from routes.stretch import Spoke
 
@@ -80,8 +82,11 @@ def test_power_model_with_the_riders_own_power_matches_the_clock(rep):
     assert abs(error) < 0.05, f"{error:+.1%}"
 
 
+LAP_TOLERANCE = 0.06   # a Lap time within 6% of the rider's real Rep time
+
+
 @pytest.mark.parametrize("rep", CLEAN, ids=lambda r: f"rep{r['rep']}")
-def test_the_finders_lap_time_for_the_rep_is_about_ten_percent_fast(rep):
+def test_the_finders_lap_time_matches_the_real_rep(rep):
     """Each rep measured as a Stretch, the way the finder measures one:
     a Spoke built from the ridden road (barometric elevation), the longest
     Stretch along it, and its Lap time at the power the rider held over
@@ -90,12 +95,20 @@ def test_the_finders_lap_time_for_the_rep_is_about_ten_percent_fast(rep):
     up to ~90 m short of the rep's end; timing the same road keeps that
     out of the comparison.)
 
-    Today a Lap time is steady power on the Stretch's AVERAGE grade. Real
-    reps start from a rolling recovery (~16 km/h) and the steeper parts
-    cost more time than the average implies, so on every clean rep the
-    Stretch says it takes 8-10% less time than it did (measured -8.4% to
-    -10.5%) -- i.e. it oversizes 4-minute Stretches by about a tenth.
-    Pinned as measured: the sizing fix should move this test on purpose."""
+    A Lap time is steady power along the Stretch's grade profile (its
+    ~100 m pieces). Steady power on the AVERAGE grade, the old shortcut,
+    was 8.4-10.5% fast on every clean rep: White Crossing climbs at ~2.6%
+    on average but through a 10% ramp, and the time lost on the steep
+    parts is not won back on the gentle ones. Along the profile: measured
+    -3.1% to -4.9%, the same few percent fast as the power model fed the
+    rider's own second-by-second power (above), which is the physics
+    defaults' share and out of reach here.
+
+    Each rep starts from a rolling recovery (~16 km/h), but a start-up
+    cost is not modeled: simulating the rep with momentum from 16 km/h
+    lands within 0.6 points of the profile alone (the speed lost getting
+    up to pace is about what momentum carries into the ramp, which the
+    steady-state profile ignores)."""
     road = [(lat, lon, alt) for lat, lon, alt
             in zip(col(rep, "lat"), col(rep, "lon"), col(rep, "baro_alt_m"))]
     spoke = Spoke({"points": road, "distance_m": 0.0, "ascent_m": 0.0, "major_m": 0.0},
@@ -106,7 +119,11 @@ def test_the_finders_lap_time_for_the_rep_is_about_ten_percent_fast(rep):
     ridden = rows - 1                          # 1 Hz samples
     held = sum(col(rep, "power_w")[:rows]) / rows
     error = (stretch.lap_seconds(held, KG) - ridden) / ridden
-    assert -0.12 < error < -0.06, f"{error:+.1%}"
+    assert abs(error) < LAP_TOLERANCE, f"{error:+.1%}"
+    # and a Rep of the time the rider took is filled by that Lap
+    plan = IntervalSpec("White Crossing", 5, ridden / 60.0, "incline",
+                        watts=held, total_kg=KG)
+    assert stretch.laps_per_rep(plan) == 1
 
 
 @pytest.mark.skipif(os.environ.get("RUN_ROUTER_TESTS") != "1",

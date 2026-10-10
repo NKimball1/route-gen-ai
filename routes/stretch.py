@@ -76,18 +76,6 @@ class RepPlan(Protocol):
     def rep_distance_m(self) -> float: ...
 
 
-def _lap_fits_rep(length_m: float, grade_pct: float, plan: RepPlan) -> bool:
-    """One Lap of this length and grade is still within one Rep. With
-    watts, the answer is TIME at the grade; an either-direction plan rides
-    both ways, so the faster (downhill) Lap decides."""
-    if plan.watts:
-        if plan.kind == "any":
-            grade_pct = -abs(grade_pct)
-        return (seconds_for(length_m, grade_pct, plan.watts, plan.total_kg)
-                <= plan.rep_minutes * 60.0)
-    return length_m <= plan.rep_distance_m
-
-
 def _laps(lap: float, rep: float) -> int:
     """Laps of `lap` (seconds or meters) one `rep` needs. A Rep's length
     comes from an assumed pace, so it is already a rough number: a Lap
@@ -186,6 +174,24 @@ class Spoke:
             if turn > 180.0:
                 turn = 360.0 - turn
             self._turns_cum.append(self._turns_cum[-1] + int(turn > TURN_DEG))
+        self._lap_cums: dict[tuple[float, float], tuple[list[float], list[float]]] = {}
+
+    def _seconds_cum(self, watts: float, total_kg: float) -> tuple[list[float], list[float]]:
+        """Running riding time at steady `watts` piece by piece (~100 m)
+        along the grade profile, (outward, back towards the start): a
+        Stretch over rs[i..j] takes cum[j] - cum[i] either way. Worked out
+        once per rider, so timing a Stretch in the search loop is cheap."""
+        key = (watts, total_kg)
+        cums = self._lap_cums.get(key)
+        if cums is None:
+            out, back = [0.0], [0.0]
+            for a, b in zip(self._rs, self._rs[1:]):
+                d = b[3] - a[3]
+                grade = (b[2] - a[2]) / d * 100.0 if d > 0 else 0.0
+                out.append(out[-1] + seconds_for(d, grade, watts, total_kg))
+                back.append(back[-1] + seconds_for(d, -grade, watts, total_kg))
+            cums = self._lap_cums[key] = (out, back)
+        return cums
 
     @property
     def length_m(self) -> float:
@@ -224,13 +230,9 @@ class Spoke:
         for i in range(0, len(rs) - 3):
             if rs[i][3] > starting_within_m:
                 break
-            # Grow outward while one Lap (at the grade so far, ridden
-            # outward) still fits a Rep.
+            # Grow outward while one Lap still fits a Rep.
             j_full = i
-            while j_full + 1 < len(rs) and _lap_fits_rep(
-                    rs[j_full + 1][3] - rs[i][3],
-                    (rs[j_full + 1][2] - rs[i][2])
-                    / max(rs[j_full + 1][3] - rs[i][3], 1.0) * 100.0, plan):
+            while j_full + 1 < len(rs) and Stretch(self, i, j_full + 1).fits_rep(plan):
                 j_full += 1
             ends = [j_full]
             k_bad = self._bad_next[i]
@@ -300,25 +302,40 @@ class Stretch:
 
     def lap_seconds(self, watts: float, total_kg: float = DEFAULT_TOTAL_KG,
                     back: bool = False) -> float:
-        """How long one Lap takes holding `watts`, at the Stretch's average
-        grade; `back`: the Lap ridden the other way."""
-        grade = -self.mean_grade_pct if back else self.mean_grade_pct
-        return seconds_for(self.length_m, grade, watts, total_kg)
+        """How long one Lap takes holding `watts`, along the Stretch's grade
+        profile (~100 m pieces), not its average grade: a 10% ramp costs
+        more time than the gentle parts around it give back, so averaging
+        it away made Laps 8-10% fast on a real ride (White Crossing).
+        `back`: the Lap ridden the other way."""
+        if watts <= 0:
+            return math.inf
+        out, home = self._spoke._seconds_cum(watts, total_kg)
+        cum = home if self.reverse != back else out
+        return cum[self._j] - cum[self._i]
+
+    def _deciding_lap_seconds(self, watts: float, plan: RepPlan) -> float:
+        """The Lap that decides how a Rep fits: this way, or for an
+        either-direction plan (out-and-back Reps) the faster of the two."""
+        lap = self.lap_seconds(watts, plan.total_kg)
+        if plan.kind == "any":
+            lap = min(lap, self.lap_seconds(watts, plan.total_kg, back=True))
+        return lap
 
     def fits_rep(self, plan: RepPlan) -> bool:
-        """One Lap is within one Rep of the plan (an either-direction plan:
-        the faster Lap is). The search grows a Stretch while this holds."""
-        return _lap_fits_rep(self.length_m, self.mean_grade_pct, plan)
+        """One Lap is within one Rep of the plan: by Lap time with watts
+        (an either-direction plan: the faster Lap), by distance without.
+        The search grows a Stretch while this holds."""
+        if plan.watts:
+            return self._deciding_lap_seconds(plan.watts, plan) <= plan.rep_minutes * 60.0
+        return self.length_m <= plan.rep_distance_m
 
     def laps_per_rep(self, plan: RepPlan) -> int:
         """How many Laps one Rep of the plan needs: by Lap time with watts
         (an either-direction plan: the faster Lap decides), by distance
         without."""
         if plan.watts:
-            lap = self.lap_seconds(plan.watts, plan.total_kg)
-            if plan.kind == "any":
-                lap = min(lap, self.lap_seconds(plan.watts, plan.total_kg, back=True))
-            return _laps(lap, plan.rep_minutes * 60.0)
+            return _laps(self._deciding_lap_seconds(plan.watts, plan),
+                         plan.rep_minutes * 60.0)
         return _laps(self.length_m, plan.rep_distance_m)
 
     def _share(self, cum: list[int]) -> float:
