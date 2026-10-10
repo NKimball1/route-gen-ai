@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from routes.policy import MIN_STRETCH_M, MIN_STRETCH_REP_SHARE
 from routes.power import DEFAULT_TOTAL_KG, speed_mps
 from routes.spec import METERS_PER_MILE, Router
-from routes.stretch import Spoke, Stretch
+from routes.stretch import LapTimes, Spoke, Stretch
 
 # Speed assumptions for turning rep duration into stretch length when
 # the rider gives no power figure. With watts, physics decides instead.
@@ -93,10 +93,11 @@ def _score(spec: IntervalSpec, length: float, mean_grade: float,
            grade_std: float, turns_per_km: float,
            control_wt: float = 0.0,
            climb_m_per_km: float = 0.0,
-           laps_s: tuple[float, float] | None = None) -> float:
-    """`laps_s`: the Stretch's Lap time each way at the rider's power
-    (Stretch.lap_seconds), which an either-direction plan with watts is
-    ranked on."""
+           lap_times: LapTimes | None = None) -> float:
+    """`lap_times`: the Stretch's Lap time each way at the rider's power
+    (Stretch.lap_times, None without a power figure). An either-direction
+    plan is ranked on their ratio when they are known, on its average
+    grade when not."""
     # Longer is better up to the full rep distance (you can lap a shorter
     # stretch, but every turnaround interrupts the effort).
     len_score = min(length / spec.rep_distance_m, 1.0)
@@ -110,11 +111,8 @@ def _score(spec: IntervalSpec, length: float, mean_grade: float,
         # watts this is the ratio of the Stretch's two Lap times (1.0 on
         # the flat, ~0.8 at 1.5%, ~0.6 at 3%); without, a gentler grade
         # penalty than "flat" -- rolling is fine, a hill is not.
-        if spec.watts:
-            if laps_s is None:
-                raise ValueError("an either-direction plan with watts is "
-                                 "ranked on the Stretch's Lap times")
-            fast, slow = sorted(laps_s)
+        if lap_times is not None:
+            fast, slow = sorted(lap_times)
             grade_score = fast / slow if slow > 0 else 0.0
         else:
             grade_score = max(0.0, 1.0 - abs(mean_grade) / 4.0)
@@ -202,13 +200,12 @@ def _acceptable(spec: IntervalSpec, stretch: Stretch) -> bool:
 
 
 def _rank(spec: IntervalSpec, stretch: Stretch) -> float:
-    laps_s = stretch.lap_times(spec) if spec.kind == "any" else None
     # each share of the stretch on a busy road costs that share of the score
     return _score(spec, stretch.length_m, stretch.mean_grade_pct,
                   stretch.grade_std_pct, stretch.turns_per_km,
                   stretch.stop_weight,
                   climb_m_per_km=stretch.climb_m_per_km,
-                  laps_s=laps_s) * (1.0 - stretch.busy_share)
+                  lap_times=stretch.lap_times(spec)) * (1.0 - stretch.busy_share)
 
 
 # Two spokes a few degrees apart often share their first miles of road, so
