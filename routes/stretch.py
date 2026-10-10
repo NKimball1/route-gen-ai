@@ -40,8 +40,12 @@ def _bearing_deg(a: Coord, b: Coord) -> float:
     return (math.degrees(math.atan2(y, x)) + 360.0) % 360.0
 
 
-def _resample(points: Track, step_m: float = BIN_M) -> list[Sample]:
-    """Points at ~step_m spacing with cumulative distance: (lat, lon, ele, cum)."""
+def measuring_points(points: Track, step_m: float = BIN_M) -> list[Sample]:
+    """The road's own points kept ~step_m apart (none interpolated), each
+    with its cumulative distance: (lat, lon, ele, cum). A Spoke measures
+    Stretches between these. Points without elevation are skipped.
+    (routes/despur.py's _resample is a different job: evenly spaced
+    points interpolated along the line.)"""
     out: list[Sample] = []
     cum = carry = 0.0
     last: Point | None = None
@@ -143,7 +147,7 @@ class Spoke:
         self._raw_cum = [0.0]
         for a, b in zip(self._raw, self._raw[1:]):
             self._raw_cum.append(self._raw_cum[-1] + _hav_m(a, b))
-        self._rs: list[Sample] = _resample(self._raw)
+        self._rs: list[Sample] = measuring_points(self._raw)
         rs = self._rs
         # Surface and road class: flag each resampled point once; a Stretch
         # reads its gravel / busy share from a running count.

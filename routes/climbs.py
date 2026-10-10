@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from routes.spec import (METERS_PER_DEG_LAT, METERS_PER_DEG_LON_EQ,
                          METERS_PER_MILE, ClimbRow, Coord, LatLon, Router,
                          Sample)
-from routes.stretch import _resample
+from routes.stretch import measuring_points
 
 
 # Climb-start dedupe grid: cells per degree (~600 m squares).
@@ -122,7 +122,7 @@ def find_climbs(lat: float, lon: float, radius_m: float, provider: Router,
         leg = provider.route([(lat, lon), dest])
         if leg is None:
             continue
-        for row in extract_climbs(_resample(leg["points"])):
+        for row in extract_climbs(measuring_points(leg["points"])):
             found.append(Climb(
                 name=f"climb {row['gain_m']:.0f}m @ {row['avg_grade_pct']:.1f}%",
                 start=row["start"], end=row["end"], gain_m=row["gain_m"],
