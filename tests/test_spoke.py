@@ -1,0 +1,142 @@
+"""The Spoke seam (routes/stretch.py): build a Spoke from one routed road
+plus the area's traffic controls, then ask about Stretches along it."""
+from routes.intervals import IntervalSpec
+from routes.stretch import Spoke
+
+LAT_STEP = 0.0011  # ~122 m of latitude per step
+
+
+def road(n, lat0=43.0, lon=-89.5, ele_fn=lambda k: 300.0):
+    return [(lat0 + k * LAT_STEP, lon, ele_fn(k)) for k in range(n)]
+
+
+def leg(points, **lines):
+    return {"points": points, "distance_m": 0.0, "ascent_m": 0.0,
+            "major_m": 0.0, **lines}
+
+
+def whole(spoke):
+    return spoke.stretch(0.0, spoke.length_m)
+
+
+def test_a_flat_straight_road_is_a_flat_steady_turnless_stretch():
+    s = whole(Spoke(leg(road(40)), controls=[]))
+    assert s.length_m > 4000
+    assert abs(s.mean_grade_pct) < 0.1
+    assert s.grade_std_pct < 0.1
+    assert s.turns_per_km == 0.0
+    assert s.climb_m_per_km == 0.0
+
+
+def test_a_steady_climb_reads_its_grade_in_the_riding_direction():
+    spoke = Spoke(leg(road(40, ele_fn=lambda k: 300.0 + k * 4.9)), controls=[])  # ~4%
+    up = spoke.stretch(0.0, 3000.0)
+    down = spoke.stretch(3000.0, 0.0)
+    assert 3.5 < up.mean_grade_pct < 4.5 and up.grade_std_pct < 0.5
+    assert down.mean_grade_pct == -up.mean_grade_pct
+    assert down.length_m == up.length_m
+    assert down.points == list(reversed(up.points))
+    assert up.points[0][2] < up.points[-1][2]        # points come in riding order
+    assert 35 < up.climb_m_per_km < 45 and down.climb_m_per_km == 0.0
+
+
+def test_stops_on_a_stretch_and_at_its_turnaround_count_with_their_weight():
+    pts = road(60)                                   # ~7.2 km north
+    signal = (pts[10][0], pts[10][1], 2.0)           # ~1.2 km along
+    stop_sign = (pts[30][0], pts[30][1], 1.0)        # ~3.6 km along
+    spoke = Spoke(leg(pts), controls=[signal, stop_sign])
+    both = spoke.stretch(500.0, 4500.0)
+    assert both.stops_known and both.stops == 2
+    assert both.stop_weight == 3.0
+    assert both.stop_weight_per_km == 3.0 / (both.length_m / 1000.0)
+    # a light just past the turnaround still interrupts every Lap
+    assert spoke.stretch(1300.0, 3500.0).stops == 2
+    assert spoke.stretch(4500.0, 7000.0).stops == 0
+    assert spoke.stretch(4500.0, 500.0).stops == 2   # either direction
+
+
+def test_stops_are_unknown_not_zero_without_control_data():
+    s = whole(Spoke(leg(road(40)), controls=None))
+    assert s.stops_known is False
+    assert s.stops == 0
+
+
+def test_gravel_and_busy_road_shares_come_from_the_routers_lines():
+    pts = road(60)
+    gravel = [(p[0], p[1]) for p in pts[:20]]        # first ~2.4 km
+    busy = [(p[0], p[1]) for p in pts[40:]]          # from ~4.9 km on
+    spoke = Spoke(leg(pts, unpaved=[gravel], busy=[busy]), controls=[])
+    on_gravel = spoke.stretch(0.0, 2000.0)
+    assert on_gravel.gravel_share == 1.0 and on_gravel.busy_share == 0.0
+    on_busy = spoke.stretch(5500.0, 7000.0)
+    assert on_busy.busy_share == 1.0 and on_busy.gravel_share == 0.0
+    quiet = spoke.stretch(3000.0, 4500.0)
+    assert quiet.gravel_share == 0.0 and quiet.busy_share == 0.0
+    half = spoke.stretch(3700.0, 6100.0)
+    assert 0.4 < half.busy_share < 0.6
+
+
+def climb_spoke():
+    return Spoke(leg(road(40, ele_fn=lambda k: 300.0 + k * 4.9)), controls=[])  # ~4%
+
+
+def test_a_lap_up_a_climb_takes_longer_than_the_lap_back_down():
+    up = climb_spoke().stretch(0.0, 1500.0)
+    down = climb_spoke().stretch(1500.0, 0.0)
+    assert up.lap_seconds(285, 84) > up.lap_seconds(285, 84, back=True)
+    assert down.lap_seconds(285, 84) == up.lap_seconds(285, 84, back=True)
+    assert 3.5 * 60 < up.lap_seconds(285, 84) < 4.5 * 60  # ~1.5 km at 4%: ~22 km/h at 285 W
+    assert up.lap_seconds(350, 84) < up.lap_seconds(285, 84)
+    assert up.lap_seconds(285, 70) < up.lap_seconds(285, 84)
+
+
+def test_a_stretch_fits_a_rep_by_lap_time_and_out_and_backs_by_the_faster_lap():
+    up = climb_spoke().stretch(0.0, 1500.0)
+    between = (up.lap_seconds(285, 84) + up.lap_seconds(285, 84, back=True)) / 2 / 60
+    climb_plan = IntervalSpec("x", 5, between, "incline", watts=285, total_kg=84)
+    either_way = IntervalSpec("x", 5, between, "any", watts=285, total_kg=84)
+    assert not up.fits_rep(climb_plan)        # the climb outlasts the Rep
+    assert up.fits_rep(either_way)            # the faster, downhill Lap is within it
+    long_rep = IntervalSpec("x", 5, 6.0, "incline", watts=285, total_kg=84)
+    assert up.fits_rep(long_rep)
+
+
+def test_without_power_a_stretch_fits_a_rep_by_distance():
+    plan = IntervalSpec("x", 2, 4.0, "flat")               # ~2.1 km at 20 mph
+    spoke = Spoke(leg(road(40)), controls=[])
+    assert spoke.stretch(0.0, 1900.0).fits_rep(plan)
+    assert not spoke.stretch(0.0, 2400.0).fits_rep(plan)
+
+
+def test_from_each_start_it_offers_the_longest_stretch_that_fits_a_rep():
+    plan = IntervalSpec("x", 2, 4.0, "flat")               # ~2.1 km Reps
+    spoke = Spoke(leg(road(60)), controls=[])
+    offered = list(spoke.stretches_worth_trying(plan, starting_within_m=1000.0))
+    starts = sorted({s.starts_at_m for s in offered})
+    assert starts[0] == 0.0 and 900.0 < starts[-1] <= 1000.0
+    for s in offered:
+        assert s.fits_rep(plan)
+        assert plan.rep_distance_m - 130.0 < s.length_m  # one ~122 m step more would not fit
+
+
+def test_it_also_offers_the_stretch_cut_short_before_a_busy_road():
+    plan = IntervalSpec("x", 2, 4.0, "flat")
+    pts = road(60)
+    busy = [(p[0], p[1]) for p in pts[12:]]                # busy from ~1.5 km
+    spoke = Spoke(leg(pts, busy=[busy]), controls=[])
+    from_start = [s for s in spoke.stretches_worth_trying(plan, starting_within_m=50.0)]
+    assert len(from_start) == 2
+    longest, cut_short = from_start
+    assert longest.busy_share > 0.0
+    assert cut_short.busy_share == 0.0 and 1200.0 < cut_short.length_m < 1500.0
+
+
+def test_an_incline_plan_rides_a_descending_spoke_uphill():
+    plan = IntervalSpec("x", 4, 4.0, "incline")
+    spoke = Spoke(leg(road(60, ele_fn=lambda k: 500.0 - k * 4.9)), controls=[])
+    offered = list(spoke.stretches_worth_trying(plan, starting_within_m=500.0))
+    assert offered
+    for s in offered:
+        assert s.mean_grade_pct > 3.5
+        assert s.points[0][2] < s.points[-1][2]
+        assert s.starts_at_m > 1000.0      # the climb starts at its far, low end

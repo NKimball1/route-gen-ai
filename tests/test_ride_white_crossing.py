@@ -26,6 +26,7 @@ import os
 import pytest
 
 from routes.power import seconds_for
+from routes.stretch import Spoke
 
 FIXTURE = os.path.join(os.path.dirname(__file__), "fixtures", "white_crossing_5x4.json")
 with open(FIXTURE, encoding="utf-8") as fixture_file:
@@ -80,18 +81,31 @@ def test_power_model_with_the_riders_own_power_matches_the_clock(rep):
 
 
 @pytest.mark.parametrize("rep", CLEAN, ids=lambda r: f"rep{r['rep']}")
-def test_the_finders_average_grade_shortcut_is_about_ten_percent_fast(rep):
-    """The finder sizes a rep as steady power on the stretch's average
-    grade. Real reps start from a rolling recovery (~16 km/h) and the
-    steeper parts cost more time than the average implies, so on every
-    clean rep the shortcut says the stretch takes 8-10% less time than it
-    did -- i.e. it oversizes 4-minute stretches by about a tenth. Pinned as
-    measured: a change to the sizing should move this test on purpose."""
-    dist, alt, watts = col(rep, "dist_m"), col(rep, "baro_alt_m"), col(rep, "power_w")
-    length = dist[-1] - dist[0]
-    grade = (alt[-1] - alt[0]) / length * 100
-    shortcut = seconds_for(length, grade, sum(watts) / len(watts), KG)
-    error = (shortcut - ridden_seconds(rep)) / ridden_seconds(rep)
+def test_the_finders_lap_time_for_the_rep_is_about_ten_percent_fast(rep):
+    """Each rep measured as a Stretch, the way the finder measures one:
+    a Spoke built from the ridden road (barometric elevation), the longest
+    Stretch along it, and its Lap time at the power the rider held over
+    that Stretch, against the seconds the rider took over the same road.
+    (A Stretch ends on the Spoke's ~100 m measuring points, so it can stop
+    up to ~90 m short of the rep's end; timing the same road keeps that
+    out of the comparison.)
+
+    Today a Lap time is steady power on the Stretch's AVERAGE grade. Real
+    reps start from a rolling recovery (~16 km/h) and the steeper parts
+    cost more time than the average implies, so on every clean rep the
+    Stretch says it takes 8-10% less time than it did (measured -8.4% to
+    -10.5%) -- i.e. it oversizes 4-minute Stretches by about a tenth.
+    Pinned as measured: the sizing fix should move this test on purpose."""
+    road = [(lat, lon, alt) for lat, lon, alt
+            in zip(col(rep, "lat"), col(rep, "lon"), col(rep, "baro_alt_m"))]
+    spoke = Spoke({"points": road, "distance_m": 0.0, "ascent_m": 0.0, "major_m": 0.0},
+                  controls=[])
+    stretch = spoke.stretch(0.0, spoke.length_m)
+    assert stretch.points[0] == road[0]
+    rows = len(stretch.points)                 # the rep's rows over the Stretch
+    ridden = rows - 1                          # 1 Hz samples
+    held = sum(col(rep, "power_w")[:rows]) / rows
+    error = (stretch.lap_seconds(held, KG) - ridden) / ridden
     assert -0.12 < error < -0.06, f"{error:+.1%}"
 
 
