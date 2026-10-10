@@ -2,6 +2,7 @@
 from find_spot import where_lines
 from routes.intervals import IntervalSpec, Spot, find_spots
 from routes.places import describe_stretch
+from routes.providers import _destination
 from tests.test_spot_results import DenseProvider
 
 O = (43.0, -89.5)
@@ -64,3 +65,37 @@ def test_max_stops_zero_drops_a_stretch_with_a_stop_sign(monkeypatch):
                         EastWest(), n_spokes=4, top=3)
     assert any(s.n_controls > 0 for s in loose)          # without the limit it shows up
     assert strict and all(s.n_controls == 0 for s in strict)
+
+
+class TrailEastRoadWest(EastWest):
+    """The eastern spoke rides a trail all the way; the western one a road."""
+    def route(self, waypoints, avoid=None, protect=None):
+        leg = super().route(waypoints, avoid, protect)
+        if leg is not None and waypoints[-1][1] > waypoints[0][1]:
+            leg["path"] = [[(p[0], p[1]) for p in leg["points"]]]
+        return leg
+
+
+def test_no_stops_excludes_a_trail_with_unsigned_road_crossings(monkeypatch):
+    """The Badger State Trail complaint: a trail crossing a road every
+    1.5 km came back as uninterrupted. The same OSM tag marks crosswalks
+    on a road, which a rider ON the road does not stop for."""
+    import routes.interruptions as interruptions
+    from routes.interruptions import trail_crossing
+    plan = IntervalSpec("x", 2, 10.0, "flat", 30.0)
+    # one crossing every ~1.5 km ON each spoke's line (a crossing node is
+    # on the line itself; the east-west legs drift a few meters off 43.0)
+    crossings = []
+    for bearing in (90.0, 270.0):
+        end = _destination(O[0], O[1], bearing, plan.travel_radius_m / 1.2)
+        crossings += [trail_crossing(O[0] + (end[0] - O[0]) * f, O[1] + (end[1] - O[1]) * f)
+                      for f in (0.05 + 0.15 * k for k in range(7))]
+    monkeypatch.setattr(interruptions, "fetch_controls", lambda *a, **k: crossings)
+    loose = find_spots(plan, O[0], O[1], TrailEastRoadWest(), n_spokes=4, top=3)
+    on_trail = [s for s in loose if s.points[-1][1] > O[1]]
+    on_road = [s for s in loose if s.points[-1][1] < O[1]]
+    assert on_trail and all(s.n_controls > 0 for s in on_trail)
+    assert on_road and all(s.n_controls == 0 for s in on_road)
+    strict = find_spots(IntervalSpec("x", 2, 10.0, "flat", 30.0, max_stops=0), O[0], O[1],
+                        TrailEastRoadWest(), n_spokes=4, top=3)
+    assert strict and all(s.points[-1][1] < O[1] for s in strict)
