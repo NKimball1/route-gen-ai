@@ -6,7 +6,7 @@ Describe a ride in plain English, get a Garmin-ready GPX.
 
 > **What it is:** [docs/OVERVIEW.md](docs/OVERVIEW.md) — the project,
 > the stack, and the design decisions on one page.
-> **How it was built:** [docs/DEVLOG.md](docs/DEVLOG.md) — 38 phases of
+> **How it was built:** [docs/DEVLOG.md](docs/DEVLOG.md) — 39 phases of
 > field-tested iteration, every real-ride complaint turned into a
 > permanent, unit-tested fix.
 > **Does it work?** [evals/](evals/README.md) — a versioned set of 62

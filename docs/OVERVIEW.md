@@ -64,7 +64,7 @@ with stated reasons, not smoothed over.
 | Backend | Python, FastAPI, background jobs with live log streaming, per-session workspaces, sliding-window rate limits, invite-code gate |
 | Frontend | Zero-build vanilla JS + Leaflet — one text box, candidates on a map, GPX downloads |
 | Calibration | Routes were ridden with a Garmin; barometric FIT data calibrated the elevation model until predictions sat within instrument spread |
-| Testing | pytest — 267 offline tests (mocked HTTP, no API keys needed) plus opt-in live parser tests, Node frontend tests, strict mypy, a user-simulation script against the running app, and a 62-request eval campaign |
+| Testing | pytest — 313 offline tests (mocked HTTP, no API keys needed) plus opt-in live parser tests, Node frontend tests, strict mypy, a user-simulation script against the running app, and a 62-request eval campaign |
 
 ## The process
 

@@ -1076,9 +1076,67 @@ interval fixes; storage/API/services; routing rules; and the phase 36
 evals, which had been sitting uncommitted since September.
 [REVIEW_FIXES.md](REVIEW_FIXES.md) has the finding-by-finding test map.
 
+## Phase 39 — A real ride as the referee, and one module for every Stretch fact (2026-10-05 → 10-10)
+
+Three small fixes first, each from a live run that misbehaved:
+
+- **Busy Overpass mirrors get a second chance.** overpass-api.de answered
+  504 in ~8 s and then served the same query a minute later, while the
+  other mirror sat silent for 90 s. A mirror that answers "busy" is asked
+  once more after a pause; a silent one is not waited on twice.
+- **A side street's stop sign is not the rider's.** Every stop within 40 m
+  of a stretch counted against it. On the Madison-area map, side-street
+  signs within 40 m of a road outnumber the road's own 5,037 to 2,082, so
+  through-roads where the rider has right of way were penalised most.
+  Stops now count only on the routed line itself (all 40 sampled on-road
+  signs sat within 0.5 m of it); signals keep their wide reach.
+- **"No route fits" says why.** Avoiding the road the start sits on
+  rejected every candidate and the banner said "try a looser target".
+  The reject reasons now become the sentence: name the road, suggest
+  starting a short way off it.
+
+**The ride.** The finder picked White Crossing Road for 4-minute VO2
+reps; the rider rode it 5x4 at ~300 W with a power meter and barometric
+altimeter, and the trimmed reps became a permanent test fixture. It
+confirmed the start, the finish and the router's elevation (within 1.6 m
+of the altimeter on every rep), and caught the finder's sizing shortcut
+-- steady power on a stretch's average grade -- running 8-10% fast.
+
+**The refactor.** An architecture review found that facts about one
+interval stretch lived in about ten modules: power sizing in nine
+places, the "either direction" rule re-derived in seven, and ranking on
+a different climbing number from the one shown. A design interview
+settled the shape and a shared vocabulary (GLOSSARY.md: Stretch, Spot,
+Spoke, Rep, Lap); the result became spec #6 and six tickets, built on
+one integration branch by parallel agents, each verified before merge:
+
+- **Spoke and Stretch** (routes/stretch.py): a Spoke does the per-direction
+  work once; a Stretch answers length, grade, climbing, stops, gravel and
+  busy share, Lap time each way, fits-a-Rep and Laps per Rep. The finder
+  keeps only search policy; every output reads Stretch facts. Byte-identical
+  results across 1,134 searches proved the restructure changed nothing.
+- **Unsigned trail crossings count as stops** on the path parts of a
+  Stretch; crosswalks on a road the rider is on do not. Live, from
+  Fitchburg: the Badger State Trail (2 unsigned road crossings, shown as
+  "0 stops" before) drops out -- the original complaint.
+- **Lap time along the real grade profile.** White Crossing reps went from
+  8-10% fast to 3-5% (the test now requires within 6%); incline plans are
+  sized by the uphill Lap they will ride.
+- **One climbing figure**, the calibrated model, for ranking and display.
+
+A two-axis code review (repo standards; the spec) then caught one real
+bug: path runs were placed by summing BRouter's row distances, which
+drift 10-20 m over a spoke, so a crossing where a trail meets a road
+could be missed. Runs are now placed by coordinates. Merged as PR #13;
+313 offline tests.
+
+Lesson: the useful test data was a ride, not a fixture someone typed.
+It refereed three estimates at once and decided the one design question
+the code couldn't (a rolling-start cost, which turned out not to matter).
+
 ## Testing & verification practices that emerged
 
-- 267 offline tests (no API keys, mocked HTTP): despurring, interval
+- 313 offline tests (no API keys, mocked HTTP): despurring, interval
   scoring (including the exact field-complaint cases), overlap
   detection, ranking, control mapping, every edit operation, road-line
   avoidance, GPX reading, geocode fallbacks and retries, rate limits,
@@ -1090,6 +1148,8 @@ evals, which had been sitting uncommitted since September.
 - `scripts/simulate.py` drives the running app over HTTP like a user;
   the phase 36 eval campaign scores 62 requests from their GPX files.
 - Every field complaint became a regression test before the fix shipped.
+- A real ride is test data: the White Crossing 5x4 fixture referees the
+  power model, the finder's Lap times and the router's elevation.
 - Independent re-verification of winners (e.g., re-fetching traffic
   controls around a winning stretch's midpoint) caught a counting bug the
   primary path missed.
@@ -1097,7 +1157,7 @@ evals, which had been sitting uncommitted since September.
   computable: distance tolerance, climb caps, repeat %, major-road meters,
   interruptions per rep.
 
-## Open items (as of phase 38)
+## Open items (as of phase 39)
 
 - **Deployment** — the only thing between the current code and a public
   URL: a Lightsail box with BRouter tiles, HTTPS, and the invite code.
@@ -1112,20 +1172,19 @@ evals, which had been sitting uncommitted since September.
   10-08 the banner says so (it names the road and suggests starting a
   short way off it) instead of "try a looser target"; finding an exit
   that avoids the road is still open.
-- **Interval sizing runs about 10% fast.** A real 5x4 VO2 ride on the
-  White Crossing Road climb (tests/test_ride_white_crossing.py) shows the
-  power model itself within 5% when fed second-by-second power, but the
-  finder's shortcut -- steady power on the stretch's average grade --
-  says each 4-minute rep takes 8-10% less time than it did (the rep
-  starts from a rolling recovery, and steep parts cost more than the
-  average suggests). Stretches are oversized by about a tenth.
+- **Physics defaults run 3-5% fast.** Since phase 39 Lap times follow the
+  grade profile and land within 3-5% of the White Crossing reps; the rest
+  is road surface or riding position (rolling resistance vs drag), which
+  one direction at one speed cannot separate. A second ride -- the same
+  climb the other way, or a flat out-and-back -- would.
 - Strava segment *explore* (popularity scoring) is gated behind Strava's
   Extended Access tier; starred segments work today, CLI-only. Per-user
   "Sign in with Strava" OAuth is the planned identity model.
 - "Both passes" corridor edits: an out-and-back edit changes one pass
   of a corridor at a time.
-- Uncontrolled-crossroads detection (road-crossing counting via
-  Overpass) for interval spots.
+- Uncontrolled road-to-road crossings for interval spots. Unsigned trail
+  crossings count since phase 39; a road crossing another road with no
+  mapped control (often an unmapped stop sign) still counts as clear.
 - Disk retention: session folders and old artifacts are never cleaned up
   automatically.
 - Worldwide coverage: BRouter tiles are the only regional piece; the
