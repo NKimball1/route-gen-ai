@@ -110,3 +110,71 @@ def test_fetched_stops_are_not_clustered_into_side_street_positions(monkeypatch,
     assert got is not None and len(got) == 2
     pts = [(43.0 - 0.002, -89.5), (43.0 + 0.002, -89.5)]
     assert len(controls_along(pts, got)) == 1
+
+
+# ---- matching controls to a Spoke is exact, however it is sped up ----
+# A Spoke's line has ~1,000+ points and an area ~17,000 controls; matching
+# every control against every segment cost ~1 s per Spoke. Any shortcut
+# must give exactly the answer of the plain definition below.
+
+def _brute_force_hits(points, controls):
+    """The definition: each control's nearest segment (first one on ties),
+    a hit when within the control's reach, then hits within CLUSTER_M merged."""
+    import math
+    from routes.interruptions import CLUSTER_M, _project, as_control
+    to_xy = _project(points[0][0], points[0][1])
+    xy = [to_xy(p[0], p[1]) for p in points]
+    cum = [0.0]
+    for k in range(1, len(xy)):
+        cum.append(cum[-1] + math.dist(xy[k - 1], xy[k]))
+    hits = []
+    for c in map(as_control, controls):
+        cx, cy = to_xy(c.lat, c.lon)
+        best = None
+        for k in range(len(xy) - 1):
+            (ax, ay), (bx, by) = xy[k], xy[k + 1]
+            vx, vy = bx - ax, by - ay
+            l2 = vx * vx + vy * vy
+            t = 0.0 if l2 == 0 else max(0.0, min(1.0, ((cx - ax) * vx + (cy - ay) * vy) / l2))
+            d = math.dist((cx, cy), (ax + t * vx, ay + t * vy))
+            if best is None or d < best[0]:
+                best = (d, cum[k] + t * math.sqrt(l2))
+        if best is not None and best[0] <= c.reach_m:
+            hits.append((best[1], c.weight))
+    hits.sort()
+    merged = []
+    for pos, w in hits:
+        if merged and pos - merged[-1][0] <= CLUSTER_M:
+            merged[-1] = (merged[-1][0], max(merged[-1][1], w))
+        else:
+            merged.append((pos, w))
+    return merged
+
+
+def test_controls_along_matches_the_plain_definition_exactly():
+    import random
+    from routes.policy import CONTROL_ON_ROUTE_M, SIGNAL_REACH_M
+    rng = random.Random(7)
+    for case in range(25):
+        # a winding Spoke: mixes long straight segments (rural roads) with
+        # tight zig-zags, doubling back sometimes
+        lat, lon, pts = 43.0, -89.5, [(43.0, -89.5)]
+        for _ in range(rng.randint(2, 120)):
+            step = rng.choice([5, 30, 120, 900])
+            heading = rng.uniform(0, 6.283)
+            import math
+            lat += step * math.cos(heading) / 110540
+            lon += step * math.sin(heading) / (111320 * math.cos(math.radians(43)))
+            pts.append((lat, lon))
+        controls = []
+        for _ in range(300):
+            a = rng.randrange(len(pts))
+            base = pts[a]
+            # near the line (inside, at, and just beyond each reach) and far away
+            off = rng.choice([0.0, 1.0, 2.9, 3.0, 3.1, 25.0, 39.9, 40.0, 40.1, 80.0, 500.0])
+            ang = rng.uniform(0, 6.283)
+            reach = rng.choice([CONTROL_ON_ROUTE_M, SIGNAL_REACH_M])
+            controls.append((base[0] + off * math.cos(ang) / 110540,
+                             base[1] + off * math.sin(ang) / (111320 * math.cos(math.radians(43))),
+                             rng.choice([0.4, 1.0, 1.5]), reach))
+        assert controls_along(pts, controls) == _brute_force_hits(pts, controls), f"case {case}"
