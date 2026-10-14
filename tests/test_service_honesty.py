@@ -267,3 +267,56 @@ def test_banner_explains_an_avoid_that_rules_out_every_route(monkeypatch, tmp_pa
     summary = service.handle_request("a 10 mile loop", workdir=str(tmp_path))["summary"]
     assert "Monroe Street" in summary
     assert "looser target" not in summary.lower()
+
+
+# ---- the plain-English parser (Claude API) failing -----------------------
+# Live 10-14: the server's API key had been rejected, and every request came
+# back as "ERROR: AuthenticationError: Error code: 401 - ... invalid
+# x-api-key" with no summary -- a traceback where the lookup and router
+# failures above already get a sentence.
+
+def _api_error(kind):
+    import anthropic
+    import httpx
+    request = httpx.Request("POST", "https://api.anthropic.com/v1/messages")
+    if kind == "connection":
+        return anthropic.APIConnectionError(request=request)
+    status = {"auth": 401, "forbidden": 403, "rate": 429, "overloaded": 529, "server": 500,
+              "bad_request": 400}[kind]
+    cls = {401: anthropic.AuthenticationError, 403: anthropic.PermissionDeniedError,
+           429: anthropic.RateLimitError, 529: anthropic.OverloadedError,
+           500: anthropic.InternalServerError, 400: anthropic.BadRequestError}[status]
+    return cls("boom", response=httpx.Response(status, request=request), body=None)
+
+
+def _raising_parser(monkeypatch, error):
+    import routes.nl
+
+    def parse(text, client=None, context=None):
+        raise error
+    monkeypatch.setattr(routes.nl, "parse_request", parse)
+
+
+@pytest.mark.parametrize("kind,words", [
+    ("auth", "api key"), ("forbidden", "api key"),
+    ("rate", "try again in a minute"),
+    ("overloaded", "try again shortly"), ("server", "try again shortly"),
+    ("connection", "try again shortly"),
+])
+def test_parser_service_failure_is_a_sentence_not_a_traceback(monkeypatch, tmp_path, kind, words):
+    _raising_parser(monkeypatch, _api_error(kind))
+    result = service.handle_request("a 20 mile loop", workdir=str(tmp_path))
+    assert result["kind"] == "error" and result["ok"] is False
+    summary = result["summary"].lower()
+    assert "nothing is wrong with your request" in summary
+    assert words in summary
+    assert "error code" not in summary and "x-api-key" not in summary
+
+
+def test_a_malformed_parser_call_is_still_a_real_bug(monkeypatch, tmp_path):
+    """Teeth: a 400 means our request to the API was wrong -- a bug in this
+    code, not an outage -- so it must not be dressed up as one."""
+    import anthropic
+    _raising_parser(monkeypatch, _api_error("bad_request"))
+    with pytest.raises(anthropic.BadRequestError):
+        service.handle_request("a 20 mile loop", workdir=str(tmp_path))

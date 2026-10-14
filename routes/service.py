@@ -55,6 +55,32 @@ def _locate(place: str, what: str) -> tuple[float, float, str]:
         raise _lookup_failed(e, what, place) from e
 
 
+def _parser_failed(e: BaseException) -> "LookupFailed | None":
+    """The words for the plain-English parser (Claude API) failing, or None
+    when the error is not an outage. A rejected API key, rate limiting, an
+    overloaded or erroring API, or no connection are server-side problems
+    that need a sentence, like the lookup failures. A 400-class request
+    error means this code sent something wrong: a bug, so it is re-raised."""
+    import anthropic
+    service = "the plain-English parser (Claude API)"
+    if isinstance(e, (anthropic.AuthenticationError, anthropic.PermissionDeniedError)):
+        print(f"Parser API rejected the server's credentials ({type(e).__name__})")
+        return LookupFailed(
+            f"Couldn't read your request: {service} rejected this server's "
+            "API key. Nothing is wrong with your request -- the server's API "
+            "key needs replacing.")
+    if isinstance(e, anthropic.RateLimitError):
+        return LookupFailed(
+            f"Couldn't read your request: {service} is rate-limiting this "
+            "server. Nothing is wrong with your request -- try again in a minute.")
+    if isinstance(e, (anthropic.APIConnectionError, anthropic.InternalServerError,
+                      anthropic.OverloadedError, anthropic.ServiceUnavailableError)):
+        return LookupFailed(
+            f"Couldn't reach {service}; it may be busy or down. Nothing is "
+            "wrong with your request -- try again shortly.")
+    return None
+
+
 def _lookup_failed(e: BaseException, what: str = "the place",
                    place: str | None = None) -> "LookupFailed":
     """One place decides the words for every lookup failure, wherever it
@@ -187,7 +213,10 @@ def handle_request(text: str, log_sink: IO[str] | None = None,
             result = _dispatch(text, default_address, workdir, intent)
     except Exception as e:  # noqa: BLE001 - re-raised unless it is a lookup
         from routes.geocode import GeocodeError
-        if isinstance(e, (ValidationError, ValueError)):
+        parser_down = _parser_failed(e)
+        if parser_down is not None:
+            e = parser_down
+        elif isinstance(e, (ValidationError, ValueError)):
             e = LookupFailed("Could not safely interpret or apply this request. " + str(e).split("\n")[0])
         elif not isinstance(e, (LookupFailed, GeocodeError)):
             raise
