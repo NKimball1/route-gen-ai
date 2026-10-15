@@ -121,6 +121,10 @@ the app no longer reads `X-Forwarded-For` itself (a client could spoof it),
 so without those flags every visitor shares the proxy's rate limit.
 End-to-end smoke test against a running server (local or deployed):
 `python scripts/simulate.py hostile route edits upload cancel spot`.
+`GET /api/health` reports `brouter` and `parser` (the Claude API key: `ok`,
+`no_key`, `key_rejected`, `rate_limited` or `unreachable`) and returns 503
+unless both work; the simulator checks it first and skips the
+plain-English stages, with one clear issue, when the parser can't run.
 Evaluation campaign (`evals/README.md`):
 
 ```

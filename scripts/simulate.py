@@ -293,8 +293,28 @@ def stage_spot() -> None:
     check(j["status"] == "done" and res.get("ok") is True, "interval spot search succeeds")
 
 
+# Stages that start with a plain-English request (or use a route made by
+# one). With the parser unusable they all fail the same way, which once
+# read as ten separate issues for one rejected API key.
+NEEDS_PARSER: frozenset[str] = frozenset({"route", "edits", "upload", "cancel", "spot"})
+
+
+def parser_preflight(stages: list[str]) -> list[str]:
+    """Ask /api/health whether the parser works; drop the stages that need
+    it when it doesn't, recording ONE issue that names the cause."""
+    if not NEEDS_PARSER & set(stages):
+        return stages
+    parser = HTTP.get(f"{BASE}/api/health").json().get("parser", "ok")
+    if parser == "ok":
+        return stages
+    skipped = [s for s in stages if s in NEEDS_PARSER]
+    check(False, "plain-English parser is usable",
+          f"health says parser={parser}; skipped {', '.join(skipped)}")
+    return [s for s in stages if s not in NEEDS_PARSER]
+
+
 if __name__ == "__main__":
-    for name in sys.argv[1:]:
+    for name in parser_preflight(sys.argv[1:]):
         globals()[f"stage_{name}"]()
     print(f"\n==== {len(ISSUES)} issue(s) ====")
     for i in ISSUES:

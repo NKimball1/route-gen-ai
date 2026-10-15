@@ -284,12 +284,18 @@ def undo(session: Session = Depends(authorized_session)) -> ServiceResult:
 
 @app.get("/api/health")
 def health() -> JSONResponse:
+    from routes import nl
     from routes.providers import BRouterProvider, brouter_reachable
     up = brouter_reachable(BRouterProvider().base_url)
+    # Plain-English requests are the app's main job: a rejected or missing
+    # parser key makes the server unhealthy even with BRouter up.
+    parser = nl.parser_status()
+    ok = up and parser == "ok"
     with LOCK:
         running = sum(j["status"] == "running" for j in JOBS.values())
-    return JSONResponse({"ok": up, "brouter": "up" if up else "down", "jobs_running": running},
-                        status_code=200 if up else 503)
+    return JSONResponse({"ok": ok, "brouter": "up" if up else "down", "parser": parser,
+                         "jobs_running": running},
+                        status_code=200 if ok else 503)
 
 
 @app.get("/api/geocode", response_model=None)

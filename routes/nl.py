@@ -9,12 +9,44 @@ loop to pay for.
 """
 import json
 import os
+import time
 from typing import Any
 
 import anthropic
 
 DEFAULT_MODEL = "claude-haiku-4-5"
 MAX_OUTPUT_TOKENS = 2048
+
+# Is the parser usable right now? Health checks poll often; listing models is
+# free but still a network call, so one answer serves this long.
+PARSER_STATUS_TTL_S: float = 300.0
+_PARSER_STATUS: tuple[float, str] | None = None
+
+
+def parser_status(client: anthropic.Anthropic | None = None) -> str:
+    """'ok', 'no_key', 'key_rejected', 'rate_limited' or 'unreachable'.
+
+    Checked with the free models list rather than a real parse, and cached
+    for PARSER_STATUS_TTL_S, so a dead or rejected key shows up in /api/health
+    before a rider's request does (live 10-14: health said all was well while
+    every plain-English request failed on a rejected key)."""
+    global _PARSER_STATUS
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        return "no_key"
+    now = time.monotonic()
+    if _PARSER_STATUS is not None and now - _PARSER_STATUS[0] < PARSER_STATUS_TTL_S:
+        return _PARSER_STATUS[1]
+    try:
+        (client or anthropic.Anthropic()).models.list(limit=1)
+        status = "ok"
+    except (anthropic.AuthenticationError, anthropic.PermissionDeniedError):
+        status = "key_rejected"
+    except anthropic.RateLimitError:
+        status = "rate_limited"
+    except anthropic.APIError:
+        status = "unreachable"
+    _PARSER_STATUS = (now, status)
+    return status
 
 SYSTEM = """You convert a cyclist's plain-English request into JSON for a \
 route-generation tool.
