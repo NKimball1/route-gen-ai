@@ -7,7 +7,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const source = fs.readFileSync(path.join(__dirname, '../static/app.js'), 'utf8');
 
-async function browser() {
+async function browser(onLoad) {
   const nodes = new Map();
   function element() {
     return {value: '', textContent: '', disabled: false, hidden: true, style: {}, dataset: {},
@@ -15,7 +15,7 @@ async function browser() {
       appendChild() {}, append() {}, click() {}, querySelector() {return element();}};
   }
   const calls = [], values = new Map();
-  let respond = async () => ({ok: true, status: 200, json: async () => ({current: null, candidates: []})});
+  let respond = onLoad || (async () => ({ok: true, status: 200, json: async () => ({current: null, candidates: []})}));
   const map = {setView() {return this;}, removeLayer() {}, fitBounds() {}};
   const context = vm.createContext({
     document: {getElementById(id) {if (!nodes.has(id)) nodes.set(id, element()); return nodes.get(id);},
@@ -73,4 +73,30 @@ test('all API reads carry session credentials and invite retry uses the new code
   assert.equal(app.calls[1][1].headers['X-Session-Id'], 'test-session');
   assert.equal(app.calls[1][1].headers['X-Invite-Code'], 'new-invite');
   assert.equal(app.values.get('rg_invite'), 'new-invite');
+});
+
+// Live 10-14: a rejected API key failed every plain-English request while the
+// page gave no hint until a request had been typed and waited on.
+function healthSays(health) {
+  return async url => url === '/api/health'
+    ? {ok: false, status: 503, json: async () => health}
+    : {ok: true, status: 200, json: async () => ({current: null, candidates: []})};
+}
+
+test('a rejected API key is flagged as soon as the page loads', async () => {
+  const app = await browser(healthSays({ok: false, brouter: 'up', parser: 'key_rejected'}));
+  const banner = app.context.document.getElementById('banner');
+  assert.match(banner.textContent, /Plain-English requests won't work/);
+  assert.match(banner.textContent, /API key was rejected/);
+  assert.equal(banner.className, 'warn');
+});
+
+test('a stopped routing engine is flagged as soon as the page loads', async () => {
+  const app = await browser(healthSays({ok: false, brouter: 'down', parser: 'ok'}));
+  assert.match(app.context.document.getElementById('banner').textContent, /routing engine \(BRouter\) is down/);
+});
+
+test('a healthy server leaves the banner empty', async () => {
+  const app = await browser(healthSays({ok: true, brouter: 'up', parser: 'ok'}));
+  assert.equal(app.context.document.getElementById('banner').textContent, '');
 });

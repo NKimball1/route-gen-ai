@@ -125,6 +125,7 @@ End-to-end smoke test against a running server (local or deployed):
 `no_key`, `key_rejected`, `rate_limited` or `unreachable`) and returns 503
 unless both work; the simulator checks it first and skips the
 plain-English stages, with one clear issue, when the parser can't run.
+The web page reads it on load and puts any problem in its banner.
 Evaluation campaign (`evals/README.md`):
 
 ```

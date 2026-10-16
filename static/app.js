@@ -88,6 +88,24 @@ refreshCurrent().then(data => {
   if (data.candidates && data.candidates.length) showResult(data);
 }).catch(reportError);
 
+// A rejected API key or a stopped BRouter fails every request: say so on load,
+// not after the rider has typed one and waited (live 10-14). Plain fetch, not
+// apiFetch: health is public and answers 503 with a body when unhealthy.
+const PARSER_PROBLEMS = {
+  no_key: 'this server has no Claude API key set',
+  key_rejected: "this server's Claude API key was rejected and needs replacing",
+  rate_limited: 'the Claude API is rate-limiting this server; try again in a minute',
+  unreachable: "the Claude API can't be reached right now",
+};
+async function checkHealth() {
+  const health = await fetch('/api/health').then(r => r.json()).catch(() => ({}));
+  const problems = [];
+  if (health.brouter === 'down') problems.push('The routing engine (BRouter) is down, so new routes and interval spots will fail.');
+  if (PARSER_PROBLEMS[health.parser]) problems.push(`Plain-English requests won't work: ${PARSER_PROBLEMS[health.parser]}.`);
+  if (problems.length && !document.getElementById('banner').textContent) banner(problems.join(' '), 'partial');
+}
+checkHealth();
+
 // ---- starting point (persisted per browser) ----
 const startInput = document.getElementById('start');
 async function applyStart(place) {
