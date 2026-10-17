@@ -22,7 +22,9 @@ current route. Same brain as the CLI below (routes/service.py).
 Sessions are per-browser (concurrent users never share state), requests
 are rate-limited (env-tunable `RATE_*`), and setting `ROUTEGEN_INVITE_CODE`
 gates all session API reads and writes. Run one Uvicorn worker; jobs and
-rate limits are process-local. Session IDs are bearer credentials, not accounts. Text pages like
+rate limits are process-local. Session IDs are bearer credentials, not accounts.
+Set `ROUTEGEN_SESSION_DAYS` to delete sessions nothing has written to for
+that many days (checked hourly; unset keeps them all). Text pages like
 [/about](static/pages/about.html) are drop-in files in `static/pages/`.
 
 CLI:

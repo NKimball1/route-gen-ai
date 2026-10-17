@@ -1185,7 +1185,8 @@ the code couldn't (a rolling-start cost, which turned out not to matter).
 - Uncontrolled road-to-road crossings for interval spots. Unsigned trail
   crossings count since phase 39; a road crossing another road with no
   mapped control (often an unmapped stop sign) still counts as clear.
-- Disk retention: session folders and old artifacts are never cleaned up
-  automatically.
+- Disk retention: web session folders are deleted after
+  `ROUTEGEN_SESSION_DAYS` without a write (since 10-17, opt-in; pick the
+  number at deployment). CLI output folders and `usage.jsonl` still grow.
 - Worldwide coverage: BRouter tiles are the only regional piece; the
   quiet profile's road-class weights are tuned to US tagging.

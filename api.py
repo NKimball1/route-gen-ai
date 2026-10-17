@@ -42,6 +42,10 @@ SESSIONS_ROOT = os.path.join("output", "sessions")
 SID_RE = re.compile(r"^[A-Za-z0-9-]{8,64}$")
 UPLOAD_MAX_MB = 8
 UPLOAD_MAX_BYTES = UPLOAD_MAX_MB * 1024 * 1024
+# Opt-in: delete web sessions nothing has written to for this many days.
+# Unset or 0 keeps every session (riders' browsers keep their id forever).
+SESSION_MAX_AGE_S: float = float(os.environ.get("ROUTEGEN_SESSION_DAYS", 0)) * limits.DAY_S
+_LAST_PRUNE: float = 0.0
 
 
 def client_ip(request: Request) -> str:
@@ -152,6 +156,18 @@ def _run(job_id: str, text: str, start: str | None, workdir: str,
                          seconds=round(time.time() - t0, 1))
 
 
+def _prune_sessions(now: float) -> None:
+    """At most hourly, under LOCK so no job starts mid-sweep; sessions with a
+    job registered are spared even before it takes the session lock."""
+    global _LAST_PRUNE
+    if SESSION_MAX_AGE_S <= 0 or now - _LAST_PRUNE < limits.HOUR_S:
+        return
+    _LAST_PRUNE = now
+    removed = storage.prune_sessions(SESSIONS_ROOT, SESSION_MAX_AGE_S, now=now, keep=set(RUNNING))
+    if removed:
+        limits.log_event("sessions_pruned", count=len(removed))
+
+
 @app.post("/api/ask", response_model=None)
 def ask(body: Ask, request: Request, session: Session = Depends(authorized_session)) -> dict[str, str] | JSONResponse:
     job_id = uuid.uuid4().hex
@@ -160,6 +176,7 @@ def ask(body: Ask, request: Request, session: Session = Depends(authorized_sessi
         for key in [key for key, value in JOBS.items()
                     if value["status"] != "running" and value["ts"] < cutoff]:
             del JOBS[key]
+        _prune_sessions(time.time())
         if session.sid in RUNNING:
             return JSONResponse({"error": "A request is already running for this session."}, status_code=429)
         if sum(j["status"] == "running" for j in JOBS.values()) >= limits.Limits.JOBS_CONCURRENT:

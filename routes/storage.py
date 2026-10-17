@@ -13,7 +13,9 @@ from dataclasses import dataclass
 import json
 import os
 from pathlib import Path
+import shutil
 import threading
+import time
 from typing import Any, Iterator
 import uuid
 from weakref import WeakValueDictionary
@@ -250,3 +252,44 @@ def owned_path(path: str, workdir: str) -> bool:
     root = Path(workdir).resolve()
     target = Path(path).resolve()
     return target.is_relative_to(root) and target.suffix.lower() == ".gpx"
+
+
+def _newest_write(folder: str) -> float:
+    newest = os.stat(folder).st_mtime
+    for parent, dirs, files in os.walk(folder):
+        for name in dirs + files:
+            try:
+                newest = max(newest, os.stat(os.path.join(parent, name)).st_mtime)
+            except OSError:
+                pass
+    return newest
+
+
+def prune_sessions(root: str, max_age_s: float, *, now: float | None = None,
+                   keep: set[str] | frozenset[str] = frozenset()) -> list[str]:
+    """Delete session folders under root that nothing has written to for
+    max_age_s; returns the folders removed.
+
+    Age is the newest write anywhere in the folder. Names in keep, and any
+    session whose lock is held (a request mid-transaction), are skipped."""
+    now = time.time() if now is None else now
+    try:
+        entries = sorted(os.scandir(root), key=lambda e: e.name)
+    except FileNotFoundError:
+        return []
+    removed = []
+    for entry in entries:
+        if entry.name in keep or not entry.is_dir(follow_symlinks=False):
+            continue
+        lock = _lock(entry.path)
+        if not lock.acquire(blocking=False):
+            continue
+        try:
+            if now - _newest_write(entry.path) >= max_age_s:
+                shutil.rmtree(entry.path)
+                removed.append(entry.path)
+        except OSError:
+            pass
+        finally:
+            lock.release()
+    return removed
