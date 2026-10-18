@@ -48,6 +48,12 @@ def _patch_geocode(monkeypatch, fn):
     monkeypatch.setattr(routes.geocode, "geocode", fn)
     monkeypatch.setattr(routes.pipeline, "geocode", fn)
 
+def _router_up(monkeypatch):
+    """The router preflight runs before any lookup; tests about lookups
+    must not depend on a live BRouter socket."""
+    monkeypatch.setattr("routes.providers.brouter_reachable",
+                        lambda url, timeout_s=1.0: True)
+
 
 # ---- D37: a geocoder that cannot be reached -----------------------------
 
@@ -55,6 +61,7 @@ def test_unreachable_geocoder_is_a_message_not_a_traceback(monkeypatch, tmp_path
     """Case D37. Before the fix this raised requests.ConnectionError straight
     out of handle_request: a traceback on the CLI, and in the web app a
     banner reading 'ERROR: ConnectionError: HTTPConnectionPool(host=...)'."""
+    _router_up(monkeypatch)
     _install_parse(monkeypatch, _parse(
         route={"distance_miles": 20, "max_climb_ft": None,
                "maximize_climb": False, "minimize_climb": False,
@@ -75,6 +82,7 @@ def test_unreachable_geocoder_is_a_message_not_a_traceback(monkeypatch, tmp_path
 def test_unfindable_place_says_which_place(monkeypatch, tmp_path):
     """Case H14: 'the place with the good pie'. A ValueError from Nominatim
     used to escape the same way."""
+    _router_up(monkeypatch)
     _install_parse(monkeypatch, _parse(
         route={"distance_miles": 30, "max_climb_ft": None,
                "maximize_climb": False, "minimize_climb": False,
@@ -93,6 +101,7 @@ def test_unfindable_place_says_which_place(monkeypatch, tmp_path):
 def test_lookup_failure_is_not_swallowed_into_a_route(monkeypatch, tmp_path):
     """A failed lookup must not quietly produce a route without the
     waypoint the rider asked for."""
+    _router_up(monkeypatch)
     _install_parse(monkeypatch, _parse(
         route={"distance_miles": 20, "max_climb_ft": None,
                "maximize_climb": False, "minimize_climb": False,
@@ -135,6 +144,53 @@ def test_dead_router_fails_fast_without_routing_calls(monkeypatch, tmp_path):
                         lambda self, *a, **k: calls.append(1))
     service.handle_request("a 20 mile loop", workdir=str(tmp_path))
     assert calls == []
+
+
+def test_dead_router_is_named_before_any_place_lookups(monkeypatch, tmp_path):
+    """Avoid and via lookups can take minutes when Overpass is slow, and the
+    preflight used to run only after all of them."""
+    _install_parse(monkeypatch, _parse(
+        route={"distance_miles": 20, "max_climb_ft": None,
+               "maximize_climb": False, "minimize_climb": False,
+               "shape": "loop", "avoid_places": ["Monroe Street, Madison WI"],
+               "via_places": ["Olbrich Gardens, Madison WI"]}))
+    lookups = []
+    _patch_geocode(monkeypatch, lambda a: lookups.append(a) or (43.07, -89.38, "x"))
+    monkeypatch.setattr("routes.geocode.geocode_flexible",
+                        lambda place, **kw: lookups.append(place) or (43.09, -89.33, "x"))
+    monkeypatch.setattr("routes.constraints.resolve_avoid",
+                        lambda *a, **kw: lookups.append("avoid"))
+    monkeypatch.setattr("routes.providers.brouter_reachable",
+                        lambda url, timeout_s=1.0: False)
+    result = service.handle_request("a 20 mile loop", workdir=str(tmp_path))
+    assert "routing server" in result["summary"].lower()
+    assert lookups == []
+
+
+def test_dead_router_is_named_for_an_edit_and_the_route_stays(monkeypatch, tmp_path):
+    """Edits had no preflight: with BRouter down, 'make it 5 miles longer'
+    answered "Couldn't find a good way to extend this route", which sends
+    the rider to fix a request that was fine."""
+    from routes import storage
+    from tests.test_review_storage import artifact
+    base = artifact(tmp_path)
+    storage.publish(base, str(tmp_path))
+    _install_parse(monkeypatch, _parse(
+        request_type="edit_route", address=None, route=None,
+        edit={"mode": "extend", "place": None, "places": None, "radius_m": 1000,
+              "miles_delta": 5, "target_miles": None, "connect_return": False,
+              "revert_first": False}))
+    monkeypatch.setattr("routes.providers.brouter_reachable",
+                        lambda url, timeout_s=1.0: False)
+    calls = []
+    monkeypatch.setattr("routes.edit_service.run_edit", lambda *a, **kw: calls.append(1) or (
+        None, "Couldn't find a good way to extend this route.", False))
+    result = service.handle_request("make it 5 miles longer", workdir=str(tmp_path))
+    summary = result["summary"].lower()
+    assert "routing server" in summary and "nothing is wrong with your request" in summary
+    assert calls == []
+    assert storage.current_route(str(tmp_path)) == base
+    assert result["candidates"][0]["gpx"] == base
 
 
 def test_router_dying_mid_run_still_names_the_router(monkeypatch, tmp_path):

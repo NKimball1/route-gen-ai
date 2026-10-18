@@ -327,6 +327,10 @@ def _edit_request(edit: dict[str, Any], current: str | None,
     from routes.preview import _parse_gpx
     if current is None:
         return {"kind": "error", "ok": False, "summary": "No current route to edit - compose or upload one first.", "candidates": []}
+    down = _router_preflight()
+    if down:
+        return {"kind": "edit", "ok": False, "summary": down,
+                "candidates": [_route_row(current, f"unchanged: {os.path.basename(current)}")]}
     source = current
     if edit["revert_first"] and storage.last_edit_changed(workdir):
         parent = storage.predecessor(current)
@@ -390,6 +394,11 @@ def _ride_request(r: dict[str, Any], address: str, home: str | None,
     from routes.scoring import why_nothing_fits
     from routes.spec import RouteCandidate, RouteSpec
     from routes.edit_service import NEAR_MARGIN_LAT_DEG, NEAR_MARGIN_LON_DEG
+    # Before any lookups: avoid and via resolution can take minutes when
+    # Overpass is slow, all wasted if the router is down anyway.
+    down = _router_preflight()
+    if down:
+        return {"kind": "error", "ok": False, "summary": down, "candidates": []}
     # Resolve relative place names against the actual start, not an invented
     # city from an LLM that has never seen the user's configured address.
     lat, lon, _ = _locate(address, "the start")
@@ -406,9 +415,6 @@ def _ride_request(r: dict[str, Any], address: str, home: str | None,
             raise _lookup_failed(error, "the waypoint", place) from error
         via.append((vlat, vlon))
         via_tolerance.append(via_place_tolerance_m(place_extent_m(vlat, vlon)))
-    down = _router_preflight()
-    if down:
-        return {"kind": "error", "ok": False, "summary": down, "candidates": []}
     shapes = ["loop", "outback"] if r["shape"] == "both" else [r["shape"]]
     specs = [RouteSpec.from_imperial(address, r["distance_miles"], r["max_climb_ft"],
                                     r["maximize_climb"], shape=shape, avoid=avoidance.routing_zones,

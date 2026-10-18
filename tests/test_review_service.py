@@ -12,6 +12,13 @@ from tests.test_review_storage import artifact
 from tests.test_spoke import straight
 
 
+@pytest.fixture(autouse=True)
+def router_up(monkeypatch):
+    """Routes and edits check BRouter first; these tests are about what
+    happens after that, not about a live socket."""
+    monkeypatch.setattr(service, "_router_preflight", lambda: None)
+
+
 def request(kind="route", **changes):
     result = {"request_type": kind, "address": "public", "notes": "",
               "route": None, "edit": None, "interval": None,
