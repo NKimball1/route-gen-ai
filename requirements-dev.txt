@@ -1,6 +1,6 @@
 -r requirements.txt
 pytest>=9.1.1
-pyflakes>=4.0.1  # tests/test_static.py: undefined names are bugs the other tests can't see
+pyflakes>=4.0.3  # tests/test_static.py: undefined names are bugs the other tests can't see
 mypy>=2.4.0      # python -m mypy (config in mypy.ini)
 types-requests  # stubs so mypy can check our HTTP calls
 
