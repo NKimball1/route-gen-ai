@@ -28,6 +28,7 @@ load_dotenv()
 from routes.geocode import geocode
 from routes.constraints import resolve_avoid
 from routes.pipeline import build_providers, compose
+from routes.policy import cli_bounded
 from routes.spec import NoGo, RouteSpec
 
 
@@ -40,8 +41,8 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--address", required=True, help="start/end address")
-    ap.add_argument("--miles", type=float, required=True, help="target distance")
-    ap.add_argument("--max-climb-ft", type=float, default=None,
+    ap.add_argument("--miles", type=cli_bounded("route", "distance_miles"), required=True, help="target distance")
+    ap.add_argument("--max-climb-ft", type=cli_bounded("route", "max_climb_ft"), default=None,
                     help="reject candidates climbing more than this")
     ap.add_argument("--maximize-climb", action="store_true",
                     help="rank candidates by most climbing")

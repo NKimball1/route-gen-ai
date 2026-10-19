@@ -1,4 +1,7 @@
 """Named product tolerances. Distances are metres unless stated otherwise."""
+import argparse
+import math
+from typing import Callable
 
 WAYPOINT_TOLERANCE_M = 150.0  # an exact point: router snapping only
 # A place a new route goes "through" is an area: passing within half its
@@ -61,3 +64,22 @@ PARSE_BOUNDS: dict[str, dict[str, tuple[float, float]]] = {
     "edit": {"radius_m": (MIN_AVOID_RADIUS_M, MAX_AVOID_RADIUS_M),
              "miles_delta": (0.0, 50.0), "target_miles": (2.0, 150.0)},
 }
+
+
+def cli_bounded(section: str, field: str,
+                cast: Callable[[str], float] = float) -> Callable[[str], float]:
+    """argparse type for a direct-CLI flag, held to the same PARSE_BOUNDS as
+    the plain-English path. The CLI refuses rather than clamps: the person
+    is at the keyboard and can retype (live 10-19: --reps 0 searched for a
+    "0x10" plan, --rep-minutes -5 for a stretch "~-1.7 mi long")."""
+    lo, hi = PARSE_BOUNDS[section][field]
+
+    def parse(text: str) -> float:
+        try:
+            value = cast(text)
+        except ValueError:
+            raise argparse.ArgumentTypeError(f"not a number: {text!r}") from None
+        if not (math.isfinite(value) and lo <= value <= hi):
+            raise argparse.ArgumentTypeError(f"must be between {lo:g} and {hi:g}, got {text}")
+        return value
+    return parse
