@@ -42,6 +42,7 @@ SESSIONS_ROOT = os.path.join("output", "sessions")
 SID_RE = re.compile(r"^[A-Za-z0-9-]{8,64}$")
 UPLOAD_MAX_MB = 8
 UPLOAD_MAX_BYTES = UPLOAD_MAX_MB * 1024 * 1024
+ADDRESS_MAX_CHARS = 200
 # Opt-in: delete web sessions nothing has written to for this many days.
 # Unset or 0 keeps every session (riders' browsers keep their id forever).
 SESSION_MAX_AGE_S: float = float(os.environ.get("ROUTEGEN_SESSION_DAYS", 0)) * limits.DAY_S
@@ -118,7 +119,7 @@ class Job(TypedDict):
 
 class Ask(BaseModel):
     text: str = Field(min_length=1, max_length=600)
-    start: str | None = Field(default=None, max_length=200)
+    start: str | None = Field(default=None, max_length=ADDRESS_MAX_CHARS)
     intent: Literal["auto", "route", "edit_route", "interval_spot"] = "auto"
 
 
@@ -318,6 +319,9 @@ def health() -> JSONResponse:
 @app.get("/api/geocode", response_model=None)
 def api_geocode(q: str, request: Request,
                 session: Session = Depends(authorized_session)) -> dict[str, Any] | JSONResponse:
+    if not q.strip() or len(q) > ADDRESS_MAX_CHARS:
+        return JSONResponse({"error": f"Enter an address or place name of up to {ADDRESS_MAX_CHARS} characters."},
+                            status_code=400)
     refusal = limits.check_geocode(client_ip(request))
     if refusal:
         return JSONResponse({"error": refusal}, status_code=429)

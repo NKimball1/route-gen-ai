@@ -68,6 +68,10 @@ RETRIES: int = 3
 # 1 request/second usage policy.
 RETRY_WAIT_S: float = 1.5
 RETRYABLE_HTTP: tuple[int, ...] = (429, 502, 503, 504)
+# Fallback queries per lookup (each is a Nominatim request at 1/second).
+# A real address has about five comma-parts; junk text with fifty of them
+# once meant fifty requests (a hundred near a route) from one lookup.
+MAX_QUERY_VARIANTS: int = 6
 
 
 def _nominatim_get(params: dict[str, str | int]) -> list[dict[str, Any]]:
@@ -128,15 +132,15 @@ def _query_variants(place: str) -> list[str]:
     """Progressively simpler queries: drop trailing comma-parts, and also
     try without generic suffixes ('greentree neighborhood' -> 'greentree' —
     OSM names the neighborhood, not the word 'neighborhood')."""
-    parts = [p.strip() for p in place.split(",")]
-    queries = []
+    parts = [p.strip() for p in place.split(",") if p.strip()]
+    queries: list[str] = []
     for n in range(len(parts), 0, -1):
         q = ", ".join(parts[:n])
         queries.append(q)
         for suffix in (" neighborhood", " area", " district"):
             if q.lower().endswith(suffix):
                 queries.append(q[: -len(suffix)])
-    return queries
+    return queries[:MAX_QUERY_VARIANTS]
 
 
 def geocode_flexible(place: str,
