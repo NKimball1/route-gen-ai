@@ -60,10 +60,35 @@ def test_gives_up_after_max_retries(monkeypatch):
     assert len(calls) == g.RETRIES
 
 
-def test_hard_client_error_does_not_retry(monkeypatch):
+def test_an_unreadable_query_is_not_found_not_an_outage(monkeypatch):
+    """HTTP 400 is Nominatim refusing this text, not Nominatim being down:
+    it used to reach the rider as "temporarily unavailable, try again in a
+    moment", which no amount of trying again fixes (live 10-21)."""
     calls = []
     monkeypatch.setattr(g.requests, "get",
                         lambda url, **kw: calls.append(url) or FakeResp(400))
-    with pytest.raises(g.GeocodeUnavailable, match="400"):
+    with pytest.raises(g.GeocodeNotFound, match="couldn't read"):
         g.geocode("Madison WI")
     assert len(calls) == 1  # a bad request stays bad — no point retrying
+
+
+def test_other_client_errors_are_still_the_service(monkeypatch):
+    """403 means this server is blocked, 404 a wrong URL: problems on our
+    side that rephrasing cannot fix."""
+    for status in (403, 404):
+        monkeypatch.setattr(g.requests, "get", lambda url, **kw: FakeResp(status))
+        with pytest.raises(g.GeocodeUnavailable, match=str(status)):
+            g.geocode("Madison WI")
+
+
+def test_a_rejected_full_text_falls_back_to_a_simpler_query(monkeypatch):
+    """Not-found keeps geocode_flexible's fallback chain going; an outage
+    used to end it at the first rejected query."""
+    queries = []
+
+    def get(url, params=None, **kw):
+        queries.append(params["q"])
+        return FakeResp(400) if "," in params["q"] else FakeResp(200, HIT)
+    monkeypatch.setattr(g.requests, "get", get)
+    assert g.geocode_flexible("Monona Terrace, ~~~")[2] == "Madison, WI"
+    assert queries == ["Monona Terrace, ~~~", "Monona Terrace"]

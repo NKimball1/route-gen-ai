@@ -90,6 +90,10 @@ def _nominatim_get(params: dict[str, str | int]) -> list[dict[str, Any]]:
                 last = RuntimeError(
                     f"Nominatim HTTP {resp.status_code} (busy)")
                 continue
+            if resp.status_code == 400:
+                # Nominatim refusing this text is about the text, not an
+                # outage: not-found lets the caller rephrase or fall back.
+                raise GeocodeNotFound(f"Nominatim couldn't read {params.get('q')!r} as a place")
             if resp.status_code >= 400:
                 raise GeocodeUnavailable(f"Address lookup returned HTTP {resp.status_code}.")
             resp.raise_for_status()
@@ -98,6 +102,8 @@ def _nominatim_get(params: dict[str, str | int]) -> list[dict[str, Any]]:
             if not isinstance(results, list):
                 raise ValueError("Invalid geocoder response")
             return results
+        except GeocodeError:
+            raise   # an answer, not a hiccup: GeocodeNotFound is a ValueError
         except (requests.RequestException, ValueError) as e:
             last = e
     raise GeocodeUnavailable(
