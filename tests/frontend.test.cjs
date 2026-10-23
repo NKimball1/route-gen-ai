@@ -100,3 +100,30 @@ test('a healthy server leaves the banner empty', async () => {
   const app = await browser(healthSays({ok: true, brouter: 'up', parser: 'ok'}));
   assert.equal(app.context.document.getElementById('banner').textContent, '');
 });
+
+// Live 10-23: Enter in the start box, and the Set button, each also fire
+// 'change' (the box commits or loses focus), so every start was looked up
+// twice -- two rate-limit slots and two rounds of Nominatim requests.
+function geocodes(app) {
+  return app.calls.filter(([url]) => url.startsWith('/api/geocode')).length;
+}
+const PLACE = {ok: true, status: 200, json: async () => ({lat: 43.07, lon: -89.38, name: 'Monona Terrace'})};
+
+test('one lookup per start even when two handlers fire for it', async () => {
+  const app = await browser();
+  app.response(async () => PLACE);
+  await Promise.all([vm.runInContext("applyStart('Monona Terrace, Madison WI')", app.context),
+                     vm.runInContext("applyStart('Monona Terrace, Madison WI')", app.context)]);
+  assert.equal(geocodes(app), 1);
+  assert.equal(app.values.get('rg_start'), 'Monona Terrace, Madison WI');
+});
+
+test('a different start, or the same one later, is still looked up', async () => {
+  const app = await browser();
+  app.response(async () => PLACE);
+  await Promise.all([vm.runInContext("applyStart('Monona Terrace, Madison WI')", app.context),
+                     vm.runInContext("applyStart('Olbrich Gardens, Madison WI')", app.context)]);
+  await vm.runInContext("applyStart('Monona Terrace, Madison WI')", app.context);
+  assert.equal(geocodes(app), 3);
+});
+

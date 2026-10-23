@@ -108,14 +108,21 @@ checkHealth();
 
 // ---- starting point (persisted per browser) ----
 const startInput = document.getElementById('start');
+// Enter and the Set button each also fire 'change' (the box commits or loses
+// focus): the place already being looked up is not looked up again.
+let startInFlight = null;
 async function applyStart(place) {
-  const r = await apiFetch('/api/geocode?q=' + encodeURIComponent(place));
-  const g = await r.json();
-  localStorage.setItem('rg_start', place);
-  startInput.value = place;
-  startInput.classList.remove('unset');
-  map.setView([g.lat, g.lon], 11);
-  return true;
+  if (place === startInFlight) return false;
+  startInFlight = place;
+  try {
+    const r = await apiFetch('/api/geocode?q=' + encodeURIComponent(place));
+    const g = await r.json();
+    localStorage.setItem('rg_start', place);
+    startInput.value = place;
+    startInput.classList.remove('unset');
+    map.setView([g.lat, g.lon], 11);
+    return true;
+  } finally { startInFlight = null; }
 }
 document.getElementById('setstart').onclick = () => applyStart(startInput.value.trim()).catch(reportError);
 startInput.addEventListener('keydown', e => {
