@@ -22,6 +22,8 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
+from starlette.responses import Response
+from starlette.types import Scope
 
 from routes import limits, storage
 from routes.execution import Cancellation, JobCancelled
@@ -32,7 +34,20 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, ROOT)
 os.chdir(ROOT)
 app = FastAPI(title="Route Gen AI")
-app.mount("/assets", StaticFiles(directory="static"), name="assets")
+# Without Cache-Control browsers guess freshness from file age and kept
+# running an old app.js after it changed (live 10-23). "no-cache" makes them
+# check every load; an unchanged file costs a 304 with no body.
+REVALIDATE: dict[str, str] = {"Cache-Control": "no-cache"}
+
+
+class RevalidatedFiles(StaticFiles):
+    async def get_response(self, path: str, scope: Scope) -> Response:
+        response = await super().get_response(path, scope)
+        response.headers.update(REVALIDATE)
+        return response
+
+
+app.mount("/assets", RevalidatedFiles(directory="static"), name="assets")
 INVITE_CODE: str | None = os.environ.get("ROUTEGEN_INVITE_CODE")
 JOBS: dict[str, "Job"] = {}
 RUNNING: dict[str, str] = {}
@@ -337,7 +352,7 @@ def api_geocode(q: str, request: Request,
 
 @app.get("/")
 def index() -> FileResponse:
-    return FileResponse(os.path.join("static", "index.html"))
+    return FileResponse(os.path.join("static", "index.html"), headers=REVALIDATE)
 
 
 # Text pages: every static/pages/<slug>.html is a real URL (/about, ...).
@@ -352,5 +367,5 @@ def text_page(slug: str) -> FileResponse | JSONResponse:
     if PAGE_RE.match(slug):
         path = os.path.join(PAGES_DIR, f"{slug}.html")
         if os.path.exists(path):
-            return FileResponse(path)
+            return FileResponse(path, headers=REVALIDATE)
     return JSONResponse({"error": "not found"}, status_code=404)
