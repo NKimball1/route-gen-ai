@@ -76,6 +76,8 @@ def check_geocode(ip: str) -> str | None:
 
 USAGE_LOG: str = os.path.join("output", "usage.jsonl")
 LOG_TEXT: bool = os.environ.get("ROUTEGEN_LOG_TEXT", "1") == "1"
+# Everything a rider typed: the request and the start address (often home).
+TYPED_FIELDS: tuple[str, ...] = ("text", "start")
 # IPs are pseudonymized before they touch disk: a salted hash still lets
 # you count distinct visitors and spot one abuser, without keeping a
 # list of who they were. Set a secret salt in production; with the
@@ -91,7 +93,8 @@ def log_event(event: str, **fields: Any) -> None:
     """Append a usage event. Never raises — logging must not break serving."""
     try:
         if not LOG_TEXT:
-            fields.pop("text", None)
+            for name in TYPED_FIELDS:
+                fields.pop(name, None)
         if fields.get("ip"):
             fields["ip"] = pseudonymize_ip(fields["ip"])
         row = {"ts": round(time.time(), 3), "event": event, **fields}

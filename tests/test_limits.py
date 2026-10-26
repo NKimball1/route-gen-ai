@@ -37,6 +37,20 @@ def test_usage_log_never_stores_a_raw_ip(tmp_path, monkeypatch):
     assert "203.0.113.7" not in log.read_text()
 
 
+def test_text_logging_off_drops_everything_the_rider_typed(tmp_path, monkeypatch):
+    """ROUTEGEN_LOG_TEXT=0 dropped the request text but kept "start", the
+    typed start address -- often the rider's home (found 10-26)."""
+    from routes import limits
+    log = tmp_path / "usage.jsonl"
+    monkeypatch.setattr(limits, "USAGE_LOG", str(log))
+    monkeypatch.setattr(limits, "LOG_TEXT", False)
+    limits.log_event("ask", sid="abc", ip="203.0.113.7",
+                     text="loop from 1 Example St", start="1 Example St, Madison WI")
+    written = log.read_text()
+    assert "Example St" not in written
+    assert '"event": "ask"' in written and '"sid": "abc"' in written
+
+
 def test_same_ip_hashes_the_same_so_abusers_are_still_countable():
     from routes.limits import pseudonymize_ip
     assert pseudonymize_ip("10.0.0.1") == pseudonymize_ip("10.0.0.1")
