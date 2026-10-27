@@ -62,3 +62,48 @@ def test_salt_changes_the_hash(monkeypatch):
     a = limits.pseudonymize_ip("10.0.0.1")
     monkeypatch.setattr(limits, "IP_SALT", "secret")
     assert limits.pseudonymize_ip("10.0.0.1") != a
+
+
+def test_usage_log_rotates_so_disk_use_stays_bounded(tmp_path, monkeypatch):
+    """The log kept every typed request and start address forever (open
+    item since 10-17). Past the cap it moves aside to usage.jsonl.1,
+    replacing the older copy: at most two capped files on disk."""
+    from routes import limits
+    log = tmp_path / "usage.jsonl"
+    monkeypatch.setattr(limits, "USAGE_LOG", str(log))
+    monkeypatch.setattr(limits, "USAGE_LOG_MAX_BYTES", 1000)
+    for i in range(200):
+        limits.log_event("ask", sid=f"s{i}", text="x" * 40)
+    older = tmp_path / "usage.jsonl.1"
+    assert older.exists()
+    assert log.stat().st_size <= 1000 + 200 and older.stat().st_size <= 1000 + 200
+    assert '"sid": "s199"' in log.read_text()          # newest is kept
+    assert '"sid": "s0"' not in log.read_text() + older.read_text()
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["usage.jsonl", "usage.jsonl.1"]
+
+
+def test_usage_log_cap_of_zero_keeps_everything(tmp_path, monkeypatch):
+    from routes import limits
+    log = tmp_path / "usage.jsonl"
+    monkeypatch.setattr(limits, "USAGE_LOG", str(log))
+    monkeypatch.setattr(limits, "USAGE_LOG_MAX_BYTES", 0)
+    for i in range(50):
+        limits.log_event("ask", sid=f"s{i}", text="x" * 40)
+    assert len(log.read_text().splitlines()) == 50
+    assert not (tmp_path / "usage.jsonl.1").exists()
+
+
+def test_a_failed_rotation_still_logs_the_event(tmp_path, monkeypatch):
+    """On Windows a reader holding the file open blocks the rename; the
+    event must still be written (rotation just waits for the next one)."""
+    from routes import limits
+    log = tmp_path / "usage.jsonl"
+    log.write_text("x" * 2000 + "\n")
+    monkeypatch.setattr(limits, "USAGE_LOG", str(log))
+    monkeypatch.setattr(limits, "USAGE_LOG_MAX_BYTES", 1000)
+
+    def locked(src, dst):
+        raise PermissionError("in use")
+    monkeypatch.setattr(limits.os, "replace", locked)
+    limits.log_event("ask", sid="kept")
+    assert '"sid": "kept"' in log.read_text()

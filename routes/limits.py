@@ -75,6 +75,10 @@ def check_geocode(ip: str) -> str | None:
 # ---- usage log: one JSON line per event, greppable, gitignored ----
 
 USAGE_LOG: str = os.path.join("output", "usage.jsonl")
+# Past this size the log moves aside to usage.jsonl.1 (replacing the older
+# copy), so disk use and how long typed text is kept both stay bounded.
+# 0 keeps everything in one file.
+USAGE_LOG_MAX_BYTES: int = int(float(os.environ.get("ROUTEGEN_USAGE_LOG_MB", 20)) * 1_000_000)
 LOG_TEXT: bool = os.environ.get("ROUTEGEN_LOG_TEXT", "1") == "1"
 # Everything a rider typed: the request and the start address (often home).
 TYPED_FIELDS: tuple[str, ...] = ("text", "start")
@@ -89,6 +93,16 @@ def pseudonymize_ip(ip: str) -> str:
     return hashlib.sha256((IP_SALT + ip).encode()).hexdigest()[:16]
 
 
+def _rotate_usage_log() -> None:
+    """Move a full log aside (caller holds LOCK). A rename that fails --
+    e.g. the file held open by a reader on Windows -- only delays it."""
+    try:
+        if USAGE_LOG_MAX_BYTES and os.path.getsize(USAGE_LOG) >= USAGE_LOG_MAX_BYTES:
+            os.replace(USAGE_LOG, USAGE_LOG + ".1")
+    except OSError:
+        pass
+
+
 def log_event(event: str, **fields: Any) -> None:
     """Append a usage event. Never raises — logging must not break serving."""
     try:
@@ -100,6 +114,7 @@ def log_event(event: str, **fields: Any) -> None:
         row = {"ts": round(time.time(), 3), "event": event, **fields}
         os.makedirs(os.path.dirname(USAGE_LOG), exist_ok=True)
         with LOCK:
+            _rotate_usage_log()
             with open(USAGE_LOG, "a", encoding="utf-8") as f:
                 f.write(json.dumps(row, ensure_ascii=False) + "\n")
     except OSError:

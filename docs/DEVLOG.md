@@ -1187,6 +1187,8 @@ the code couldn't (a rolling-start cost, which turned out not to matter).
   mapped control (often an unmapped stop sign) still counts as clear.
 - Disk retention: web session folders are deleted after
   `ROUTEGEN_SESSION_DAYS` without a write (since 10-17, opt-in; pick the
-  number at deployment). CLI output folders and `usage.jsonl` still grow.
+  number at deployment). `usage.jsonl` rotates to `usage.jsonl.1` past
+  `ROUTEGEN_USAGE_LOG_MB` (since 10-27, default 20). CLI output folders
+  still grow.
 - Worldwide coverage: BRouter tiles are the only regional piece; the
   quiet profile's road-class weights are tuned to US tagging.
