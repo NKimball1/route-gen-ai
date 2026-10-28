@@ -8,6 +8,7 @@ import re
 import sys
 import threading
 import time
+import traceback
 import uuid
 from contextlib import contextmanager, ExitStack
 from dataclasses import dataclass
@@ -143,6 +144,7 @@ def _run(job_id: str, text: str, start: str | None, workdir: str,
     from routes.service import handle_request
     job = JOBS[job_id]
     t0 = time.time()
+    failure: dict[str, str] = {}
     try:
         path = storage.current_route(workdir)
         seen: set[str] = set()
@@ -164,12 +166,17 @@ def _run(job_id: str, text: str, start: str | None, workdir: str,
         # job in 'running'. Unexpected failures are recorded, not committed.
         StringIO.write(job["buf"], f"\nERROR: {type(error).__name__}: {error}\n")
         job["status"] = "cancelled" if job["buf"].cancelled else "error"
+        if job["status"] == "error":
+            # The log above is the rider's and expires with the job; the
+            # operator keeps the traceback (stderr) and the error type.
+            traceback.print_exc()
+            failure["error"] = type(error).__name__
     finally:
         with LOCK:
             if RUNNING.get(job["sid"]) == job_id:
                 del RUNNING[job["sid"]]
         limits.log_event("ask_" + job["status"], sid=job["sid"],
-                         seconds=round(time.time() - t0, 1))
+                         seconds=round(time.time() - t0, 1), **failure)
 
 
 def _prune_sessions(now: float) -> None:

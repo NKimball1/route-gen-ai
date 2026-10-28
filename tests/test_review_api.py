@@ -128,3 +128,22 @@ def test_error_after_cancel_cannot_leave_a_zombie_job(client, monkeypatch):
     api._run("failure", "ride", None, api.session_dir(SID))
     assert api.JOBS["failure"]["status"] == "cancelled"
     assert SID not in api.RUNNING
+
+
+def test_an_unexpected_job_error_leaves_a_trace_for_the_operator(client, monkeypatch, capsys):
+    """A crashing job wrote its error only into the job's in-memory log
+    (gone after JOB_TTL_S) and logged {"event": "ask_error", "seconds"}:
+    on a deployed box a real bug left nothing to debug from."""
+    events = []
+    monkeypatch.setattr(limits, "log_event", lambda event, **kw: events.append((event, kw)))
+
+    def crash(text, log_sink, **kw):
+        raise KeyError("missing_leg")
+    monkeypatch.setattr(service, "handle_request", crash)
+    api.JOBS["crash"] = {"sid": SID, "status": "running", "result": None, "buf": api.JobLog(), "ts": time.time()}
+    api.RUNNING[SID] = "crash"
+    api._run("crash", "ride", None, api.session_dir(SID))
+    assert api.JOBS["crash"]["status"] == "error"
+    err = capsys.readouterr().err
+    assert "Traceback" in err and "missing_leg" in err
+    assert events == [("ask_error", {"sid": SID, "seconds": events[0][1]["seconds"], "error": "KeyError"})]
