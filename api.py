@@ -322,7 +322,9 @@ def undo(session: Session = Depends(authorized_session)) -> ServiceResult:
         return result
 
 
-@app.get("/api/health")
+# HEAD as well as GET wherever a monitor or `curl -I` might probe: it
+# used to get 405, which reads as "down" while the site served fine.
+@app.api_route("/api/health", methods=["GET", "HEAD"])
 def health() -> JSONResponse:
     from routes import nl
     from routes.providers import BRouterProvider, brouter_reachable
@@ -357,7 +359,7 @@ def api_geocode(q: str, request: Request,
         return JSONResponse({"error": "Address lookup is temporarily unavailable."}, status_code=503)
 
 
-@app.get("/")
+@app.api_route("/", methods=["GET", "HEAD"])
 def index() -> FileResponse:
     return FileResponse(os.path.join("static", "index.html"), headers=REVALIDATE)
 
@@ -369,7 +371,7 @@ PAGES_DIR: str = os.path.join("static", "pages")
 PAGE_RE: re.Pattern[str] = re.compile(r"^[a-z0-9-]{1,40}$")
 
 
-@app.get("/{slug}", response_model=None)
+@app.api_route("/{slug}", methods=["GET", "HEAD"], response_model=None)
 def text_page(slug: str) -> FileResponse | JSONResponse:
     if PAGE_RE.match(slug):
         path = os.path.join(PAGES_DIR, f"{slug}.html")
