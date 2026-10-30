@@ -191,6 +191,13 @@ def _prune_sessions(now: float) -> None:
         limits.log_event("sessions_pruned", count=len(removed))
 
 
+def _refused(event: str, request: Request, reason: str, **fields: Any) -> JSONResponse:
+    """A 429 that leaves a row in the usage log: without one, a full daily
+    cap or one abuser hammering the limits turned riders away unseen."""
+    limits.log_event(event + "_refused", ip=client_ip(request), reason=reason, **fields)
+    return JSONResponse({"error": reason}, status_code=429)
+
+
 @app.post("/api/ask", response_model=None)
 def ask(body: Ask, request: Request, session: Session = Depends(authorized_session)) -> dict[str, str] | JSONResponse:
     job_id = uuid.uuid4().hex
@@ -200,16 +207,19 @@ def ask(body: Ask, request: Request, session: Session = Depends(authorized_sessi
                     if value["status"] != "running" and value["ts"] < cutoff]:
             del JOBS[key]
         _prune_sessions(time.time())
+        refusal: str | None
         if session.sid in RUNNING:
-            return JSONResponse({"error": "A request is already running for this session."}, status_code=429)
-        if sum(j["status"] == "running" for j in JOBS.values()) >= limits.Limits.JOBS_CONCURRENT:
-            return JSONResponse({"error": "The server is busy - try again shortly."}, status_code=429)
-        refusal = limits.check_ask(session.sid, client_ip(request))
-        if refusal:
-            return JSONResponse({"error": refusal}, status_code=429)
-        RUNNING[session.sid] = job_id
-        JOBS[job_id] = {"status": "running", "buf": JobLog(), "result": None,
-                        "sid": session.sid, "ts": time.time()}
+            refusal = "A request is already running for this session."
+        elif sum(j["status"] == "running" for j in JOBS.values()) >= limits.Limits.JOBS_CONCURRENT:
+            refusal = "The server is busy - try again shortly."
+        else:
+            refusal = limits.check_ask(session.sid, client_ip(request))
+        if refusal is None:
+            RUNNING[session.sid] = job_id
+            JOBS[job_id] = {"status": "running", "buf": JobLog(), "result": None,
+                            "sid": session.sid, "ts": time.time()}
+    if refusal is not None:
+        return _refused("ask", request, refusal, sid=session.sid)
     limits.log_event("ask", sid=session.sid, ip=client_ip(request), text=body.text, start=body.start)
     threading.Thread(target=_run, args=(job_id, body.text, body.start, session.workdir, body.intent),
                      daemon=True).start()
@@ -259,7 +269,7 @@ def _save_upload(data: bytes, filename: str, session: Session) -> dict[str, Any]
 async def upload(request: Request, file: UploadFile = File(...),
                  session: Session = Depends(authorized_session)) -> dict[str, Any] | JSONResponse:
     if not limits.allow(("upload", client_ip(request)), limits.Limits.UPLOAD_PER_IP_HOUR, limits.HOUR_S):
-        return JSONResponse({"error": "too many uploads - slow down"}, status_code=429)
+        return _refused("upload", request, "too many uploads - slow down", sid=session.sid)
     try:
         data = await file.read(UPLOAD_MAX_BYTES + 1)
         if len(data) > UPLOAD_MAX_BYTES:
@@ -348,7 +358,7 @@ def api_geocode(q: str, request: Request,
                             status_code=400)
     refusal = limits.check_geocode(client_ip(request))
     if refusal:
-        return JSONResponse({"error": refusal}, status_code=429)
+        return _refused("geocode", request, refusal, sid=session.sid)
     from routes.geocode import geocode_flexible, GeocodeNotFound, GeocodeUnavailable
     try:
         lat, lon, name = geocode_flexible(q)
