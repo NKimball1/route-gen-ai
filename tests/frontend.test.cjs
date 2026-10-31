@@ -127,3 +127,39 @@ test('a different start, or the same one later, is still looked up', async () =>
   assert.equal(geocodes(app), 3);
 });
 
+
+// A poll that got no answer at all (fetch rejects: Wi-Fi drop, phone
+// switching networks) ended the wait for good: error banner, controls
+// released, while the job ran on -- the rider could neither see its result
+// nor send another request ("already running"). Spot searches take minutes.
+function blipsThenDone(blips) {
+  let polls = 0;
+  return async url => {
+    if (url === '/api/ask') return {ok: true, status: 200, json: async () => ({job: 'j'})};
+    if (url.startsWith('/api/job/') && ++polls <= blips) throw new TypeError('Failed to fetch');
+    return {ok: true, status: 200, json: async () => url.startsWith('/api/job/')
+      ? {status: 'done', log: 'ok', result: {ok: true, summary: 'Found 3 spots', candidates: []}}
+      : {current: null, candidates: []}};
+  };
+}
+
+test('a dropped poll is retried instead of abandoning the running job', async () => {
+  const app = await browser();
+  app.nodes.get('ask').value = '4x10 at threshold';
+  app.response(blipsThenDone(3));
+  await vm.runInContext('send()', app.context);
+  assert.equal(app.calls.filter(([url]) => url.startsWith('/api/job/')).length, 4);
+  assert.equal(app.nodes.get('banner').textContent, 'Found 3 spots');
+  assert.equal(app.nodes.get('go').disabled, false);
+});
+
+test('a server that stays unreachable is given up on, with the reason', async () => {
+  const app = await browser();
+  app.nodes.get('ask').value = '4x10 at threshold';
+  app.response(blipsThenDone(Infinity));
+  await vm.runInContext('send()', app.context);
+  const polls = app.calls.filter(([url]) => url.startsWith('/api/job/')).length;
+  assert.equal(polls, vm.runInContext('POLL_MISS_LIMIT', app.context) + 1);
+  assert.match(app.nodes.get('banner').textContent, /Lost contact with the server/);
+  assert.equal(app.nodes.get('go').disabled, false);
+});

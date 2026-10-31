@@ -24,6 +24,9 @@ function hdrs() {
 }
 const POLL_INTERVAL_MS = 1200;
 const JOB_WAIT_LIMIT_MS = 30 * 60 * 1000;
+// Polls in a row that may get no answer at all (Wi-Fi drop, phone switching
+// networks) before the wait is given up: about half a minute.
+const POLL_MISS_LIMIT = 25;
 let sending = false;
 
 async function apiFetch(url, options = {}) {
@@ -218,10 +221,24 @@ async function send() {
     const {job} = await response.json();
     cancelBtn.hidden = false;
     const deadline = Date.now() + JOB_WAIT_LIMIT_MS;
+    let misses = 0;
     while (Date.now() < deadline) {
       await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS));
-      const response = await apiFetch('/api/job/' + job);
-      const j = await response.json();
+      let j;
+      try {
+        j = await (await apiFetch('/api/job/' + job)).json();
+      } catch (error) {
+        // fetch rejects with a TypeError only when no answer came back; the
+        // job is still running on the server, so keep waiting for it. Any
+        // answer (a 404 for a job the server lost) still ends the wait.
+        if (error.name !== 'TypeError') throw error;
+        if (++misses > POLL_MISS_LIMIT) {
+          throw new Error('Lost contact with the server. The request may still be running; refresh to see its result.');
+        }
+        banner('Lost contact with the server - still trying...', 'partial');
+        continue;
+      }
+      if (misses) { misses = 0; banner('', true); }
       log.textContent = j.log || '...'; log.scrollTop = log.scrollHeight;
       if (j.status === 'done') {
         banner(j.result.summary || 'Done.', j.result.ok);
