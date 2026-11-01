@@ -163,3 +163,32 @@ test('a server that stays unreachable is given up on, with the reason', async ()
   assert.match(app.nodes.get('banner').textContent, /Lost contact with the server/);
   assert.equal(app.nodes.get('go').disabled, false);
 });
+
+// Undo moves the selection back one version and there is no redo: the
+// handler never marked the page busy, so a second press while the first
+// was in flight, or the second click of a double-click, undid two
+// versions and left the newer one out of reach.
+function undos(app) {
+  return app.calls.filter(([url]) => url === '/api/undo').length;
+}
+const UNDONE = {ok: true, status: 200, json: async () =>
+  ({kind: 'edit', ok: true, summary: 'Undone - back to loop.gpx.', candidates: [], current: null})};
+
+test('a second Undo while the first is in flight is ignored', async () => {
+  const app = await browser();
+  app.response(async () => UNDONE);
+  const undo = app.nodes.get('undobtn');
+  await Promise.all([undo.onclick({detail: 1}), undo.onclick({detail: 1})]);
+  assert.equal(undos(app), 1);
+  assert.equal(undo.disabled, false);
+});
+
+test('the second click of a double-click does not undo again', async () => {
+  const app = await browser();
+  app.response(async () => UNDONE);
+  const undo = app.nodes.get('undobtn');
+  await undo.onclick({detail: 1});
+  await undo.onclick({detail: 2});
+  await undo.onclick({detail: 0});     // keyboard: Enter/Space on the button
+  assert.equal(undos(app), 2);
+});

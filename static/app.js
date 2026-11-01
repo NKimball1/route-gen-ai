@@ -266,13 +266,17 @@ document.getElementById('cancelbtn').onclick = async () => {
   finally { button.disabled = false; }
 };
 
-document.getElementById('undobtn').onclick = async () => {
-  if (sending) return;
+// Undo has no redo: one press is one step back. event.detail counts clicks,
+// so the second click of a double-click (2) is ignored; keyboard presses are 0.
+document.getElementById('undobtn').onclick = async event => {
+  if (sending || event.detail > 1) return;
+  setBusy(true);
   try {
     const response = await apiFetch('/api/undo', {method:'POST'});
     const result = await response.json();
     banner(result.summary, result.ok); showResult(result); await refreshCurrent();
   } catch (error) { reportError(error); }
+  finally { setBusy(false); }
 };
 
 // ---- upload an existing route ----
