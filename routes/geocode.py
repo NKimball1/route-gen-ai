@@ -1,9 +1,10 @@
 """Address -> coordinates via OSM Nominatim (free, no API key).
 
-Nominatim usage policy: identify yourself with a User-Agent and stay
-under 1 request/second. We make one request per compose run.
+Nominatim usage policy: identify yourself with a User-Agent, stay under
+1 request/second, and cache results. Answers are kept for a day.
 """
 import math
+import threading
 import time
 from typing import Any
 
@@ -74,9 +75,40 @@ RETRYABLE_HTTP: tuple[int, ...] = (429, 502, 503, 504)
 MAX_QUERY_VARIANTS: int = 6
 
 
+# Answers by query, found or not: the same start address was looked up on
+# every page load and again by each ride from "home". Failures are never
+# kept -- the next lookup tries again.
+ANSWER_TTL_S: float = 86400.0
+ANSWER_KEEP: int = 1024
+_AnswerKey = tuple[tuple[str, str], ...]
+_ANSWERS: dict[_AnswerKey, tuple[float, list[dict[str, Any]]]] = {}
+_ANSWERS_LOCK = threading.Lock()
+
+
+def _remembered(key: _AnswerKey) -> list[dict[str, Any]] | None:
+    with _ANSWERS_LOCK:
+        kept = _ANSWERS.get(key)
+        if kept is None or time.monotonic() - kept[0] >= ANSWER_TTL_S:
+            return None
+        return kept[1]
+
+
+def _remember(key: _AnswerKey, results: list[dict[str, Any]]) -> None:
+    with _ANSWERS_LOCK:
+        _ANSWERS.pop(key, None)
+        while _ANSWERS and len(_ANSWERS) >= ANSWER_KEEP:
+            _ANSWERS.pop(next(iter(_ANSWERS)))
+        _ANSWERS[key] = (time.monotonic(), results)
+
+
 def _nominatim_get(params: dict[str, str | int]) -> list[dict[str, Any]]:
     """GET with retries — Nominatim occasionally 429s or times out, and
-    one flaky lookup shouldn't kill a whole compose run."""
+    one flaky lookup shouldn't kill a whole compose run. Answers come from
+    the cache when this exact query was answered recently."""
+    key = tuple(sorted((k, str(v)) for k, v in params.items()))
+    kept = _remembered(key)
+    if kept is not None:
+        return kept
     last: Exception | None = None
     for attempt in range(RETRIES):
         if attempt:
@@ -101,6 +133,7 @@ def _nominatim_get(params: dict[str, str | int]) -> list[dict[str, Any]]:
             results = resp.json()
             if not isinstance(results, list):
                 raise ValueError("Invalid geocoder response")
+            _remember(key, results)
             return results
         except GeocodeError:
             raise   # an answer, not a hiccup: GeocodeNotFound is a ValueError
