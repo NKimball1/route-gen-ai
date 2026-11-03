@@ -24,6 +24,7 @@ import time
 from typing import Any, Callable, NamedTuple, Sequence
 
 import requests
+from routes.geocode import USER_AGENT
 from routes.policy import (CONTROL_ON_ROUTE_M, SIGNAL_REACH_M,
                            TRAIL_CROSSING_WEIGHT)
 from routes.spec import METERS_PER_DEG_LAT, METERS_PER_DEG_LON_EQ
@@ -146,7 +147,7 @@ def _post_one(url: str, query: str) -> tuple[dict[str, Any] | None, bool]:
     try:
         resp = requests.post(
             url, data={"data": query},
-            headers={"User-Agent": "route-gen-ai/0.1"},
+            headers={"User-Agent": USER_AGENT},
             timeout=90)
         if resp.status_code in OVERPASS_BUSY_HTTP:
             print(f"  overpass {url.split('/')[2]}: busy (HTTP {resp.status_code})")

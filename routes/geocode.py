@@ -15,7 +15,9 @@ from routes.request_gate import wait_for_nominatim
 from routes.execution import checkpoint
 
 NOMINATIM_URL: str = "https://nominatim.openstreetmap.org/search"
-USER_AGENT: str = "cycling-agentic-flow-route-prototype/0.1"
+# Who is asking, on every request to an OpenStreetMap service (Nominatim
+# and Overpass both require it): the app, and where to find its operator.
+USER_AGENT: str = "route-gen-ai/0.1 (+https://github.com/NKimball1/route-gen-ai)"
 
 class GeocodeError(Exception):
     """Base for the two ways a place lookup fails. They are different
