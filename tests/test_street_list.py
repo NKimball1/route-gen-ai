@@ -108,3 +108,44 @@ def test_a_capped_wide_search_is_recovered_at_the_junction():
 def test_loop_back_to_start():
     r = build_street_route(["A St", "B Ave"], FakeProvider(), start=O, end=O, fetch=fetch)
     assert _dist_m(r.points[0], O) < 5 and _dist_m(r.points[-1], O) < 5
+
+
+# Street lookups called Nominatim around the process-wide gate that keeps
+# every other lookup at one request per second: with jobs running side by
+# side, a street lookup could go out right after another job's geocode,
+# and the next geocode did not wait for it either.
+class _NoWays:
+    status_code = 200
+
+    def raise_for_status(self):
+        pass
+
+    def json(self):
+        return []
+
+
+def _street_lookup_events(monkeypatch, last_start):
+    import time
+    from routes import request_gate, street_list
+    events = []
+    monkeypatch.setattr(time, "sleep", lambda s: events.append(("sleep", round(s, 1))))
+    monkeypatch.setattr(request_gate, "_last_start", last_start)
+    monkeypatch.setattr(street_list.requests, "get",
+                        lambda url, **kw: events.append(("get",)) or _NoWays())
+    street_list.fetch_street_ways("Monroe Street", (43.06, -89.42))
+    return events
+
+
+def test_a_street_lookup_waits_its_turn_after_another_lookup(monkeypatch):
+    import time
+    events = _street_lookup_events(monkeypatch, last_start=time.monotonic())
+    assert events[0] == ("sleep", 1.1) and events[1] == ("get",)
+
+
+def test_the_next_lookup_waits_for_a_street_lookup(monkeypatch):
+    from routes import request_gate
+    _street_lookup_events(monkeypatch, last_start=0.0)
+    slept = []
+    monkeypatch.setattr("time.sleep", slept.append)
+    request_gate.wait_for_nominatim()
+    assert slept and slept[0] > 1.0

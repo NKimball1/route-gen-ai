@@ -31,6 +31,7 @@ import requests
 
 from routes.editing import _cum, _dist_m
 from routes.geocode import NOMINATIM_URL, USER_AGENT
+from routes.request_gate import wait_for_nominatim
 from routes.road_avoid import Way, on_road_meters
 from routes.spec import (METERS_PER_DEG_LAT, METERS_PER_DEG_LON_EQ, Coord,
                          LatLon, Router, Track)
@@ -167,6 +168,7 @@ def fetch_street_ways(name: str, near: LatLon,
         if attempt:
             time.sleep(1.5 * attempt)
         try:
+            wait_for_nominatim()   # shared with every other lookup: 1/second
             resp = requests.get(NOMINATIM_URL, params=params,
                                 headers={"User-Agent": USER_AGENT}, timeout=30)
             if resp.status_code in (429, 502, 503, 504):
@@ -185,7 +187,6 @@ def fetch_street_ways(name: str, near: LatLon,
             ways.append([(c[1], c[0]) for c in g["coordinates"]])
         elif g.get("type") == "MultiLineString":
             ways += [[(c[1], c[0]) for c in line] for line in g["coordinates"]]
-    time.sleep(1.1)   # Nominatim usage policy: at most 1 request/second
     return ways
 
 
