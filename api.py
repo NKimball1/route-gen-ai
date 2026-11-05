@@ -270,13 +270,27 @@ async def upload(request: Request, file: UploadFile = File(...),
                  session: Session = Depends(authorized_session)) -> dict[str, Any] | JSONResponse:
     if not limits.allow(("upload", client_ip(request)), limits.Limits.UPLOAD_PER_IP_HOUR, limits.HOUR_S):
         return _refused("upload", request, "too many uploads - slow down", sid=session.sid)
+    # One usage row per upload, whatever became of it. The filename stays
+    # out: it is the rider's (often a place name), like typed text.
+    outcome: dict[str, Any] = {"outcome": "error", "bytes": 0}
     try:
         data = await file.read(UPLOAD_MAX_BYTES + 1)
+        outcome["bytes"] = len(data)
         if len(data) > UPLOAD_MAX_BYTES:
+            outcome["outcome"] = "too_large"
             return JSONResponse({"error": f"File too large ({UPLOAD_MAX_MB} MB max)."}, status_code=413)
-        return await run_in_threadpool(_save_upload, data, file.filename or "route", session)
+        result = await run_in_threadpool(_save_upload, data, file.filename or "route", session)
+        outcome["outcome"] = "ok"
+        return result
+    except HTTPException as error:
+        outcome.update(outcome="rejected", reason=str(error.detail))
+        raise
+    except Exception as error:
+        outcome["error"] = type(error).__name__
+        raise
     finally:
         await file.close()
+        limits.log_event("upload", sid=session.sid, ip=client_ip(request), **outcome)
 
 
 @app.get("/api/job/{job_id}", response_model=None)
