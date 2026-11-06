@@ -9,7 +9,7 @@ from typing import Callable
 
 import requests
 
-from routes.geocode import USER_AGENT
+from routes.geocode import USER_AGENT, _remember, _remembered
 from routes.request_gate import wait_for_nominatim
 from routes.spec import Coord
 
@@ -19,17 +19,25 @@ Lookup = Callable[[float, float], "tuple[str, str] | None"]
 
 
 def road_at(lat: float, lon: float) -> tuple[str, str] | None:
-    """(road name, town) at a point, or None if unknown/unreachable."""
+    """(road name, town) at a point, or None if unknown/unreachable.
+    Answers share geocode's cache (a day, bounded); failures are not kept."""
+    lat, lon = round(lat, 5), round(lon, 5)   # ~1 m: float noise is not a new place
     params: dict[str, str | float] = {"lat": lat, "lon": lon,
                                       "format": "jsonv2", "zoom": 17}
-    try:
-        wait_for_nominatim()
-        resp = requests.get(REVERSE_URL, params=params,
-                            headers={"User-Agent": USER_AGENT}, timeout=20)
-        resp.raise_for_status()
-        a = resp.json().get("address", {})
-    except (requests.RequestException, ValueError):
-        return None
+    key = (("reverse", ""),) + tuple(sorted((k, str(v)) for k, v in params.items()))
+    kept = _remembered(key)
+    if kept is not None:
+        a = kept[0]
+    else:
+        try:
+            wait_for_nominatim()
+            resp = requests.get(REVERSE_URL, params=params,
+                                headers={"User-Agent": USER_AGENT}, timeout=20)
+            resp.raise_for_status()
+            a = resp.json().get("address", {})
+        except (requests.RequestException, ValueError):
+            return None
+        _remember(key, [a])
     road = a.get("road") or a.get("cycleway") or a.get("path") or a.get("footway")
     if not road:
         return None

@@ -78,8 +78,9 @@ MAX_QUERY_VARIANTS: int = 6
 
 
 # Answers by query, found or not: the same start address was looked up on
-# every page load and again by each ride from "home". Failures are never
-# kept -- the next lookup tries again.
+# every page load and again by each ride from "home". Reverse lookups
+# (places.road_at) are kept here too. Failures are never kept -- the next
+# lookup tries again.
 ANSWER_TTL_S: float = 86400.0
 ANSWER_KEEP: int = 1024
 _AnswerKey = tuple[tuple[str, str], ...]
