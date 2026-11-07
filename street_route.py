@@ -23,7 +23,7 @@ from dotenv import load_dotenv
 # at import time
 load_dotenv()
 
-from routes.geocode import geocode
+from routes.geocode import GeocodeError, geocode
 from routes.gpx_out import write_track
 from routes.preview import build_preview
 from routes.providers import BRouterProvider
@@ -58,12 +58,16 @@ def main() -> int:
         print(f"  {text} -> {name}")
         return (lat, lon)
 
-    start = place(args.start)
-    end = start if args.loop else place(args.end)
-    near = place(args.near)
-    print(f"Routing along {len(names)} streets: {' -> '.join(names)}")
-    result = build_street_route(names, BRouterProvider(profile=args.profile),
-                                start=start, end=end, near=near)
+    try:
+        start = place(args.start)
+        end = start if args.loop else place(args.end)
+        near = place(args.near)
+        print(f"Routing along {len(names)} streets: {' -> '.join(names)}")
+        result = build_street_route(names, BRouterProvider(profile=args.profile),
+                                    start=start, end=end, near=near)
+    except GeocodeError as error:   # the service down, or an address that isn't there
+        print(f"Lookup failed: {error}")
+        return 1
 
     for s in result.streets:
         mark = "ok " if s.ridden else "!! "

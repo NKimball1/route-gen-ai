@@ -30,7 +30,7 @@ from typing import Any, Callable, Sequence
 import requests
 
 from routes.editing import _cum, _dist_m
-from routes.geocode import NOMINATIM_URL, USER_AGENT
+from routes.geocode import NOMINATIM_URL, USER_AGENT, GeocodeUnavailable
 from routes.request_gate import wait_for_nominatim
 from routes.road_avoid import Way, on_road_meters
 from routes.spec import (METERS_PER_DEG_LAT, METERS_PER_DEG_LON_EQ, Coord,
@@ -155,7 +155,9 @@ def farthest_node(ways: Sequence[Way], from_pt: LatLon) -> LatLon:
 def fetch_street_ways(name: str, near: LatLon,
                       radius_m: float = SEARCH_RADIUS_M) -> list[Way]:
     """Every OSM way named `name` within radius_m of `near` (roads and paths
-    only). Nominatim returns one hit per way when dedupe is off."""
+    only). Nominatim returns one hit per way when dedupe is off. Raises
+    GeocodeUnavailable when every attempt fails: an outage is not "no such
+    street", and must not send the rider off to rename a street that's there."""
     dlat = radius_m / METERS_PER_DEG_LAT
     dlon = radius_m / (METERS_PER_DEG_LON_EQ * math.cos(math.radians(near[0])))
     params: dict[str, str | int] = {
@@ -163,7 +165,7 @@ def fetch_street_ways(name: str, near: LatLon,
         "dedupe": 0, "bounded": 1,
         "viewbox": f"{near[1] - dlon},{near[0] + dlat},{near[1] + dlon},{near[0] - dlat}",
     }
-    hits: list[dict[str, Any]] = []
+    hits: list[dict[str, Any]] | None = None
     for attempt in range(3):
         if attempt:
             time.sleep(1.5 * attempt)
@@ -178,6 +180,8 @@ def fetch_street_ways(name: str, near: LatLon,
             break
         except (requests.ConnectionError, requests.Timeout):
             continue
+    if hits is None:
+        raise GeocodeUnavailable(f"Couldn't reach Nominatim to look up {name!r} (3 attempts).")
     ways: list[Way] = []
     for h in hits:
         if h.get("category") != "highway":

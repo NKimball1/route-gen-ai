@@ -149,3 +149,39 @@ def test_the_next_lookup_waits_for_a_street_lookup(monkeypatch):
     monkeypatch.setattr("time.sleep", slept.append)
     request_gate.wait_for_nominatim()
     assert slept and slept[0] > 1.0
+
+
+class _Down:
+    status_code = 503
+
+
+def _street_service(monkeypatch, answer):
+    """fetch_street_ways against a Nominatim that always gives `answer`."""
+    from routes import street_list
+    calls = []
+    monkeypatch.setattr("time.sleep", lambda s: None)
+    monkeypatch.setattr(street_list, "wait_for_nominatim", lambda: None)
+    monkeypatch.setattr(street_list.requests, "get", lambda url, **kw: calls.append(url) or answer())
+    return calls
+
+
+def test_a_lookup_service_outage_is_not_reported_as_a_missing_street(monkeypatch):
+    # Live failure mode: three 503s returned [] -- "no such street" -- so the
+    # rider was told "couldn't find 'Monroe Street' near the ride" and the
+    # two wider searches spent six more requests on a service that was down.
+    import pytest
+    from routes.geocode import GeocodeUnavailable
+    from routes.street_list import fetch_street_ways
+    calls = _street_service(monkeypatch, _Down)
+    with pytest.raises(GeocodeUnavailable):
+        build_street_route(["Monroe Street"], FakeProvider(), start=O)
+    assert len(calls) == 3                      # one search's retries, no wider ones
+    with pytest.raises(GeocodeUnavailable):
+        fetch_street_ways("Monroe Street", O)
+
+
+def test_a_street_that_is_not_there_is_still_just_not_found(monkeypatch):
+    calls = _street_service(monkeypatch, _NoWays)
+    r = build_street_route(["Nowhere Lane"], FakeProvider(), start=O)
+    assert r.problems == ["couldn't find 'Nowhere Lane' near the ride"]
+    assert len(calls) == 3                      # 3 km, 8 km, 25 km: one answer each
