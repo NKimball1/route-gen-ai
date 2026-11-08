@@ -1,6 +1,5 @@
 """Routing-server liveness probe (routes/providers.brouter_reachable)."""
 import socket
-import threading
 
 from routes.providers import brouter_reachable
 
@@ -14,8 +13,8 @@ def test_listening_port_is_up():
     srv.bind(("127.0.0.1", 0))
     srv.listen(1)
     port = srv.getsockname()[1]
-    # accept in the background so the connect completes cleanly
-    threading.Thread(target=lambda: srv.accept(), daemon=True).start()
+    # No accept() needed: the OS completes the connect into the backlog.
+    # A background accept() raced srv.close() below and failed noisily.
     try:
         assert brouter_reachable(f"http://127.0.0.1:{port}/brouter") is True
     finally:
