@@ -1,5 +1,7 @@
 """Read GPX XML without inventing connections between separate tracks."""
+import codecs
 import math
+import re
 import xml.etree.ElementTree as ET
 
 from routes.despur import _hav_m
@@ -13,6 +15,8 @@ SEGMENT_DUPLICATE_M = 1.0
 # one ride. A bigger jump means separate rides in one file, which the rider
 # must split rather than have us draw a line across the map.
 SEGMENT_JOIN_MAX_GAP_M = 2000.0
+_DECLARED_ENCODING = re.compile(rb"""\s*<\?xml[^>]*?encoding\s*=\s*["']([A-Za-z0-9._-]+)""")
+_NOT_GPX = "That file isn't a GPX we can read. Export the ride as GPX and upload that."
 
 
 def _tag(element: ET.Element) -> str:
@@ -25,6 +29,27 @@ def _number(value: str | None) -> float | None:
     except ValueError:
         return None
     return number if number is not None and math.isfinite(number) else None
+
+
+def decode_gpx(data: bytes) -> str:
+    """Text of an uploaded file, in the encoding it is really in: UTF-16 by
+    its byte-order mark, UTF-8 if it is valid UTF-8 (whatever a stale
+    declaration claims), otherwise what its XML declaration says. A file
+    that is none of these raises ValueError in words a rider can act on."""
+    if data[8:12] == b".FIT":
+        raise ValueError("That's a FIT file. Export the ride as GPX and upload that.")
+    try:
+        if data.startswith((codecs.BOM_UTF16_LE, codecs.BOM_UTF16_BE)):
+            return data.decode("utf-16")
+        try:
+            return data.decode("utf-8-sig")
+        except UnicodeError:
+            declared = _DECLARED_ENCODING.match(data[:200])
+            if declared is None:
+                raise ValueError(_NOT_GPX) from None
+            return data.decode(declared.group(1).decode("ascii"))
+    except (UnicodeError, LookupError):
+        raise ValueError(_NOT_GPX) from None
 
 
 def parse_gpx_text(text: str, *, strict: bool = False) -> Track:

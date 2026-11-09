@@ -241,13 +241,13 @@ def cancel(session: Session = Depends(authorized_session)) -> dict[str, str] | J
 
 def _save_upload(data: bytes, filename: str, session: Session) -> dict[str, Any]:
     from routes.elevation import track_ascent
-    from routes.gpx_in import parse_gpx_text
+    from routes.gpx_in import decode_gpx, parse_gpx_text
     from routes.editing import _cum
     from routes.gpx_out import write_track
     with session_mutation(session):
         try:
-            points = parse_gpx_text(data.decode("utf-8-sig"), strict=True)
-        except (ValueError, UnicodeError) as error:
+            points = parse_gpx_text(decode_gpx(data), strict=True)
+        except ValueError as error:
             raise HTTPException(400, str(error)) from error
         if len(points) < 2:
             raise HTTPException(400, "No usable track/route points found in that file.")
