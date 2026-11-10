@@ -63,3 +63,33 @@ def test_entities_are_still_refused_once_decoded(client):
     hidden = '<?xml version="1.0"?><!DOCTYPE gpx [<!ENTITY a "b">]><gpx></gpx>'.encode("utf-16")
     response = send(client, hidden)
     assert response.status_code == 400 and "DTD" in response.json()["detail"]
+
+
+# ---- route files on disk (CLI: edit_route.py --route, compare_ride.py, previews) ----
+
+@pytest.mark.parametrize("data", [
+    GPX.format("ISO-8859-1").encode("latin-1"),
+    GPX.format("UTF-16").encode("utf-16"),
+], ids=["latin-1", "utf-16"])
+def test_a_route_file_is_read_in_its_own_encoding(tmp_path, data):
+    from routes.preview import _parse_gpx
+    path = tmp_path / "ride.gpx"
+    path.write_bytes(data)
+    assert len(_parse_gpx(str(path))) == 2
+
+
+def test_editing_an_unreadable_file_says_so_instead_of_crashing(tmp_path):
+    from routes.edit_service import run_edit
+    path = tmp_path / "ride.fit"
+    path.write_bytes(FIT)
+    out, message, ok = run_edit(str(path), "Capitol Square", 1000.0, "avoid")
+    assert out is None and ok is False
+    assert "Couldn't read the route file" in message and "FIT file" in message
+
+
+def test_a_preview_of_a_utf16_file_is_drawn(tmp_path):
+    from routes.preview import build_preview
+    path = tmp_path / "ride.gpx"
+    path.write_bytes(GPX.format("UTF-16").encode("utf-16"))
+    build_preview([str(path)], str(tmp_path / "ride.html"))
+    assert "ride.gpx" in (tmp_path / "ride.html").read_text(encoding="utf-8")

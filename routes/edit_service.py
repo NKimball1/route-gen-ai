@@ -57,7 +57,10 @@ def _run_edit(route_path: str, place: str | None = None,
     Avoid edits VERIFY the outcome: the final route is measured against
     the zone rather than trusting that every section rerouted."""
     place, places = normalize_places(place, places)
-    points = _parse_gpx(route_path)
+    try:
+        points = _parse_gpx(route_path)
+    except ValueError as error:   # not GPX, or GPX this app refuses
+        return None, f"Couldn't read the route file ({route_path}): {error}", False
     if not points:
         return None, f"Couldn't read the route file ({route_path}).", False
     provider = BRouterProvider(profile=profile)

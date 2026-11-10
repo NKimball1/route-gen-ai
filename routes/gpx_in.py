@@ -16,7 +16,7 @@ SEGMENT_DUPLICATE_M = 1.0
 # must split rather than have us draw a line across the map.
 SEGMENT_JOIN_MAX_GAP_M = 2000.0
 _DECLARED_ENCODING = re.compile(rb"""\s*<\?xml[^>]*?encoding\s*=\s*["']([A-Za-z0-9._-]+)""")
-_NOT_GPX = "That file isn't a GPX we can read. Export the ride as GPX and upload that."
+_NOT_GPX = "That file isn't a GPX we can read. Export the ride as GPX and use that instead."
 
 
 def _tag(element: ET.Element) -> str:
@@ -37,7 +37,7 @@ def decode_gpx(data: bytes) -> str:
     declaration claims), otherwise what its XML declaration says. A file
     that is none of these raises ValueError in words a rider can act on."""
     if data[8:12] == b".FIT":
-        raise ValueError("That's a FIT file. Export the ride as GPX and upload that.")
+        raise ValueError("That's a FIT file. Export the ride as GPX and use that instead.")
     try:
         if data.startswith((codecs.BOM_UTF16_LE, codecs.BOM_UTF16_BE)):
             return data.decode("utf-16")

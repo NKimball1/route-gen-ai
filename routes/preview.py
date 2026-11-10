@@ -12,7 +12,7 @@ import os
 import re
 import sys
 
-from routes.gpx_in import parse_gpx_text as parse_gpx_text
+from routes.gpx_in import decode_gpx, parse_gpx_text as parse_gpx_text
 
 from routes.spec import (EARTH_RADIUS_M, METERS_PER_FOOT, METERS_PER_MILE,
                          LatLon, Track)
@@ -64,7 +64,10 @@ def _haversine_m(a: LatLon, b: LatLon) -> float:
 
 
 def _parse_gpx(path: str) -> Track:
-    return parse_gpx_text(open(path, encoding="utf-8").read())
+    """A route file in whatever encoding it was written: a rider's own
+    export (edit_route.py --route, compare_ride.py) needn't be UTF-8."""
+    with open(path, "rb") as f:
+        return parse_gpx_text(decode_gpx(f.read()))
 
 
 def _stats(points: Track) -> tuple[float, float]:
@@ -84,7 +87,8 @@ def _stats(points: Track) -> tuple[float, float]:
 
 
 def _parse_desc(path: str) -> str | None:
-    m = re.search(r"<desc>([^<]+)</desc>", open(path, encoding="utf-8").read())
+    with open(path, "rb") as f:
+        m = re.search(r"<desc>([^<]+)</desc>", decode_gpx(f.read()))
     return m.group(1) if m else None
 
 
