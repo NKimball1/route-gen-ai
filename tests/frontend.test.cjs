@@ -7,16 +7,16 @@ const fs = require('node:fs');
 const path = require('node:path');
 const source = fs.readFileSync(path.join(__dirname, '../static/app.js'), 'utf8');
 
-async function browser(onLoad) {
+async function browser(onLoad, stored = {}) {
   const nodes = new Map();
   function element() {
     return {value: '', textContent: '', disabled: false, hidden: true, style: {}, dataset: {},
       classList: {add() {}, remove() {}, toggle() {}}, focus() {}, addEventListener() {},
       appendChild() {}, append() {}, click() {}, querySelector() {return element();}};
   }
-  const calls = [], values = new Map();
+  const calls = [], values = new Map(Object.entries(stored));
   let respond = onLoad || (async () => ({ok: true, status: 200, json: async () => ({current: null, candidates: []})}));
-  const map = {setView() {return this;}, removeLayer() {}, fitBounds() {}};
+  const map = {views: [], setView(...view) {this.views.push(view); return this;}, removeLayer() {}, fitBounds() {}};
   const context = vm.createContext({
     document: {getElementById(id) {if (!nodes.has(id)) nodes.set(id, element()); return nodes.get(id);},
       querySelectorAll() {return [];}, createElement: element},
@@ -30,8 +30,8 @@ async function browser(onLoad) {
   });
   vm.runInContext(source, context);
   await new Promise(resolve => setImmediate(resolve));
-  calls.length = 0;
-  return {context, nodes, calls, values, response: fn => {respond = fn;}};
+  const loaded = calls.splice(0);
+  return {context, nodes, calls, loaded, values, map, response: fn => {respond = fn;}};
 }
 
 test('an explicit-address request works without a saved start', async () => {
@@ -191,4 +191,35 @@ test('the second click of a double-click does not undo again', async () => {
   await undo.onclick({detail: 2});
   await undo.onclick({detail: 0});     // keyboard: Enter/Space on the button
   assert.equal(undos(app), 2);
+});
+
+
+// Every page load looked the saved start up again just to centre the map:
+// a slot of the hourly lookup limit each time, and an error banner on load
+// whenever Nominatim was down or the limit was reached.
+const STARTED = {rg_start: 'Monona Terrace, Madison WI', rg_start_at: '[43.07,-89.38]'};
+
+test('a saved start is placed on the map without looking it up again', async () => {
+  const app = await browser(async () => PLACE, STARTED);
+  assert.equal(app.loaded.filter(([url]) => url.startsWith('/api/geocode')).length, 0);
+  assert.equal(JSON.stringify(app.map.views.at(-1)), '[[43.07,-89.38],11]');
+  assert.equal(app.nodes.get('start').value, 'Monona Terrace, Madison WI');
+});
+
+test("a lookup outage on load is not the rider's problem when the start is saved", async () => {
+  const app = await browser(async url => url.startsWith('/api/geocode')
+    ? {ok: false, status: 503, json: async () => ({error: 'Address lookup is temporarily unavailable.'})}
+    : {ok: true, status: 200, json: async () => ({current: null, candidates: []})}, STARTED);
+  assert.equal(app.context.document.getElementById('banner').textContent, '');
+});
+
+test('a start saved before coordinates were kept is looked up once, then kept', async () => {
+  const app = await browser(async () => PLACE, {rg_start: 'Monona Terrace, Madison WI'});
+  assert.equal(app.loaded.filter(([url]) => url.startsWith('/api/geocode')).length, 1);
+  assert.equal(app.values.get('rg_start_at'), '[43.07,-89.38]');
+});
+
+test('damaged saved coordinates fall back to a lookup', async () => {
+  const app = await browser(async () => PLACE, {...STARTED, rg_start_at: '[43.07,"x"]'});
+  assert.equal(app.loaded.filter(([url]) => url.startsWith('/api/geocode')).length, 1);
 });

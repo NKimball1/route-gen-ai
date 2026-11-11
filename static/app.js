@@ -121,6 +121,7 @@ async function applyStart(place) {
     const r = await apiFetch('/api/geocode?q=' + encodeURIComponent(place));
     const g = await r.json();
     localStorage.setItem('rg_start', place);
+    localStorage.setItem('rg_start_at', JSON.stringify([g.lat, g.lon]));
     startInput.value = place;
     startInput.classList.remove('unset');
     map.setView([g.lat, g.lon], 11);
@@ -135,8 +136,22 @@ startInput.addEventListener('change', () => {
   const v = startInput.value.trim();
   if (v && v !== localStorage.getItem('rg_start')) applyStart(v).catch(reportError);
 });
+// The saved start keeps its coordinates: looking it up again on every page
+// load spent a slot of the hourly lookup limit and, whenever Nominatim was
+// down or the limit reached, greeted the rider with an error banner.
+function savedStartAt() {
+  try {
+    const at = JSON.parse(localStorage.getItem('rg_start_at'));
+    return Array.isArray(at) && at.length === 2 && at.every(Number.isFinite) ? at : null;
+  } catch { return null; }
+}
 const savedStart = localStorage.getItem('rg_start');
-if (savedStart) { applyStart(savedStart).catch(reportError); }
+const savedAt = savedStart && savedStartAt();
+if (savedAt) {
+  startInput.value = savedStart;
+  startInput.classList.remove('unset');
+  map.setView(savedAt, 11);
+} else if (savedStart) { applyStart(savedStart).catch(reportError); }
 else { startInput.classList.add('unset'); startInput.focus(); }
 
 function showResult(result) {
