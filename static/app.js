@@ -226,15 +226,24 @@ function showResult(result) {
 async function send() {
   const text = document.getElementById('ask').value.trim();
   if (!text || sending) return;
-  const cancelBtn = document.getElementById('cancelbtn');
-  const log = document.getElementById('log');
-  setBusy(true); banner('', true); log.textContent = '...\n';
+  setBusy(true); banner('', true); document.getElementById('log').textContent = '...\n';
   const start = localStorage.getItem('rg_start');
   const intent = document.getElementById('intent').value;
+  let job;
   try {
     const response = await apiFetch('/api/ask', {method:'POST', body: JSON.stringify({text, start, intent})});
-    const {job} = await response.json();
-    cancelBtn.hidden = false;
+    ({job} = await response.json());
+  } catch (error) { reportError(error); setBusy(false); return; }
+  await follow(job);
+}
+
+// Wait for a job and show its log, outcome and result. Holds the controls
+// (and shows Cancel) until the job ends or the wait is given up.
+async function follow(job) {
+  const cancelBtn = document.getElementById('cancelbtn');
+  const log = document.getElementById('log');
+  setBusy(true); cancelBtn.hidden = false;
+  try {
     const deadline = Date.now() + JOB_WAIT_LIMIT_MS;
     let misses = 0;
     while (Date.now() < deadline) {
@@ -271,6 +280,18 @@ async function send() {
   finally { setBusy(false); cancelBtn.hidden = true; }
 }
 document.getElementById('go').onclick = send;
+
+// A reload mid-request (or after "refresh to see its result") picks the
+// running job back up; before, the page forgot it and refused new requests
+// as "already running" until it ended unseen.
+async function resumeRunning() {
+  const {job} = await (await apiFetch('/api/running')).json();
+  if (!job || sending) return;
+  banner('Still working on your last request...', 'partial');
+  document.getElementById('log').textContent = '...\n';
+  await follow(job);
+}
+resumeRunning().catch(() => {});   // an older server without the endpoint: nothing to resume
 document.getElementById('cancelbtn').onclick = async () => {
   const button = document.getElementById('cancelbtn');
   button.disabled = true;

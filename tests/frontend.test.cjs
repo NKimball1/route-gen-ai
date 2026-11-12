@@ -223,3 +223,32 @@ test('damaged saved coordinates fall back to a lookup', async () => {
   const app = await browser(async () => PLACE, {...STARTED, rg_start_at: '[43.07,"x"]'});
   assert.equal(app.loaded.filter(([url]) => url.startsWith('/api/geocode')).length, 1);
 });
+
+
+// "Refresh to see its result", the page advised -- but a refreshed page
+// never learned a job was running: no log, no Cancel, and new requests
+// refused as "already running" until the job ended unseen.
+const settle = async (ticks = 10) => { for (let i = 0; i < ticks; i++) await new Promise(r => setImmediate(r)); };
+
+test('a page loaded mid-request picks the running job back up', async () => {
+  const app = await browser(async url => url === '/api/running'
+    ? {ok: true, status: 200, json: async () => ({job: 'j'})}
+    : url.startsWith('/api/job/')
+      ? {ok: true, status: 200, json: async () => ({status: 'done', log: 'found 3 spots',
+          result: {ok: true, summary: 'Found 3 interval spots.', candidates: []}})}
+      : {ok: true, status: 200, json: async () => ({current: null, candidates: []})});
+  await settle();
+  assert.ok([...app.loaded, ...app.calls].some(([url]) => url === '/api/job/j'));
+  assert.equal(app.nodes.get('banner').textContent, 'Found 3 interval spots.');
+  assert.equal(app.nodes.get('log').textContent, 'found 3 spots');
+  assert.equal(app.nodes.get('go').disabled, false);
+});
+
+test('a page loaded with nothing running stays idle', async () => {
+  const app = await browser(async url => ({ok: true, status: 200, json: async () =>
+    url === '/api/running' ? {job: null} : {current: null, candidates: []}}));
+  await settle();
+  assert.ok(app.loaded.some(([url]) => url === '/api/running'));
+  assert.ok(![...app.loaded, ...app.calls].some(([url]) => url.startsWith('/api/job/')));
+  assert.equal(app.nodes.get('go').disabled, false);
+});

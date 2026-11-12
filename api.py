@@ -293,6 +293,14 @@ async def upload(request: Request, file: UploadFile = File(...),
         limits.log_event("upload", sid=session.sid, ip=client_ip(request), **outcome)
 
 
+@app.get("/api/running")
+def running(session: Session = Depends(authorized_session)) -> dict[str, str | None]:
+    """The job still running for this session, if any: a reloaded page
+    picks it back up (log, Cancel, result) instead of losing track of it."""
+    with LOCK:
+        return {"job": RUNNING.get(session.sid)}
+
+
 @app.get("/api/job/{job_id}", response_model=None)
 def job(job_id: str, session: Session = Depends(authorized_session)) -> dict[str, Any] | JSONResponse:
     with LOCK:
