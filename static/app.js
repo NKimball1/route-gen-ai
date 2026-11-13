@@ -34,7 +34,12 @@ async function apiFetch(url, options = {}) {
   if (options.body instanceof FormData) delete headers['Content-Type'];
   let response = await fetch(url, {...options, headers});
   if (response.status === 401) {
-    const code = prompt('This server needs an invite code:');
+    // The page sends several requests at once on load; each gets a 401.
+    // The first asks; the rest retry with the code it stored instead of
+    // asking again. A code that was itself refused is asked about anew.
+    const sent = headers['X-Invite-Code'] || null;
+    const stored = localStorage.getItem('rg_invite');
+    const code = stored && stored !== sent ? stored : prompt('This server needs an invite code:');
     if (code) {
       localStorage.setItem('rg_invite', code);
       headers['X-Invite-Code'] = code;

@@ -14,7 +14,7 @@ async function browser(onLoad, stored = {}) {
       classList: {add() {}, remove() {}, toggle() {}}, focus() {}, addEventListener() {},
       appendChild() {}, append() {}, click() {}, querySelector() {return element();}};
   }
-  const calls = [], values = new Map(Object.entries(stored));
+  const calls = [], prompts = [], values = new Map(Object.entries(stored));
   let respond = onLoad || (async () => ({ok: true, status: 200, json: async () => ({current: null, candidates: []})}));
   const map = {views: [], setView(...view) {this.views.push(view); return this;}, removeLayer() {}, fitBounds() {}};
   const context = vm.createContext({
@@ -25,13 +25,13 @@ async function browser(onLoad, stored = {}) {
     L: {map: () => map, tileLayer: () => ({addTo() {}})},
     fetch: async (...args) => {calls.push(args); return respond(...args);},
     FormData, URL, Date, Promise, Uint8Array,
-    prompt: () => 'new-invite', alert() {},
+    prompt: question => {prompts.push(question); return 'new-invite';}, alert() {},
     setTimeout: callback => setImmediate(callback),
   });
   vm.runInContext(source, context);
   await new Promise(resolve => setImmediate(resolve));
   const loaded = calls.splice(0);
-  return {context, nodes, calls, loaded, values, map, response: fn => {respond = fn;}};
+  return {context, nodes, calls, loaded, prompts, values, map, response: fn => {respond = fn;}};
 }
 
 test('an explicit-address request works without a saved start', async () => {
@@ -251,4 +251,30 @@ test('a page loaded with nothing running stays idle', async () => {
   assert.ok(app.loaded.some(([url]) => url === '/api/running'));
   assert.ok(![...app.loaded, ...app.calls].some(([url]) => url.startsWith('/api/job/')));
   assert.equal(app.nodes.get('go').disabled, false);
+});
+
+
+// An invite-gated server answers 401 to every request the page sends on
+// load at once (/api/current, /api/running, a saved start's lookup), and
+// each one asked for the invite code: two or three prompts in a row.
+function inviteGate(code = 'new-invite') {
+  return async (url, options = {}) => ((options.headers || {})['X-Invite-Code'] === code
+    ? {ok: true, status: 200, json: async () => ({current: null, candidates: [], job: null})}
+    : {ok: false, status: 401, json: async () => ({detail: 'invite code required'})});
+}
+
+test('a first visit to an invite-gated server asks for the code once', async () => {
+  const app = await browser(inviteGate(), {rg_start: 'Monona Terrace, Madison WI'});
+  await settle();
+  assert.equal(app.prompts.length, 1);
+  assert.equal(app.values.get('rg_invite'), 'new-invite');
+  const retried = [...app.loaded, ...app.calls].filter(([, options = {}]) => (options.headers || {})['X-Invite-Code'] === 'new-invite');
+  assert.ok(retried.some(([url]) => url === '/api/current') && retried.some(([url]) => url === '/api/running'));
+});
+
+test('a wrong saved code is still asked about again', async () => {
+  const app = await browser(inviteGate(), {rg_invite: 'stale-code'});
+  await settle();
+  assert.equal(app.prompts.length, 1);
+  assert.equal(app.values.get('rg_invite'), 'new-invite');
 });
