@@ -144,7 +144,7 @@ def _run(job_id: str, text: str, start: str | None, workdir: str,
     from routes.service import handle_request
     job = JOBS[job_id]
     t0 = time.time()
-    failure: dict[str, str] = {}
+    outcome: dict[str, Any] = {}
     try:
         path = storage.current_route(workdir)
         seen: set[str] = set()
@@ -159,6 +159,11 @@ def _run(job_id: str, text: str, start: str | None, workdir: str,
         job["buf"].cancellation.check()
         with LOCK:
             job["result"], job["status"] = result, "done"
+        # "done" covers a rejected API key and a clarify bounce as well as
+        # routes delivered; the row says which. The summary stays out: it
+        # quotes the rider's places.
+        outcome = {"kind": result.get("kind"), "ok": result.get("ok"),
+                   "routes": len(result.get("candidates") or [])}
     except JobCancelled:
         job["status"] = "cancelled"
     except Exception as error:
@@ -170,13 +175,13 @@ def _run(job_id: str, text: str, start: str | None, workdir: str,
             # The log above is the rider's and expires with the job; the
             # operator keeps the traceback (stderr) and the error type.
             traceback.print_exc()
-            failure["error"] = type(error).__name__
+            outcome = {"error": type(error).__name__}
     finally:
         with LOCK:
             if RUNNING.get(job["sid"]) == job_id:
                 del RUNNING[job["sid"]]
         limits.log_event("ask_" + job["status"], sid=job["sid"],
-                         seconds=round(time.time() - t0, 1), **failure)
+                         seconds=round(time.time() - t0, 1), **outcome)
 
 
 def _prune_sessions(now: float) -> None:
