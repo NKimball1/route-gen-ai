@@ -3,6 +3,7 @@
 Run with one Uvicorn worker; the in-memory job registry deliberately does not
 pretend to coordinate multiple processes. CLI and web use the same service.
 """
+import hmac
 import os
 import re
 import sys
@@ -83,13 +84,31 @@ class Session:
     workdir: str
 
 
-def authorized_session(x_session_id: str | None = Header(default=None),
+def check_invite(code: str | None, ip: str) -> None:
+    """Raise unless the invite code is right. Wrong codes count against
+    the IP; past the cap nothing from it is checked until the hour turns,
+    so the code can't be guessed at network speed. No code at all is a
+    first visit, not a guess."""
+    if not INVITE_CODE:
+        return
+    misses = ("invite_miss", ip)
+    if limits.exhausted(misses, limits.Limits.INVITE_MISSES_PER_IP_HOUR, limits.HOUR_S):
+        raise HTTPException(429, "too many wrong invite codes - try again in an hour")
+    if code is not None and hmac.compare_digest(code.encode(), INVITE_CODE.encode()):
+        return
+    if code:
+        limits.allow(misses, limits.Limits.INVITE_MISSES_PER_IP_HOUR, limits.HOUR_S)
+        limits.log_event("invite_refused", ip=ip)
+    raise HTTPException(401, "invite code required")
+
+
+def authorized_session(request: Request,
+                       x_session_id: str | None = Header(default=None),
                        x_invite_code: str | None = Header(default=None)) -> Session:
     workdir = session_dir(x_session_id)
     if workdir is None or x_session_id is None:
         raise HTTPException(400, "missing or invalid session id")
-    if INVITE_CODE and x_invite_code != INVITE_CODE:
-        raise HTTPException(401, "invite code required")
+    check_invite(x_invite_code, client_ip(request))
     return Session(x_session_id, workdir)
 
 

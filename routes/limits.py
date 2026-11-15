@@ -28,6 +28,10 @@ class Limits:
     GEOCODE_PER_IP_HOUR: int = int(os.environ.get("RATE_GEOCODE_IP_HOUR", 30))
     UPLOAD_PER_IP_HOUR: int = int(os.environ.get("RATE_UPLOAD_IP_HOUR", 20))
     JOBS_CONCURRENT: int = int(os.environ.get("RATE_JOBS_CONCURRENT", 3))
+    # Wrong invite codes per IP before every code from it, right or wrong,
+    # is turned away for the rest of the hour. A stale stored code costs a
+    # page load about three of these.
+    INVITE_MISSES_PER_IP_HOUR: int = int(os.environ.get("RATE_INVITE_MISS_IP_HOUR", 30))
 
 
 def allow(key: tuple[str, ...], limit: int, period_s: float, now: float | None = None) -> bool:
@@ -41,6 +45,19 @@ def allow(key: tuple[str, ...], limit: int, period_s: float, now: float | None =
             return False
         dq.append(now)
         return True
+
+
+def exhausted(key: tuple[str, ...], limit: int, period_s: float, now: float | None = None) -> bool:
+    """True if the window is already full; records nothing (not even an
+    empty window: this runs on every request, from every IP)."""
+    now = time.time() if now is None else now
+    with LOCK:
+        dq = _WINDOWS.get(key)
+        if dq is None:
+            return False
+        while dq and dq[0] <= now - period_s:
+            dq.popleft()
+        return len(dq) >= limit
 
 
 def check_ask(sid: str, ip: str) -> str | None:
