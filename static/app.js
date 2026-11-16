@@ -83,6 +83,11 @@ function restyleLines() {
 async function refreshCurrent() {
   const r = await apiFetch('/api/current').then(r => r.json());
   currentPath = r.current || null;
+  markSelected();
+  return r;
+}
+// Show which route is selected, as last read from the server.
+function markSelected() {
   document.getElementById('current').textContent =
       currentPath ? 'selected route: ' + currentPath : 'no route selected yet';
   document.querySelectorAll('.cand').forEach(row => {
@@ -90,7 +95,6 @@ async function refreshCurrent() {
         norm(row.dataset.gpx) === norm(currentPath));
   });
   restyleLines();
-  return r;
 }
 refreshCurrent().then(data => {
   if (data.candidates && data.candidates.length) showResult(data);
@@ -225,7 +229,9 @@ function showResult(result) {
     box.appendChild(row);
   });
   if (bounds) map.fitBounds(bounds, {padding:[30,30]});
-  refreshCurrent().catch(reportError);
+  // Whoever drew these reads the selection the result made, once; until
+  // then, mark the one already known.
+  markSelected();
 }
 
 async function send() {
@@ -333,6 +339,7 @@ gpxInput.onchange = async () => {
     const result = await response.json();
     banner(result.summary, result.ok); showResult(result);
     document.getElementById('log').textContent = 'Uploaded ' + file.name + '.';
+    await refreshCurrent();
   } catch (error) { reportError(error); }
   finally { setBusy(false); gpxInput.value = ''; }
 };

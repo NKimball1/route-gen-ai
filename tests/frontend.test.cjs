@@ -22,7 +22,9 @@ async function browser(onLoad, stored = {}) {
       querySelectorAll() {return [];}, createElement: element},
     localStorage: {getItem: key => values.get(key) || null, setItem: (key, value) => values.set(key, value)},
     crypto: {randomUUID: () => 'test-session'},
-    L: {map: () => map, tileLayer: () => ({addTo() {}})},
+    L: {map: () => map, tileLayer: () => ({addTo() {}}),
+      polyline: () => ({addTo() {}, setStyle() {}, bringToFront() {},
+        getBounds() {return {extend() {return this;}};}})},
     fetch: async (...args) => {calls.push(args); return respond(...args);},
     FormData, URL, Date, Promise, Uint8Array,
     prompt: question => {prompts.push(question); return 'new-invite';}, alert() {},
@@ -277,4 +279,55 @@ test('a wrong saved code is still asked about again', async () => {
   await settle();
   assert.equal(app.prompts.length, 1);
   assert.equal(app.values.get('rg_invite'), 'new-invite');
+});
+
+
+// Every result on screen read the selected route twice: drawing the results
+// fetched /api/current, and so did whoever drew them, straight after.
+const ROUTES = {current: 'loop.gpx', candidates: [{gpx: 'loop.gpx', label: 'Loop', latlngs: [[43.07, -89.38]]}]};
+function currentReads(app) {
+  return app.calls.filter(([url, options]) => url === '/api/current' && !(options && options.method)).length;
+}
+function answering(extra = {}) {
+  return async url => ({ok: true, status: 200, json: async () =>
+    url === '/api/ask' ? {job: 'j'}
+      : url.startsWith('/api/job/') ? {status: 'done', result: {ok: true, summary: 'Done', ...ROUTES}}
+      : url === '/api/running' ? {job: null}
+      : url === '/api/upload' || url === '/api/undo' ? {ok: true, summary: 'Done', ...ROUTES, ...extra}
+      : ROUTES});
+}
+
+test('a page load with routes on screen reads the selection once', async () => {
+  const app = await browser(answering());
+  await settle();
+  assert.equal(currentReads({calls: app.loaded.concat(app.calls)}), 1);
+});
+
+test('a finished request reads the selection once', async () => {
+  const app = await browser(answering());
+  await settle();
+  app.calls.splice(0);
+  app.nodes.get('ask').value = '20 mile loop';
+  await vm.runInContext('send()', app.context);
+  await settle();
+  assert.equal(currentReads(app), 1);
+});
+
+test('an undo reads the selection once', async () => {
+  const app = await browser(answering());
+  await settle();
+  app.calls.splice(0);
+  await app.nodes.get('undobtn').onclick({detail: 1});
+  await settle();
+  assert.equal(currentReads(app), 1);
+});
+
+test('an upload still reads the new selection', async () => {
+  const app = await browser(answering());
+  await settle();
+  app.calls.splice(0);
+  app.nodes.get('gpxfile').files = [new Blob(['<gpx/>'])];
+  await app.nodes.get('gpxfile').onchange();
+  await settle();
+  assert.equal(currentReads(app), 1);
 });
