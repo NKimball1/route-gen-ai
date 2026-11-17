@@ -113,6 +113,10 @@ def bbox_around(lat: float, lon: float, radius_m: float) -> str:
 CACHE_DIR: str = os.environ.get("ROUTEGEN_OVERPASS_CACHE",
                                 os.path.join("output", "cache", "overpass"))
 CACHE_FRESH_S: float = 7 * 86400.0
+# Files kept; past this the least recently used go (an answer is "used"
+# when written or when it answers a lookup). Each search reads every cached
+# controls file, so the bound is on speed as much as on disk.
+CACHE_KEEP: int = int(os.environ.get("ROUTEGEN_OVERPASS_CACHE_FILES", 200))
 
 BBox4 = tuple[float, float, float, float]   # (south, west, north, east)
 
@@ -134,7 +138,35 @@ def _write_cache(path: str, entry: dict[str, Any]) -> None:
             json.dump(entry, f)
         os.replace(tmp, path)   # never leave a half-written cache file
     except OSError:
-        pass   # a cache that can't be written is just a cache miss
+        return   # a cache that can't be written is just a cache miss
+    _trim_cache(os.path.dirname(path))
+
+
+def _used(path: str) -> None:
+    """Mark a cached answer as just used, so trimming keeps it."""
+    try:
+        os.utime(path, None)
+    except OSError:
+        pass
+
+
+def _trim_cache(cache_dir: str) -> None:
+    """Drop the least recently used answers past CACHE_KEEP. Only this
+    module's own files (any version's prefix): the directory is env-set."""
+    files = [p for pattern in ("q_*.json", "controls*.json")
+             for p in glob.glob(os.path.join(cache_dir, pattern))]
+    if len(files) <= CACHE_KEEP:
+        return
+    def last_used(p: str) -> float:
+        try:
+            return os.path.getmtime(p)
+        except OSError:
+            return 0.0
+    for p in sorted(files, key=last_used)[:len(files) - CACHE_KEEP]:
+        try:
+            os.remove(p)
+        except OSError:
+            pass   # gone already, or in use: the next write tries again
 
 
 def _age(entry: dict[str, Any]) -> str:
@@ -186,6 +218,7 @@ def query_overpass(query: str) -> dict | None:
     path = os.path.join(CACHE_DIR, f"q_{key}.json")
     cached = _read_cache(path)
     if cached is not None and time.time() - float(cached["ts"]) < CACHE_FRESH_S:
+        _used(path)
         return cached["data"]
     data = _post_overpass(query)
     if data is not None:
@@ -193,6 +226,7 @@ def query_overpass(query: str) -> dict | None:
         return data
     if cached is not None:
         print(f"  overpass down -- using cached map data from {_age(cached)} ago")
+        _used(path)
         return cached["data"]
     return None
 
@@ -207,6 +241,7 @@ def _covering_controls(want: BBox4, fresh_only: bool) -> tuple[list[Control], di
     first), trimmed to `want`. Searches ask for slightly different areas
     every time; one big fetch around home should answer all of them."""
     best: dict[str, Any] | None = None
+    best_path = ""
     for path in glob.glob(os.path.join(CACHE_DIR, CONTROLS_PREFIX + "*.json")):
         entry = _read_cache(path)
         if entry is None or "bbox" not in entry:
@@ -217,9 +252,10 @@ def _covering_controls(want: BBox4, fresh_only: bool) -> tuple[list[Control], di
         if fresh_only and time.time() - float(entry["ts"]) >= CACHE_FRESH_S:
             continue
         if best is None or float(entry["ts"]) > float(best["ts"]):
-            best = entry
+            best, best_path = entry, path
     if best is None:
         return None
+    _used(best_path)
     inside = [Control(la, lo, wt, reach, bool(path_only))
               for la, lo, wt, reach, path_only in best["controls"]
               if want[0] <= la <= want[2] and want[1] <= lo <= want[3]]

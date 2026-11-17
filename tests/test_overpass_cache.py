@@ -190,3 +190,61 @@ def test_a_crossing_node_is_fetched_as_a_trail_crossing_and_cached_as_one(monkey
     assert (43.001, -89.401, 1.0, ix.CONTROL_ON_ROUTE_M, False) in fetched
     assert sorted(ix.fetch_controls(43.0, -89.4, 1500)) == sorted(fetched)   # from the cache
     assert len(calls) == 1
+
+
+# ---- the cache is bounded: least recently used answers go first ----
+# Nothing was ever deleted: on a public server every new area added a file
+# for good, and every search opens and parses every cached controls file.
+
+def aged(cache_dir, *names):
+    """Give files increasing ages, oldest first, an hour apart."""
+    for hours, name in enumerate(reversed(names), start=1):
+        t = time.time() - hours * 3600
+        os.utime(os.path.join(cache_dir, name), (t, t))
+
+
+def cached_files(cache_dir):
+    return sorted(f for f in os.listdir(cache_dir) if f.endswith(".json"))
+
+
+def test_past_the_cap_the_oldest_answers_go(monkeypatch, cache_in_tmp):
+    monkeypatch.setattr(ix, "CACHE_KEEP", 2)
+    monkeypatch.setattr(ix.requests, "post", up({"elements": []}, []))
+    ix.query_overpass("A")
+    ix.query_overpass("B")
+    a, b = (f"q_{ix.hashlib.sha256(q.encode()).hexdigest()[:24]}.json" for q in "AB")
+    aged(cache_in_tmp, a, b)
+    ix.query_overpass("C")
+    assert len(cached_files(cache_in_tmp)) == 2
+    assert a not in cached_files(cache_in_tmp) and b in cached_files(cache_in_tmp)
+
+
+def test_an_answer_in_use_outlives_newer_unused_ones(monkeypatch, cache_in_tmp):
+    # The one big fetch around home answers every search inside it but is
+    # written once; reading it must count as use, or it would be evicted first.
+    calls = []
+    monkeypatch.setattr(ix.requests, "post", up(nodes((43.0005, -89.4005)), calls))
+    ix.fetch_controls(43.0, -89.4, 20000)        # writes its raw answer and its controls
+    (home,) = [f for f in cached_files(cache_in_tmp) if f.startswith(ix.CONTROLS_PREFIX)]
+    (raw,) = set(cached_files(cache_in_tmp)) - {home}
+    ix.query_overpass("other")
+    (other,) = set(cached_files(cache_in_tmp)) - {home, raw}
+    aged(cache_in_tmp, home, raw, other)         # home written first of all
+    ix.fetch_controls(43.0, -89.4, 2000)         # answered by home's file
+    monkeypatch.setattr(ix, "CACHE_KEEP", 2)
+    ix.query_overpass("newest")
+    assert home in cached_files(cache_in_tmp)
+    assert raw not in cached_files(cache_in_tmp) and other not in cached_files(cache_in_tmp)
+    assert len(calls) == 3                       # the 2 km search used the cache
+
+
+def test_only_cache_files_are_ever_removed(monkeypatch, cache_in_tmp):
+    # ROUTEGEN_OVERPASS_CACHE can point anywhere.
+    (cache_in_tmp / "notes.json").write_text("{}")
+    aged(cache_in_tmp, "notes.json")
+    monkeypatch.setattr(ix, "CACHE_KEEP", 1)
+    monkeypatch.setattr(ix.requests, "post", up({"elements": []}, []))
+    ix.query_overpass("A")
+    ix.query_overpass("B")
+    assert "notes.json" in cached_files(cache_in_tmp)
+    assert len(cached_files(cache_in_tmp)) == 2
