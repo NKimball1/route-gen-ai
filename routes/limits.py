@@ -15,6 +15,11 @@ from typing import Any
 LOCK = threading.Lock()
 # limiter key, e.g. ("ask_ip", "203.0.113.7") -> timestamps of recent hits
 _WINDOWS: dict[tuple[str, ...], deque[float]] = defaultdict(deque)
+# Every so often, keys whose last hit is older than the longest window
+# (a day) are dropped: their windows are empty, so forgetting them changes
+# no limit, and visitors otherwise stay in memory for good.
+_SWEEP_EVERY_S: float = 600.0
+_last_sweep: float = 0.0
 
 HOUR_S: int = 3600
 DAY_S: int = 86400
@@ -34,10 +39,21 @@ class Limits:
     INVITE_MISSES_PER_IP_HOUR: int = int(os.environ.get("RATE_INVITE_MISS_IP_HOUR", 30))
 
 
+def _sweep(now: float) -> None:
+    """Drop keys untouched for longer than any window. Caller holds LOCK."""
+    global _last_sweep
+    if abs(now - _last_sweep) < _SWEEP_EVERY_S:
+        return
+    _last_sweep = now
+    for key in [k for k, dq in _WINDOWS.items() if not dq or dq[-1] <= now - DAY_S]:
+        del _WINDOWS[key]
+
+
 def allow(key: tuple[str, ...], limit: int, period_s: float, now: float | None = None) -> bool:
     """Sliding-window check: True and records the hit if under limit."""
     now = time.time() if now is None else now
     with LOCK:
+        _sweep(now)
         dq = _WINDOWS[key]
         while dq and dq[0] <= now - period_s:
             dq.popleft()
@@ -72,8 +88,11 @@ def check_ask(sid: str, ip: str) -> str | None:
     ]
     now = time.time()
     with LOCK:
+        _sweep(now)
         for key, limit, period, refusal in quotas:
-            window = _WINDOWS[key]
+            # .get: a refusal must not leave a new key behind (a limit of 0
+            # still refuses -- the window just counts as empty)
+            window = _WINDOWS.get(key) or deque()
             while window and window[0] <= now - period:
                 window.popleft()
             if len(window) >= limit:
