@@ -22,7 +22,7 @@ load_dotenv()
 from fastapi import Depends, FastAPI, File, Header, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from starlette.concurrency import run_in_threadpool
 from starlette.responses import Response
 from starlette.types import Scope
@@ -153,9 +153,17 @@ class Job(TypedDict):
 
 
 class Ask(BaseModel):
+    # Trimmed before the length checks: a request of spaces is empty, not
+    # a request -- it would spend an hourly ask and a Claude call on nothing.
+    model_config = ConfigDict(str_strip_whitespace=True)
     text: str = Field(min_length=1, max_length=600)
     start: str | None = Field(default=None, max_length=ADDRESS_MAX_CHARS)
     intent: Literal["auto", "route", "edit_route", "interval_spot"] = "auto"
+
+    @field_validator("start")
+    @classmethod
+    def blank_start_is_no_start(cls, start: str | None) -> str | None:
+        return start or None
 
 
 def _run(job_id: str, text: str, start: str | None, workdir: str,
