@@ -20,6 +20,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from fastapi import Depends, FastAPI, File, Header, HTTPException, Request, UploadFile
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -60,6 +61,29 @@ SID_RE = re.compile(r"^[A-Za-z0-9-]{8,64}$")
 UPLOAD_MAX_MB = 8
 UPLOAD_MAX_BYTES = UPLOAD_MAX_MB * 1024 * 1024
 ADDRESS_MAX_CHARS = 200
+ASK_MAX_CHARS = 600
+
+
+def _readable(error: dict[str, Any]) -> str:
+    """One sentence a rider can act on, for the first thing wrong."""
+    field = error.get("loc", ())[-1] if error.get("loc") else ""
+    kind = error.get("type", "")
+    if field == "text" and kind == "string_too_long":
+        return f"Keep the request under {ASK_MAX_CHARS} characters."
+    if field == "text" and kind in ("string_too_short", "missing"):
+        return "Type a request first."
+    if field == "start" and kind == "string_too_long":
+        return f"The start address can be up to {ADDRESS_MAX_CHARS} characters."
+    return f"That request couldn't be read ({field}: {error.get('msg', 'invalid')})."
+
+
+@app.exception_handler(RequestValidationError)
+async def readable_validation_error(request: Request, exc: RequestValidationError) -> JSONResponse:
+    # FastAPI's own 422 is a list under "detail" that repeats the input; the
+    # page shows `error`, and saw only "Request failed (422)."
+    errors = exc.errors()
+    return JSONResponse({"error": _readable(errors[0]) if errors else "That request couldn't be read."},
+                        status_code=422)
 # Opt-in: delete web sessions nothing has written to for this many days.
 # Unset or 0 keeps every session (riders' browsers keep their id forever).
 SESSION_MAX_AGE_S: float = float(os.environ.get("ROUTEGEN_SESSION_DAYS", 0)) * limits.DAY_S
@@ -156,7 +180,7 @@ class Ask(BaseModel):
     # Trimmed before the length checks: a request of spaces is empty, not
     # a request -- it would spend an hourly ask and a Claude call on nothing.
     model_config = ConfigDict(str_strip_whitespace=True)
-    text: str = Field(min_length=1, max_length=600)
+    text: str = Field(min_length=1, max_length=ASK_MAX_CHARS)
     start: str | None = Field(default=None, max_length=ADDRESS_MAX_CHARS)
     intent: Literal["auto", "route", "edit_route", "interval_spot"] = "auto"
 
