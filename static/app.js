@@ -23,6 +23,9 @@ function hdrs() {
   return h;
 }
 const POLL_INTERVAL_MS = 1200;
+// The server's upload limit (api.UPLOAD_MAX_MB; a test keeps them equal).
+// Checked here so a file over it isn't sent whole just to be refused.
+const UPLOAD_MAX_MB = 8;
 const JOB_WAIT_LIMIT_MS = 30 * 60 * 1000;
 // Polls in a row that may get no answer at all (Wi-Fi drop, phone switching
 // networks) before the wait is given up: about half a minute.
@@ -332,6 +335,11 @@ document.getElementById('uploadbtn').onclick = () => gpxInput.click();
 gpxInput.onchange = async () => {
   const file = gpxInput.files[0];
   if (!file || sending) return;
+  if (file.size > UPLOAD_MAX_MB * 1024 * 1024) {
+    banner(`File too large (${UPLOAD_MAX_MB} MB max).`, false);
+    gpxInput.value = '';
+    return;
+  }
   setBusy(true);
   try {
     const body = new FormData(); body.append('file', file);

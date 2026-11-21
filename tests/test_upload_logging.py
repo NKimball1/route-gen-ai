@@ -69,3 +69,12 @@ def test_an_unexpected_failure_is_logged(client, monkeypatch):
         send(client, GOOD)
     (row,) = rows()
     assert row["outcome"] == "error" and row["error"] == "OSError"
+
+
+def test_the_page_checks_the_same_upload_limit():
+    # static/app.js refuses oversize files before sending them; a page
+    # limit below the server's would turn away files the server takes.
+    import re
+    with open("static/app.js", encoding="utf-8") as f:
+        (page_mb,) = re.findall(r"const UPLOAD_MAX_MB = (\d+);", f.read())
+    assert int(page_mb) == api.UPLOAD_MAX_MB

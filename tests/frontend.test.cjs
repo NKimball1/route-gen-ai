@@ -331,3 +331,27 @@ test('an upload still reads the new selection', async () => {
   await settle();
   assert.equal(currentReads(app), 1);
 });
+
+
+// A file over the server's limit was sent whole before the server said no:
+// a ride video picked by mistake meant minutes of uploading on a phone.
+test('a file over the upload limit is refused before it is sent', async () => {
+  const app = await browser(answering());
+  await settle();
+  app.calls.splice(0);
+  const input = app.nodes.get('gpxfile');
+  input.files = [new Blob([new Uint8Array(8 * 1024 * 1024 + 1)])];
+  await input.onchange();
+  assert.equal(app.calls.filter(([url]) => url === '/api/upload').length, 0);
+  assert.equal(app.nodes.get('banner').textContent, 'File too large (8 MB max).');
+  assert.equal(app.nodes.get('uploadbtn').disabled, false);
+});
+
+test('a file at the upload limit is still sent', async () => {
+  const app = await browser(answering());
+  await settle();
+  app.calls.splice(0);
+  app.nodes.get('gpxfile').files = [new Blob([new Uint8Array(8 * 1024 * 1024)])];
+  await app.nodes.get('gpxfile').onchange();
+  assert.equal(app.calls.filter(([url]) => url === '/api/upload').length, 1);
+});
