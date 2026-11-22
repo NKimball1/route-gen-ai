@@ -21,6 +21,13 @@ MAX_OUTPUT_TOKENS = 2048
 # free but still a network call, so one answer serves this long.
 PARSER_STATUS_TTL_S: float = 300.0
 _PARSER_STATUS: tuple[float, str] | None = None
+# The SDK waits 10 minutes per attempt and retries twice by default: an API
+# that accepts a connection and never answers held a health check (every
+# page load) or a rider's job -- which cancel can't reach mid-call -- for up
+# to ~30 minutes. A probe answers in seconds or says "unreachable"; a parse
+# gets a minute an attempt (Haiku takes a few seconds), with the SDK retries.
+PARSER_PROBE_TIMEOUT_S: float = 5.0
+PARSE_TIMEOUT_S: float = 60.0
 
 
 def parser_status(client: anthropic.Anthropic | None = None) -> str:
@@ -37,7 +44,7 @@ def parser_status(client: anthropic.Anthropic | None = None) -> str:
     if _PARSER_STATUS is not None and now - _PARSER_STATUS[0] < PARSER_STATUS_TTL_S:
         return _PARSER_STATUS[1]
     try:
-        (client or anthropic.Anthropic()).models.list(limit=1)
+        (client or anthropic.Anthropic(timeout=PARSER_PROBE_TIMEOUT_S, max_retries=0)).models.list(limit=1)
         status = "ok"
     except (anthropic.AuthenticationError, anthropic.PermissionDeniedError):
         status = "key_rejected"
@@ -206,7 +213,7 @@ SCHEMA = {
 def parse_request(text: str, client: anthropic.Anthropic | None = None,
                   context: dict[str, Any] | None = None) -> dict:
     """Parse a plain-English request. Returns the schema dict plus _usage."""
-    client = client or anthropic.Anthropic()
+    client = client or anthropic.Anthropic(timeout=PARSE_TIMEOUT_S)
     model = os.environ.get("ROUTEGEN_MODEL", DEFAULT_MODEL)
     response = client.messages.create(
         model=model,

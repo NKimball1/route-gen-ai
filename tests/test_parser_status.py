@@ -81,3 +81,65 @@ def test_health_reports_the_parser(monkeypatch, parser, code, ok):
     assert response.status_code == code
     body = response.json()
     assert body["parser"] == parser and body["ok"] is ok and body["brouter"] == "up"
+
+
+# ---- a hung API answers "unreachable" in seconds, not half an hour ----
+# The probe used the SDK defaults: a 10-minute timeout and 2 retries. An
+# API that accepted the connection and never answered held each /api/health
+# call (every page load) for up to ~30 minutes, each in a worker thread.
+
+@pytest.fixture
+def silent_api(monkeypatch):
+    """A server that accepts connections and never replies."""
+    import socket
+    import threading
+    listener = socket.socket()
+    listener.bind(("127.0.0.1", 0))
+    listener.listen()
+    held = []
+    def accept():
+        while True:
+            try:
+                held.append(listener.accept()[0])
+            except OSError:
+                return
+    threading.Thread(target=accept, daemon=True).start()
+    monkeypatch.setenv("ANTHROPIC_BASE_URL", f"http://127.0.0.1:{listener.getsockname()[1]}")
+    yield
+    listener.close()
+    for conn in held:
+        conn.close()
+
+
+def test_a_silent_api_is_reported_unreachable_quickly(silent_api, monkeypatch):
+    import threading
+    import time
+    monkeypatch.setattr(nl, "PARSER_PROBE_TIMEOUT_S", 0.5)
+    answer = []
+    started = time.monotonic()
+    probe = threading.Thread(target=lambda: answer.append(nl.parser_status()), daemon=True)
+    probe.start()
+    probe.join(10)
+    assert answer == ["unreachable"], "the probe was still waiting after 10 s"
+    assert time.monotonic() - started < 5
+
+
+def test_a_silent_api_fails_a_parse_in_bounded_time(silent_api, monkeypatch):
+    # A hung parse held the rider's job for up to ~30 minutes, and cancel
+    # can't reach a call that's waiting on the network.
+    import threading
+    import time
+    monkeypatch.setattr(nl, "PARSE_TIMEOUT_S", 0.5)
+    errors = []
+    def parse():
+        try:
+            nl.parse_request("20 mile loop")
+        except Exception as error:   # noqa: BLE001 - the test inspects it
+            errors.append(error)
+    started = time.monotonic()
+    worker = threading.Thread(target=parse, daemon=True)
+    worker.start()
+    worker.join(20)
+    assert errors, "the parse was still waiting after 20 s"
+    assert isinstance(errors[0], anthropic.APIConnectionError)   # APITimeoutError is one
+    assert time.monotonic() - started < 15
