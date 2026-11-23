@@ -25,8 +25,9 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from starlette.concurrency import run_in_threadpool
+from starlette.datastructures import MutableHeaders
 from starlette.responses import Response
-from starlette.types import Scope
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from routes import limits, storage
 from routes.execution import Cancellation, JobCancelled
@@ -50,6 +51,38 @@ class RevalidatedFiles(StaticFiles):
         return response
 
 
+# No response said a browser mustn't frame it, so any site could load the
+# app in a hidden frame and steer a rider's clicks (clickjacking). Nothing
+# here is meant to be embedded. nosniff: take the type sent, never guess.
+SECURITY_HEADERS: dict[str, str] = {
+    "X-Frame-Options": "DENY",                          # older browsers
+    "Content-Security-Policy": "frame-ancestors 'none'",
+    "X-Content-Type-Options": "nosniff",
+}
+
+
+class SecurityHeaders:
+    """Plain ASGI rather than @app.middleware, which re-streams every
+    response body through an extra task just to add three headers."""
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        async def send_with_headers(message: Message) -> None:
+            if message["type"] == "http.response.start":
+                headers = MutableHeaders(scope=message)
+                for name, value in SECURITY_HEADERS.items():
+                    headers[name] = value
+            await send(message)
+
+        await self.app(scope, receive, send_with_headers)
+
+
+app.add_middleware(SecurityHeaders)
 app.mount("/assets", RevalidatedFiles(directory="static"), name="assets")
 INVITE_CODE: str | None = os.environ.get("ROUTEGEN_INVITE_CODE")
 JOBS: dict[str, "Job"] = {}
