@@ -20,12 +20,14 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from fastapi import Depends, FastAPI, File, Header, HTTPException, Request, UploadFile
+from fastapi.exception_handlers import http_exception_handler
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from starlette.concurrency import run_in_threadpool
 from starlette.datastructures import MutableHeaders
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.responses import Response
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
@@ -492,10 +494,24 @@ PAGES_DIR: str = os.path.join("static", "pages")
 PAGE_RE: re.Pattern[str] = re.compile(r"^[a-z0-9-]{1,40}$")
 
 
-@app.api_route("/{slug}", methods=["GET", "HEAD"], response_model=None)
-def text_page(slug: str) -> FileResponse | JSONResponse:
+@app.api_route("/{slug}", methods=["GET", "HEAD"])
+def text_page(slug: str) -> FileResponse:
     if PAGE_RE.match(slug):
         path = os.path.join(PAGES_DIR, f"{slug}.html")
         if os.path.exists(path):
             return FileResponse(path, headers=REVALIDATE)
-    return JSONResponse({"error": "not found"}, status_code=404)
+    raise HTTPException(404, "not found")
+
+
+# A mistyped or stale link used to show raw JSON as the whole page, with
+# nothing to click. Browsers get a page with a way back; the API and
+# missing assets keep their plain answers.
+NOT_FOUND_PAGE: str = os.path.join("static", "not-found.html")
+
+
+@app.exception_handler(StarletteHTTPException)
+async def not_found_page(request: Request, exc: StarletteHTTPException) -> Response:
+    path = request.url.path
+    if exc.status_code == 404 and not path.startswith(("/api/", "/assets/")):
+        return FileResponse(NOT_FOUND_PAGE, status_code=404, headers=REVALIDATE)
+    return await http_exception_handler(request, exc)
