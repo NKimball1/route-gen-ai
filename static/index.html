@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -74,7 +74,7 @@
          text-decoration:none;">about</a>
     </div>
     <div id="startrow">
-      <input id="start" placeholder="Where do your rides start? (address or town)"/>
+      <input id="start" aria-label="Ride start address" placeholder="Where do your rides start? (address or town)"/>
       <button id="setstart">Set</button>
     </div>
     <div style="display:flex; gap:8px; align-items:center;">
@@ -88,7 +88,7 @@
   <div id="askbox">
     <label for="intent">Operation</label>
     <select id="intent"><option value="auto">Interpret my request</option><option value="route">New route</option><option value="edit_route">Edit selected route</option><option value="interval_spot">Find interval spot</option></select>
-    <textarea id="ask" placeholder="give me a 40 mile loop from home, not much climbing&#10;&#10;find a flat spot for 2x20 within 30 min&#10;&#10;detour around Pheasant Branch, use roads"></textarea>
+    <textarea id="ask" aria-label="Ride request" placeholder="give me a 40 mile loop from home, not much climbing&#10;&#10;find a flat spot for 2x20 within 30 min&#10;&#10;detour around Pheasant Branch, use roads"></textarea>
     <button id="go">Send</button>
     <button id="cancelbtn" hidden title="stop the running request"
         style="width:100%; margin-top:6px; padding:7px; background:#3b2c12;
@@ -104,7 +104,7 @@
         color:var(--ink); border:0; border-radius:8px; cursor:pointer;">
       Upload a GPX to edit…</button>
   </div>
-  <div id="banner"></div>
+  <div id="banner" role="status"></div>
   <div id="results"></div>
   <div id="log">Ready. The self-hosted router must be running
 (start_brouter.cmd).</div>
