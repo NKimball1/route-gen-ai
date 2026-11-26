@@ -355,3 +355,22 @@ test('a file at the upload limit is still sent', async () => {
   await app.nodes.get('gpxfile').onchange();
   assert.equal(app.calls.filter(([url]) => url === '/api/upload').length, 1);
 });
+
+// A downloaded GPX is named for the ride: the ids that keep names on disk
+// unique (an edit carries its parent's and its own) stay out of Downloads.
+test('the gpx link saves the file without its storage ids', async () => {
+  const app = await browser();
+  const created = [];
+  app.context.document.createElement = () => {
+    const node = {style: {}, dataset: {}, append() {}, appendChild() {}, click() {}, querySelector() {return {};}};
+    created.push(node); return node;
+  };
+  app.context.Blob = Blob;
+  const gpx = 'output/sessions/s/route_40mi_ride_1_loop_brouter_' + '3f'.repeat(16) + '_edit_' + '9b'.repeat(16) + '.gpx';
+  vm.runInContext(`showResult(${JSON.stringify({candidates: [{gpx, label: 'Loop', latlngs: [[43.07, -89.38]]}]})})`, app.context);
+  app.response(async () => ({ok: true, status: 200, blob: async () => new Blob(['<gpx/>'])}));
+  const link = created.find(node => node.textContent === 'gpx');
+  await link.onclick({preventDefault() {}, stopPropagation() {}});
+  const saved = created.find(node => node.download);
+  assert.equal(saved.download, 'route_40mi_ride_1_loop_brouter_edit.gpx');
+});
