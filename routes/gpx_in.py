@@ -52,6 +52,22 @@ def decode_gpx(data: bytes) -> str:
         raise ValueError(_NOT_GPX) from None
 
 
+def track_name(text: str) -> str | None:
+    """The first track's (or route's) <name>: what Garmin calls the course.
+    None when there is none or the file can't be read."""
+    if "<!DOCTYPE" in text.upper() or "<!ENTITY" in text.upper():
+        return None
+    try:
+        root = ET.fromstring(text)
+    except ET.ParseError:
+        return None
+    for node in root.iter():
+        if _tag(node) in ("trk", "rte"):
+            name = next((child.text for child in node if _tag(child) == "name"), None)
+            return name.strip() if name and name.strip() else None
+    return None
+
+
 def parse_gpx_text(text: str, *, strict: bool = False) -> Track:
     """Read namespaced tracks/routes and legacy point fragments.
 

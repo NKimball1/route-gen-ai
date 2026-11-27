@@ -3,11 +3,13 @@ import os
 from routes.editing import (anchor_at, connect_from, detour_around, extend_route,
                             move_endpoint, route_via, route_via_chain, shorten_route)
 from routes.geocode import geocode_flexible
+from routes.gpx_in import decode_gpx, track_name
 from routes.gpx_out import write_track
 from routes.preview import _parse_gpx, build_preview
 from routes.providers import BRouterProvider
 from routes.spec import METERS_PER_FOOT, METERS_PER_MILE, Outcome
-from routes.storage import artifact_path, record_parent, select_route, transaction, note_outcome
+from routes.storage import (artifact_path, record_parent, select_route, transaction, note_outcome,
+                            without_ids)
 from routes.geometry import waypoints_in_order, segment_projection
 from routes.policy import (WAYPOINT_TOLERANCE_M, ROAD_LOOKUP_RADIUS_M,
                            AVOID_ROAD_TOLERANCE_M)
@@ -42,6 +44,18 @@ def run_edit(route_path: str, place: str | None = None,
     with transaction(out_dir):
         return _run_edit(route_path, place, radius_m, mode, profile, out_dir,
                          miles_delta, connect_return, places)
+
+
+def _edit_name(route_path: str, base: str) -> str:
+    """The ride's own GPX name plus " edit", once: Garmin shows it as the
+    course name, and the file's name carries storage ids."""
+    try:
+        with open(route_path, "rb") as f:
+            name = track_name(decode_gpx(f.read()))
+    except (OSError, ValueError):
+        name = None
+    name = name or without_ids(base)
+    return name if name.endswith(" edit") else f"{name} edit"
 
 
 def _run_edit(route_path: str, place: str | None = None,
@@ -213,7 +227,7 @@ def _run_edit(route_path: str, place: str | None = None,
     desc = (f"{result.distance_m / METERS_PER_MILE:.1f} mi, "
             f"{result.ascent_m / METERS_PER_FOOT:.0f} ft "
             f"(edit: {verbs.get(mode, mode)} {place})".replace(":  ", ": "))
-    write_track(result.points, f"{base} edit", desc, out_path)
+    write_track(result.points, _edit_name(route_path, base), desc, out_path)
     record_parent(out_path, route_path)
     build_preview([out_path, route_path], os.path.splitext(out_path)[0] + ".html")
     select_route(out_path, out_dir)

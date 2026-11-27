@@ -66,7 +66,7 @@ function setBusy(busy) {
 
 const norm = p => (p || '').replaceAll('\\\\', '/').replaceAll('\\', '/');
 // The ride's name without the ids that keep names on disk unique (an edit
-// carries its parent's and its own); api.py's download_name() matches.
+// carries its parent's and its own); routes/storage.py's without_ids() matches.
 const downloadName = p => norm(p).split('/').pop().replace(/_[0-9a-f]{32}(?=[_.])/g, '');
 
 function banner(msg, ok) {

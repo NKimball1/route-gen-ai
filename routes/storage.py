@@ -13,6 +13,7 @@ from dataclasses import dataclass
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import threading
 import time
@@ -225,6 +226,16 @@ def predecessor(route_path: str) -> str | None:
 def artifact_path(workdir: str, stem: str, suffix: str = ".gpx") -> str:
     os.makedirs(workdir, exist_ok=True)
     return os.path.join(workdir, f"{stem}_{uuid.uuid4().hex}{suffix}")
+
+
+# The ids artifact_path adds keep names unique on disk; an edit's name
+# carries its parent's as well as its own. A name a rider sees -- a
+# download, a Garmin course -- leaves them out. static/app.js matches.
+STORAGE_ID_RE: re.Pattern[str] = re.compile(r"_[0-9a-f]{32}(?=[_.]|$)")
+
+
+def without_ids(name: str) -> str:
+    return STORAGE_ID_RE.sub("", name)
 
 
 def publish(path: str, workdir: str = DEFAULT_WORKDIR) -> None:

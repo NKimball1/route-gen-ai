@@ -405,14 +405,9 @@ def job(job_id: str, session: Session = Depends(authorized_session)) -> dict[str
         return result
 
 
-# Files on disk carry a 32-hex id so names never collide, and an edit keeps
-# its parent's id as well as its own; a rider's Downloads folder gets the
-# ride's name without them. static/app.js names the page's downloads alike.
-STORAGE_ID_RE: re.Pattern[str] = re.compile(r"_[0-9a-f]{32}(?=[_.])")
-
-
 def download_name(path: str) -> str:
-    return STORAGE_ID_RE.sub("", os.path.basename(path))
+    """A rider's Downloads folder gets the ride's name, not storage ids."""
+    return storage.without_ids(os.path.basename(path))
 
 
 @app.get("/api/gpx", response_model=None)
