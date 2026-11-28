@@ -330,29 +330,43 @@ def cancel(session: Session = Depends(authorized_session)) -> dict[str, str] | J
     return {"cancelled": job_id}
 
 
+# The name the rider gave the route -- in the list, and the course name on
+# their next Garmin import. It used to be the filename squeezed to
+# [A-Za-z0-9_-]: "Tuesday Night Worlds" in COURSE_8812.gpx became
+# "COURSE_8812". Whitespace runs become one space; nothing unprintable.
+ROUTE_NAME_MAX_CHARS = 80
+
+
+def _route_name(raw: str) -> str:
+    name = "".join(ch for ch in " ".join(raw.split()) if ch.isprintable())
+    return name[:ROUTE_NAME_MAX_CHARS].strip() or "route"
+
+
 def _save_upload(data: bytes, filename: str, session: Session) -> dict[str, Any]:
     from routes.elevation import track_ascent
-    from routes.gpx_in import decode_gpx, parse_gpx_text
+    from routes.gpx_in import decode_gpx, parse_gpx_text, track_name
     from routes.editing import _cum
     from routes.gpx_out import write_track
     with session_mutation(session):
         try:
-            points = parse_gpx_text(decode_gpx(data), strict=True)
+            text = decode_gpx(data)
+            points = parse_gpx_text(text, strict=True)
         except ValueError as error:
             raise HTTPException(400, str(error)) from error
         if len(points) < 2:
             raise HTTPException(400, "No usable track/route points found in that file.")
-        safe = re.sub(r"[^A-Za-z0-9_-]+", "_", os.path.splitext(filename)[0])[:40] or "route"
+        name = _route_name(track_name(text) or os.path.splitext(filename)[0])
+        safe = re.sub(r"[^A-Za-z0-9_-]+", "_", name)[:40] or "route"     # on disk
         out = storage.artifact_path(session.workdir, f"upload_{safe}")
         miles = _cum(points)[-1] / METERS_PER_MILE
         ascent = track_ascent(points) / METERS_PER_FOOT
         missing_elevation = any(p[2] is None for p in points)
         warning = "Elevation is incomplete; climbing cannot be verified." if missing_elevation else ""
-        write_track(points, safe, f"{miles:.1f} mi, {ascent:.0f} ft (uploaded)", out)
+        write_track(points, name, f"{miles:.1f} mi, {ascent:.0f} ft (uploaded)", out)
         storage.publish(out, session.workdir)
         return {"kind": "upload", "ok": "partial" if warning else True,
                 "summary": "Uploaded - selected for editing." + (" " + warning if warning else ""),
-                "candidates": [{"label": f"uploaded: {safe} - {miles:.1f} mi, {ascent:.0f} ft. {warning}",
+                "candidates": [{"label": f"uploaded: {name} - {miles:.1f} mi, {ascent:.0f} ft. {warning}",
                                 "gpx": out, "latlngs": _downsample(points)}]}
 
 
